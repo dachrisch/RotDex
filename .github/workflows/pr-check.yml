@@ -53,21 +53,21 @@ jobs:
       run: ./gradlew assembleDebug
 
     - name: Upload Lint Results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: lint-results
         path: app/build/reports/lint-results-debug.html
 
     - name: Upload Test Results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: test-results
         path: app/build/reports/tests/testDebugUnitTest/
 
     - name: Upload Debug APK
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: debug-apk
         path: app/build/outputs/apk/debug/*.apk
@@ -123,7 +123,7 @@ jobs:
       continue-on-error: true
 
     - name: Upload detekt report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: detekt-report
