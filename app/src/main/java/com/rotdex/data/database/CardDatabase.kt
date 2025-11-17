@@ -6,19 +6,23 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.rotdex.data.models.Card
+import com.rotdex.data.models.UserProfile
+import com.rotdex.data.models.SpinHistory
 
 /**
- * Room database for storing brainrot cards
+ * Room database for storing brainrot cards and user data
  */
 @Database(
-    entities = [Card::class],
-    version = 1,
+    entities = [Card::class, UserProfile::class, SpinHistory::class],
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class CardDatabase : RoomDatabase() {
 
     abstract fun cardDao(): CardDao
+    abstract fun userProfileDao(): UserProfileDao
+    abstract fun spinHistoryDao(): SpinHistoryDao
 
     companion object {
         @Volatile
