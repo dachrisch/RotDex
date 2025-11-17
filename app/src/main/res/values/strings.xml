@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RotDex</string>
+    <string name="app_tagline">Collect the Chaos</string>
+
+    <!-- Main Screen -->
+    <string name="generate_card">Generate Card</string>
+    <string name="my_collection">My Collection</string>
+    <string name="card_input_hint">What brainrot should we create?</string>
+
+    <!-- Collection Screen -->
+    <string name="total_cards">Total Cards: %d</string>
+    <string name="rarity_common">Common</string>
+    <string name="rarity_rare">Rare</string>
+    <string name="rarity_epic">Epic</string>
+    <string name="rarity_legendary">Legendary</string>
+
+    <!-- Card Details -->
+    <string name="generated_on">Generated on %s</string>
+    <string name="share_card">Share Card</string>
+    <string name="delete_card">Delete Card</string>
+
+    <!-- Error Messages -->
+    <string name="error_network">Network error. Check your connection.</string>
+    <string name="error_generation">Failed to generate card. Try again.</string>
+    <string name="error_empty_input">Please enter something to generate!</string>
+</resources>
