@@ -8,14 +8,17 @@ import com.rotdex.data.models.SpinReward
 import com.rotdex.data.models.StreakMilestone
 import com.rotdex.data.models.UserProfile
 import com.rotdex.data.repository.UserRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * ViewModel for daily rewards (spin wheel and streak)
  */
-class DailyRewardsViewModel(
+@HiltViewModel
+class DailyRewardsViewModel @Inject constructor(
     private val userRepository: UserRepository
 ) : ViewModel() {
 
