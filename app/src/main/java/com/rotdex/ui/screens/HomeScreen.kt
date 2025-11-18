@@ -145,6 +145,7 @@ private fun StatItem(icon: String, label: String, value: String) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NavigationButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
