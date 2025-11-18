@@ -1,5 +1,6 @@
 package com.rotdex.data.models
 
+import kotlin.math.max
 import kotlin.math.min
 
 /**
@@ -37,7 +38,7 @@ object FusionRules {
         if (!cards.all { it.rarity == rarity }) return 0f
 
         val baseRate = BASE_SUCCESS_RATES[rarity] ?: 0f
-        val cardCountBonus = kotlin.math.maxOf(0, cards.size - 2) * BONUS_PER_CARD
+        val cardCountBonus = max(0, cards.size - 2) * BONUS_PER_CARD
 
         return min(1f, baseRate + cardCountBonus + recipeBonus)
     }
