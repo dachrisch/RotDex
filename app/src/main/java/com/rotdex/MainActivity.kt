@@ -39,10 +39,6 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
-
-                    // Initialize ViewModel to ensure user profile is created
-                    val viewModel: DailyRewardsViewModel = hiltViewModel()
-
                     NavGraph(navController = navController)
                 }
             }

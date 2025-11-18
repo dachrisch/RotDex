@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -48,7 +49,7 @@ fun DailyRewardsScreen(
                 title = { Text("Daily Rewards") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -95,10 +96,7 @@ fun DailyRewardsScreen(
 
             // Upcoming milestones
             if (nextMilestone != null) {
-                NextMilestoneCard(
-                    milestone = nextMilestone!!,
-                    currentStreak = userProfile?.currentStreak ?: 0
-                )
+                NextMilestoneCard(milestone = nextMilestone!!)
             }
         }
     }
@@ -529,7 +527,7 @@ fun RewardResultDisplay(reward: SpinReward, onDismiss: () -> Unit) {
 }
 
 @Composable
-fun NextMilestoneCard(milestone: StreakMilestone, currentStreak: Int) {
+fun NextMilestoneCard(milestone: StreakMilestone) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
