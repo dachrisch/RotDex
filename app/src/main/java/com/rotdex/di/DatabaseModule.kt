@@ -3,6 +3,7 @@ package com.rotdex.di
 import android.content.Context
 import com.rotdex.data.database.CardDao
 import com.rotdex.data.database.CardDatabase
+import com.rotdex.data.database.FusionHistoryDao
 import com.rotdex.data.database.SpinHistoryDao
 import com.rotdex.data.database.UserProfileDao
 import dagger.Module
@@ -40,5 +41,10 @@ object DatabaseModule {
     @Provides
     fun provideSpinHistoryDao(database: CardDatabase): SpinHistoryDao {
         return database.spinHistoryDao()
+    }
+
+    @Provides
+    fun provideFusionHistoryDao(database: CardDatabase): FusionHistoryDao {
+        return database.fusionHistoryDao()
     }
 }

@@ -3,6 +3,7 @@ package com.rotdex.di
 import android.content.Context
 import com.rotdex.data.api.AiApiService
 import com.rotdex.data.database.CardDao
+import com.rotdex.data.database.FusionHistoryDao
 import com.rotdex.data.database.SpinHistoryDao
 import com.rotdex.data.database.UserProfileDao
 import com.rotdex.data.repository.CardRepository
@@ -25,9 +26,10 @@ object RepositoryModule {
     @Singleton
     fun provideCardRepository(
         cardDao: CardDao,
+        fusionHistoryDao: FusionHistoryDao,
         aiApiService: AiApiService
     ): CardRepository {
-        return CardRepository(cardDao, aiApiService)
+        return CardRepository(cardDao, fusionHistoryDao, aiApiService)
     }
 
     @Provides

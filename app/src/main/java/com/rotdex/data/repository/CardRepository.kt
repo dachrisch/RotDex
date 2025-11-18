@@ -3,9 +3,10 @@ package com.rotdex.data.repository
 import com.rotdex.data.api.AiApiService
 import com.rotdex.data.api.ImageGenerationRequest
 import com.rotdex.data.database.CardDao
-import com.rotdex.data.models.Card
-import com.rotdex.data.models.CardRarity
-import com.rotdex.data.models.CollectionStats
+import com.rotdex.data.database.FusionHistoryDao
+import com.rotdex.data.manager.FusionManager
+import com.rotdex.data.manager.FusionStats
+import com.rotdex.data.models.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlin.random.Random
@@ -16,8 +17,11 @@ import kotlin.random.Random
  */
 class CardRepository(
     private val cardDao: CardDao,
+    private val fusionHistoryDao: FusionHistoryDao,
     private val aiApiService: AiApiService
 ) {
+
+    private val fusionManager = FusionManager(cardDao, fusionHistoryDao)
 
     // MARK: - Card Collection Operations
 
@@ -130,5 +134,56 @@ class CardRepository(
         }
 
         return CardRarity.COMMON // Fallback
+    }
+
+    // MARK: - Card Fusion Operations
+
+    /**
+     * Validate if cards can be fused
+     */
+    fun validateFusion(cards: List<Card>): FusionValidation {
+        return fusionManager.validateFusion(cards)
+    }
+
+    /**
+     * Perform card fusion
+     */
+    suspend fun performFusion(cards: List<Card>): FusionResult {
+        return fusionManager.performFusion(cards)
+    }
+
+    /**
+     * Get all fusion recipes (public only)
+     */
+    fun getPublicRecipes(): List<FusionRecipe> {
+        return FusionRecipes.getPublicRecipes()
+    }
+
+    /**
+     * Get discovered recipes (including secret ones)
+     */
+    suspend fun getDiscoveredRecipes(): List<FusionRecipe> {
+        return fusionManager.getDiscoveredRecipes()
+    }
+
+    /**
+     * Get fusion history
+     */
+    fun getFusionHistory(limit: Int = 50): Flow<List<FusionHistory>> {
+        return fusionHistoryDao.getRecentFusions(limit)
+    }
+
+    /**
+     * Get fusion statistics
+     */
+    suspend fun getFusionStats(): FusionStats {
+        return fusionManager.getFusionStats()
+    }
+
+    /**
+     * Find matching recipe for cards
+     */
+    fun findMatchingRecipe(cards: List<Card>): FusionRecipe? {
+        return FusionRecipes.findMatchingRecipe(cards)
     }
 }
