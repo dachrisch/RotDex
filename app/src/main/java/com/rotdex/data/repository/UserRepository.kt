@@ -67,9 +67,10 @@ class UserRepository(
     /**
      * Regenerate energy based on time elapsed
      * Call this when app starts or becomes active
+     * @return Amount of energy added
      */
-    suspend fun regenerateEnergy() {
-        val profile = userProfileDao.getUserProfileOnce() ?: return
+    suspend fun regenerateEnergy(): Int {
+        val profile = userProfileDao.getUserProfileOnce() ?: return 0
         val now = System.currentTimeMillis()
         val elapsed = now - profile.lastEnergyRefresh
         val hoursElapsed = TimeUnit.MILLISECONDS.toHours(elapsed)
@@ -77,11 +78,14 @@ class UserRepository(
         if (hoursElapsed >= 4) {
             val energyToAdd = (hoursElapsed / 4).toInt()
             val newEnergy = minOf(profile.currentEnergy + energyToAdd, profile.maxEnergy)
+            val actualAdded = newEnergy - profile.currentEnergy
 
-            if (newEnergy != profile.currentEnergy) {
+            if (actualAdded > 0) {
                 userProfileDao.updateEnergy(newEnergy, now)
             }
+            return actualAdded
         }
+        return 0
     }
 
     /**
