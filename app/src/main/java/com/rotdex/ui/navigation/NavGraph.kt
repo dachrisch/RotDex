@@ -6,8 +6,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.rotdex.ui.screens.DailyRewardsScreen
+import com.rotdex.ui.screens.FusionScreen
 import com.rotdex.ui.screens.HomeScreen
 import com.rotdex.ui.viewmodel.DailyRewardsViewModel
+import com.rotdex.ui.viewmodel.FusionViewModel
 
 /**
  * Navigation routes for the app
@@ -36,7 +38,8 @@ fun NavGraph(
             HomeScreen(
                 onNavigateToDailyRewards = { navController.navigate(Screen.DailyRewards.route) },
                 onNavigateToCollection = { navController.navigate(Screen.Collection.route) },
-                onNavigateToCardCreate = { navController.navigate(Screen.CardCreate.route) }
+                onNavigateToCardCreate = { navController.navigate(Screen.CardCreate.route) },
+                onNavigateToFusion = { navController.navigate(Screen.Fusion.route) }
             )
         }
 
@@ -64,8 +67,9 @@ fun NavGraph(
         }
 
         composable(Screen.Fusion.route) {
-            PlaceholderScreen(
-                title = "Card Fusion",
+            val viewModel: FusionViewModel = hiltViewModel()
+            FusionScreen(
+                viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

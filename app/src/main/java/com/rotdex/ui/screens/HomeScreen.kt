@@ -23,6 +23,7 @@ fun HomeScreen(
     onNavigateToDailyRewards: () -> Unit,
     onNavigateToCollection: () -> Unit,
     onNavigateToCardCreate: () -> Unit,
+    onNavigateToFusion: () -> Unit = {},
     viewModel: DailyRewardsViewModel = hiltViewModel()
 ) {
     val userProfile by viewModel.userProfile.collectAsState()
@@ -110,6 +111,13 @@ fun HomeScreen(
                 title = "Create Card",
                 subtitle = "Generate new brainrot cards",
                 onClick = onNavigateToCardCreate
+            )
+
+            NavigationButton(
+                icon = Icons.Default.AutoFixHigh,
+                title = "Card Fusion",
+                subtitle = "Combine cards to create better ones",
+                onClick = onNavigateToFusion
             )
         }
     }
