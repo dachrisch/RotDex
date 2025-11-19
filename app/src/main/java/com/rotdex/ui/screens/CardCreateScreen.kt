@@ -2,6 +2,7 @@ package com.rotdex.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -10,14 +11,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.rotdex.data.models.GameConfig
 import com.rotdex.ui.viewmodel.CardCreateViewModel
 import com.rotdex.ui.viewmodel.CardGenerationState
+import java.io.File
 
 /**
  * Screen for creating/generating new cards
@@ -27,7 +32,8 @@ import com.rotdex.ui.viewmodel.CardGenerationState
 @Composable
 fun CardCreateScreen(
     viewModel: CardCreateViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToCollection: () -> Unit
 ) {
     val userProfile by viewModel.userProfile.collectAsState()
     val generationState by viewModel.cardGenerationState.collectAsState()
@@ -185,7 +191,7 @@ fun CardCreateScreen(
                         Column(
                             modifier = Modifier.padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
                                 text = "✅ Card Created!",
@@ -193,9 +199,24 @@ fun CardCreateScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onTertiaryContainer
                             )
+
+                            // Display the generated card image
+                            state.card.imageUrl?.let { imagePath ->
+                                AsyncImage(
+                                    model = File(imagePath),
+                                    contentDescription = "Generated card: ${state.card.prompt}",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(300.dp)
+                                        .clip(RoundedCornerShape(12.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+
                             Text(
                                 text = "Rarity: ${state.card.rarity.name}",
                                 fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onTertiaryContainer
                             )
                             Text(
@@ -204,13 +225,27 @@ fun CardCreateScreen(
                                 textAlign = TextAlign.Center,
                                 color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
                             )
-                            Button(
-                                onClick = {
-                                    promptText = ""
-                                    viewModel.resetState()
-                                }
+
+                            // Action buttons
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text("Create Another")
+                                Button(
+                                    onClick = onNavigateToCollection,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("View in Collection")
+                                }
+                                Button(
+                                    onClick = {
+                                        promptText = ""
+                                        viewModel.resetState()
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Create Another")
+                                }
                             }
                         }
                     }

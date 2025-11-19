@@ -65,7 +65,8 @@ fun NavGraph(
             val viewModel: CardCreateViewModel = hiltViewModel()
             CardCreateScreen(
                 viewModel = viewModel,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToCollection = { navController.navigate(Screen.Collection.route) }
             )
         }
 
