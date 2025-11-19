@@ -1,17 +1,28 @@
 package com.rotdex.ui.screens
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -23,6 +34,7 @@ import com.rotdex.data.models.GameConfig
 import com.rotdex.ui.viewmodel.CardCreateViewModel
 import com.rotdex.ui.viewmodel.CardGenerationState
 import java.io.File
+import kotlinx.coroutines.delay
 
 /**
  * Screen for creating/generating new cards
@@ -181,7 +193,12 @@ fun CardCreateScreen(
 
             // State Messages
             when (val state = generationState) {
+                is CardGenerationState.Generating -> {
+                    GeneratingAnimation()
+                }
+
                 is CardGenerationState.Success -> {
+                    AnimatedCardReveal {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -248,6 +265,7 @@ fun CardCreateScreen(
                                 }
                             }
                         }
+                    }
                     }
                 }
 
@@ -318,7 +336,7 @@ fun CardCreateScreen(
                     }
                 }
 
-                else -> { /* Idle or Generating - no extra message */ }
+                else -> { /* Idle - no extra message */ }
             }
 
             // Info Card
@@ -355,5 +373,205 @@ fun CardCreateScreen(
                 }
             }
         }
+    }
+}
+
+/**
+ * Engaging animation displayed while card is being generated
+ */
+@Composable
+fun GeneratingAnimation() {
+    val infiniteTransition = rememberInfiniteTransition(label = "generating")
+
+    // Rotating animation for outer ring
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rotation"
+    )
+
+    // Pulsing animation for size
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scale"
+    )
+
+    // Shimmer alpha animation
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+
+    // Animated status messages
+    var messageIndex by remember { mutableIntStateOf(0) }
+    val messages = listOf(
+        "✨ Conjuring magic...",
+        "🎨 Creating your card...",
+        "🔮 Channeling energy...",
+        "⚡ Almost there...",
+        "🎴 Finalizing..."
+    )
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(2000)
+            messageIndex = (messageIndex + 1) % messages.size
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            // Animated generation visual
+            Box(
+                modifier = Modifier.size(120.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                // Outer rotating ring
+                Box(
+                    modifier = Modifier
+                        .size(100.dp)
+                        .rotate(rotation)
+                        .border(
+                            width = 4.dp,
+                            brush = Brush.sweepGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.secondary,
+                                    MaterialTheme.colorScheme.tertiary,
+                                    MaterialTheme.colorScheme.primary
+                                )
+                            ),
+                            shape = CircleShape
+                        )
+                )
+
+                // Pulsing center
+                Box(
+                    modifier = Modifier
+                        .size(60.dp * scale)
+                        .alpha(alpha)
+                        .background(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.primaryContainer
+                                )
+                            ),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(30.dp)
+                            .rotate(-rotation),
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+
+                // Orbiting sparkles
+                for (i in 0..2) {
+                    val angle = rotation + (i * 120f)
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .offset(
+                                x = (50.dp * kotlin.math.cos(Math.toRadians(angle.toDouble()))).dp,
+                                y = (50.dp * kotlin.math.sin(Math.toRadians(angle.toDouble()))).dp
+                            )
+                            .size(16.dp)
+                            .alpha(alpha),
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                }
+            }
+
+            // Animated status text
+            AnimatedContent(
+                targetState = messages[messageIndex],
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(500)) + slideInVertically { it / 2 } togetherWith
+                            fadeOut(animationSpec = tween(500)) + slideOutVertically { -it / 2 }
+                },
+                label = "message"
+            ) { message ->
+                Text(
+                    text = message,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+
+            LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+/**
+ * Card reveal animation with splash effect
+ */
+@Composable
+fun AnimatedCardReveal(
+    content: @Composable () -> Unit
+) {
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(100) // Small delay before animation starts
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(
+            animationSpec = tween(600, easing = FastOutSlowInEasing)
+        ) + scaleIn(
+            initialScale = 0.3f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            )
+        ) + slideInVertically(
+            initialOffsetY = { -it / 3 },
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            )
+        )
+    ) {
+        content()
     }
 }
