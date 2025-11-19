@@ -6,10 +6,12 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.rotdex.ui.screens.CardCreateScreen
+import com.rotdex.ui.screens.CollectionScreen
 import com.rotdex.ui.screens.DailyRewardsScreen
 import com.rotdex.ui.screens.FusionScreen
 import com.rotdex.ui.screens.HomeScreen
 import com.rotdex.ui.viewmodel.CardCreateViewModel
+import com.rotdex.ui.viewmodel.CollectionViewModel
 import com.rotdex.ui.viewmodel.DailyRewardsViewModel
 import com.rotdex.ui.viewmodel.FusionViewModel
 
@@ -53,10 +55,10 @@ fun NavGraph(
             )
         }
 
-        // Placeholder screens - to be implemented
         composable(Screen.Collection.route) {
-            PlaceholderScreen(
-                title = "Card Collection",
+            val viewModel: CollectionViewModel = hiltViewModel()
+            CollectionScreen(
+                viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

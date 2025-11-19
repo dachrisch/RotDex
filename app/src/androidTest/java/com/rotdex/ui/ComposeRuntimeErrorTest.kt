@@ -4,6 +4,8 @@ import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.rotdex.ui.screens.CardCreateScreen
+import com.rotdex.ui.screens.CollectionScreen
 import com.rotdex.ui.screens.DailyRewardsScreen
 import com.rotdex.ui.screens.FusionScreen
 import com.rotdex.ui.screens.HomeScreen
@@ -68,6 +70,27 @@ class ComposeRuntimeErrorTest {
             screenName = "FusionScreen"
         ) {
             FusionScreen(onNavigateBack = {})
+        }
+    }
+
+    @Test
+    fun cardCreateScreen_rendersWithoutRuntimeErrors() {
+        testScreenRendersWithoutErrors(
+            screenName = "CardCreateScreen"
+        ) {
+            CardCreateScreen(
+                onNavigateBack = {},
+                onNavigateToCollection = {}
+            )
+        }
+    }
+
+    @Test
+    fun collectionScreen_rendersWithoutRuntimeErrors() {
+        testScreenRendersWithoutErrors(
+            screenName = "CollectionScreen"
+        ) {
+            CollectionScreen(onNavigateBack = {})
         }
     }
 

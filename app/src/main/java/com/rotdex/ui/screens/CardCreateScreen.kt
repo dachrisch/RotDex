@@ -192,8 +192,12 @@ fun CardCreateScreen(
                 }
             }
 
-            // State Messages (non-fullscreen states only)
+            // State Messages
             when (val state = generationState) {
+                is CardGenerationState.Generating -> {
+                    GeneratingAnimation()
+                }
+
                 is CardGenerationState.InsufficientEnergy -> {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -300,11 +304,6 @@ fun CardCreateScreen(
         }
     }
 
-    // Full-screen generation animation overlay
-    if (generationState is CardGenerationState.Generating) {
-        GeneratingAnimation()
-    }
-
     // Full-screen card reveal overlay
     if (generationState is CardGenerationState.Success) {
         FullScreenCardReveal(
@@ -321,7 +320,7 @@ fun CardCreateScreen(
 
 /**
  * Engaging animation displayed while card is being generated
- * Full-screen overlay (fills screen below header)
+ * Shows inline as a card (not fullscreen)
  */
 @Composable
 fun GeneratingAnimation() {
@@ -377,30 +376,31 @@ fun GeneratingAnimation() {
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // Animated generation visual - larger for full screen
+            // Animated generation visual
             Box(
-                modifier = Modifier.size(240.dp),
+                modifier = Modifier.size(180.dp),
                 contentAlignment = Alignment.Center
             ) {
                 // Outer rotating ring
                 Box(
                     modifier = Modifier
-                        .size(200.dp)
+                        .size(150.dp)
                         .rotate(rotation)
                         .border(
-                            width = 6.dp,
+                            width = 4.dp,
                             brush = Brush.sweepGradient(
                                 colors = listOf(
                                     MaterialTheme.colorScheme.primary,
@@ -416,7 +416,7 @@ fun GeneratingAnimation() {
                 // Pulsing center
                 Box(
                     modifier = Modifier
-                        .size(120.dp * scale)
+                        .size(90.dp * scale)
                         .alpha(alpha)
                         .background(
                             brush = Brush.radialGradient(
@@ -433,7 +433,7 @@ fun GeneratingAnimation() {
                         imageVector = Icons.Default.Star,
                         contentDescription = null,
                         modifier = Modifier
-                            .size(60.dp)
+                            .size(45.dp)
                             .rotate(-rotation),
                         tint = MaterialTheme.colorScheme.onPrimary
                     )
@@ -442,23 +442,21 @@ fun GeneratingAnimation() {
                 // Orbiting sparkles
                 for (i in 0..2) {
                     val angle = rotation + (i * 120f)
-                    val offsetX = (100 * kotlin.math.cos(Math.toRadians(angle.toDouble()))).toFloat()
-                    val offsetY = (100 * kotlin.math.sin(Math.toRadians(angle.toDouble()))).toFloat()
+                    val offsetX = (75 * kotlin.math.cos(Math.toRadians(angle.toDouble()))).toFloat()
+                    val offsetY = (75 * kotlin.math.sin(Math.toRadians(angle.toDouble()))).toFloat()
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = null,
                         modifier = Modifier
                             .offset(x = offsetX.dp, y = offsetY.dp)
-                            .size(32.dp)
+                            .size(24.dp)
                             .alpha(alpha),
                         tint = MaterialTheme.colorScheme.secondary
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(48.dp))
-
-            // Animated status text - larger for full screen
+            // Animated status text
             AnimatedContent(
                 targetState = messages[messageIndex],
                 transitionSpec = {
@@ -469,21 +467,16 @@ fun GeneratingAnimation() {
             ) { message ->
                 Text(
                     text = message,
-                    fontSize = 28.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
             LinearProgressIndicator(
-                modifier = Modifier
-                    .fillMaxWidth(0.6f)
-                    .height(4.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.primary
             )
         }
     }
