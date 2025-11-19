@@ -77,7 +77,7 @@ fun HomeScreen(
                             StatItem(icon = "🪙", label = "Coins", value = "${profile.brainrotCoins}")
                             StatItem(icon = "💎", label = "Gems", value = "${profile.gems}")
                         }
-                        Divider()
+                        HorizontalDivider()
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
