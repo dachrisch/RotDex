@@ -25,12 +25,13 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideCardRepository(
+        @ApplicationContext context: Context,
         cardDao: CardDao,
         fusionHistoryDao: FusionHistoryDao,
         aiApiService: AiApiService,
         userRepository: UserRepository
     ): CardRepository {
-        return CardRepository(cardDao, fusionHistoryDao, aiApiService, userRepository)
+        return CardRepository(context, cardDao, fusionHistoryDao, aiApiService, userRepository)
     }
 
     @Provides

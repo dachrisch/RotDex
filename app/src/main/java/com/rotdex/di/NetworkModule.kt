@@ -26,10 +26,14 @@ object NetworkModule {
             level = HttpLoggingInterceptor.Level.BODY
         }
 
-        // Add Authorization header for DeepSeek API
+        // Add API key header for Google Gemini API
         val authInterceptor = okhttp3.Interceptor { chain ->
-            val request = chain.request().newBuilder()
-                .addHeader("Authorization", "Bearer sk-60419c9b4e6e4c23b3d2062260a38a6e")
+            val originalRequest = chain.request()
+            val urlWithKey = originalRequest.url.newBuilder()
+                .addQueryParameter("key", "AIzaSyBhqjdxnhUs8_xjBGoXcXInFr__TWFWGlk")
+                .build()
+            val request = originalRequest.newBuilder()
+                .url(urlWithKey)
                 .build()
             chain.proceed(request)
         }
@@ -46,8 +50,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
-        // DeepSeek API base URL for image generation
-        val baseUrl = "https://api.deepseek.com/v1/"
+        // Google Gemini API base URL for image generation
+        val baseUrl = "https://generativelanguage.googleapis.com/v1beta/"
 
         return Retrofit.Builder()
             .baseUrl(baseUrl)
