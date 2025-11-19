@@ -47,35 +47,29 @@ data class ImageGenerationRequest(
 }
 
 /**
- * Response model from Freepik Mystic API (initial generation request)
+ * Response model from Freepik Mystic API (initial generation request and status check)
+ * Both endpoints return the same structure
  */
 data class ImageGenerationResponse(
     val data: ImageJobData
 )
 
 data class ImageJobData(
-    val id: String?,
-    val status: String,  // "processing", "completed", "failed"
-    val created_at: String?
+    val task_id: String,
+    val status: String,  // "IN_PROGRESS", "COMPLETED", "FAILED"
+    val generated: List<GeneratedImage>
+)
+
+data class GeneratedImage(
+    val url: String,
+    val base64: String? = null
 )
 
 /**
  * Response model for checking image generation status
+ * Same structure as ImageGenerationResponse
  */
-data class ImageStatusResponse(
-    val data: ImageJobResult
-)
-
-data class ImageJobResult(
-    val id: String,
-    val status: String,  // "processing", "completed", "failed"
-    val image: ImageResult?
-)
-
-data class ImageResult(
-    val url: String,
-    val base64: String? = null
-)
+typealias ImageStatusResponse = ImageGenerationResponse
 
 /**
  * API error response

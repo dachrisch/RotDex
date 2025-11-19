@@ -57,51 +57,52 @@ class FreepikApiIntegrationTest {
     @Test
     fun imageGenerationResponse_canBeInstantiated() {
         val jobData = ImageJobData(
-            id = "test-id",
-            status = "processing",
-            created_at = "2025-11-19"
+            task_id = "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
+            status = "IN_PROGRESS",
+            generated = emptyList()
         )
         val response = ImageGenerationResponse(data = jobData)
 
         assertNotNull(response)
-        assertEquals("test-id", response.data.id)
+        assertEquals("046b6c7f-0b8a-43b9-b35d-6489e6daee91", response.data.task_id)
+        assertEquals("IN_PROGRESS", response.data.status)
     }
 
     @Test
     fun imageStatusResponse_canBeInstantiated() {
-        val jobResult = ImageJobResult(
-            id = "test-id",
-            status = "completed",
-            image = ImageResult(url = "https://example.com/image.png")
+        val jobData = ImageJobData(
+            task_id = "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
+            status = "COMPLETED",
+            generated = listOf(GeneratedImage(url = "https://example.com/image.png"))
         )
-        val response = ImageStatusResponse(data = jobResult)
+        val response: ImageStatusResponse = ImageGenerationResponse(data = jobData)
 
         assertNotNull(response)
-        assertEquals("completed", response.data.status)
-        assertNotNull(response.data.image)
+        assertEquals("COMPLETED", response.data.status)
+        assertEquals(1, response.data.generated.size)
     }
 
     @Test
-    fun imageResult_handlesNullBase64() {
-        val imageResult = ImageResult(
+    fun generatedImage_handlesNullBase64() {
+        val generatedImage = GeneratedImage(
             url = "https://example.com/image.png",
             base64 = null
         )
 
-        assertNotNull(imageResult.url)
-        assertNull(imageResult.base64)
+        assertNotNull(generatedImage.url)
+        assertNull(generatedImage.base64)
     }
 
     @Test
-    fun imageStatusResponse_handlesNullImage() {
-        val jobResult = ImageJobResult(
-            id = "test-id",
-            status = "processing",
-            image = null
+    fun imageStatusResponse_handlesEmptyGenerated() {
+        val jobData = ImageJobData(
+            task_id = "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
+            status = "IN_PROGRESS",
+            generated = emptyList()
         )
-        val response = ImageStatusResponse(data = jobResult)
+        val response: ImageStatusResponse = ImageGenerationResponse(data = jobData)
 
         assertNotNull(response)
-        assertNull(response.data.image)
+        assertTrue(response.data.generated.isEmpty())
     }
 }

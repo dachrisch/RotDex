@@ -24,13 +24,13 @@ class FreepikApiModelsTest {
     }
 
     @Test
-    fun `ImageGenerationResponse deserializes correctly`() {
+    fun `ImageGenerationResponse deserializes correctly when in progress`() {
         val json = """
             {
                 "data": {
-                    "id": "test-job-123",
-                    "status": "processing",
-                    "created_at": "2025-11-19T00:00:00Z"
+                    "task_id": "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
+                    "status": "IN_PROGRESS",
+                    "generated": []
                 }
             }
         """.trimIndent()
@@ -38,29 +38,9 @@ class FreepikApiModelsTest {
         val response = gson.fromJson(json, ImageGenerationResponse::class.java)
 
         assertNotNull(response)
-        assertEquals("test-job-123", response.data.id)
-        assertEquals("processing", response.data.status)
-        assertEquals("2025-11-19T00:00:00Z", response.data.created_at)
-    }
-
-    @Test
-    fun `ImageStatusResponse deserializes correctly when processing`() {
-        val json = """
-            {
-                "data": {
-                    "id": "test-job-123",
-                    "status": "processing",
-                    "image": null
-                }
-            }
-        """.trimIndent()
-
-        val response = gson.fromJson(json, ImageStatusResponse::class.java)
-
-        assertNotNull(response)
-        assertEquals("test-job-123", response.data.id)
-        assertEquals("processing", response.data.status)
-        assertNull(response.data.image)
+        assertEquals("046b6c7f-0b8a-43b9-b35d-6489e6daee91", response.data.task_id)
+        assertEquals("IN_PROGRESS", response.data.status)
+        assertTrue(response.data.generated.isEmpty())
     }
 
     @Test
@@ -68,12 +48,14 @@ class FreepikApiModelsTest {
         val json = """
             {
                 "data": {
-                    "id": "test-job-123",
-                    "status": "completed",
-                    "image": {
-                        "url": "https://example.com/image.png",
-                        "base64": null
-                    }
+                    "task_id": "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
+                    "status": "COMPLETED",
+                    "generated": [
+                        {
+                            "url": "https://example.com/image.png",
+                            "base64": null
+                        }
+                    ]
                 }
             }
         """.trimIndent()
@@ -81,10 +63,10 @@ class FreepikApiModelsTest {
         val response = gson.fromJson(json, ImageStatusResponse::class.java)
 
         assertNotNull(response)
-        assertEquals("test-job-123", response.data.id)
-        assertEquals("completed", response.data.status)
-        assertNotNull(response.data.image)
-        assertEquals("https://example.com/image.png", response.data.image?.url)
+        assertEquals("046b6c7f-0b8a-43b9-b35d-6489e6daee91", response.data.task_id)
+        assertEquals("COMPLETED", response.data.status)
+        assertEquals(1, response.data.generated.size)
+        assertEquals("https://example.com/image.png", response.data.generated.first().url)
     }
 
     @Test
@@ -92,9 +74,9 @@ class FreepikApiModelsTest {
         val json = """
             {
                 "data": {
-                    "id": "test-job-123",
-                    "status": "failed",
-                    "image": null
+                    "task_id": "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
+                    "status": "FAILED",
+                    "generated": []
                 }
             }
         """.trimIndent()
@@ -102,9 +84,9 @@ class FreepikApiModelsTest {
         val response = gson.fromJson(json, ImageStatusResponse::class.java)
 
         assertNotNull(response)
-        assertEquals("test-job-123", response.data.id)
-        assertEquals("failed", response.data.status)
-        assertNull(response.data.image)
+        assertEquals("046b6c7f-0b8a-43b9-b35d-6489e6daee91", response.data.task_id)
+        assertEquals("FAILED", response.data.status)
+        assertTrue(response.data.generated.isEmpty())
     }
 
     @Test

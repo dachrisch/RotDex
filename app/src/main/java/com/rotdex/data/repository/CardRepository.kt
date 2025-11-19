@@ -91,15 +91,15 @@ class CardRepository(
 
             if (response.isSuccessful && response.body() != null) {
                 val responseData = response.body()!!.data
-                val jobId = responseData.id
+                val taskId = responseData.task_id
                 val status = responseData.status
-                Log.i(TAG, "Image generation job created - ID: $jobId, Status: $status, Created at: ${responseData.created_at}")
+                Log.i(TAG, "Image generation job created - Task ID: $taskId, Status: $status")
 
-                // Validate job ID
-                if (jobId == null || jobId.isEmpty()) {
+                // Validate task ID
+                if (taskId.isEmpty()) {
                     val errorBody = response.errorBody()?.string()
-                    Log.e(TAG, "Received null or empty job ID from Freepik API. Response body: ${response.body()}, Error body: $errorBody")
-                    return Result.failure(Exception("API returned null job ID. Unable to track image generation."))
+                    Log.e(TAG, "Received empty task ID from Freepik API. Response body: ${response.body()}, Error body: $errorBody")
+                    return Result.failure(Exception("API returned empty task ID. Unable to track image generation."))
                 }
 
                 // Poll for completion (max 30 seconds, check every 2 seconds)
@@ -112,33 +112,34 @@ class CardRepository(
                     delay(2000) // Wait 2 seconds between checks
                     attempts++
 
-                    Log.d(TAG, "Polling attempt $attempts/$maxAttempts - Checking status for job $jobId")
-                    val statusResponse = aiApiService.checkImageStatus(jobId)
+                    Log.d(TAG, "Polling attempt $attempts/$maxAttempts - Checking status for task $taskId")
+                    val statusResponse = aiApiService.checkImageStatus(taskId)
 
                     if (statusResponse.isSuccessful && statusResponse.body() != null) {
                         val result = statusResponse.body()!!.data
-                        Log.d(TAG, "Job $jobId status: ${result.status}")
+                        Log.d(TAG, "Task $taskId status: ${result.status}, Generated images: ${result.generated.size}")
 
                         when (result.status) {
-                            "completed" -> {
-                                imageUrl = result.image?.url
+                            "COMPLETED" -> {
+                                // Get the first generated image URL
+                                imageUrl = result.generated.firstOrNull()?.url
                                 Log.i(TAG, "Image generation completed! URL: $imageUrl")
                                 break
                             }
-                            "failed" -> {
-                                Log.e(TAG, "Image generation failed for job $jobId")
+                            "FAILED" -> {
+                                Log.e(TAG, "Image generation failed for task $taskId")
                                 return Result.failure(Exception("Image generation failed"))
                             }
-                            "processing" -> {
-                                Log.d(TAG, "Job $jobId still processing... (attempt $attempts/$maxAttempts)")
+                            "IN_PROGRESS" -> {
+                                Log.d(TAG, "Task $taskId still in progress... (attempt $attempts/$maxAttempts)")
                             }
                             else -> {
-                                Log.w(TAG, "Unknown status '${result.status}' for job $jobId")
+                                Log.w(TAG, "Unknown status '${result.status}' for task $taskId")
                             }
                         }
                     } else {
                         val errorBody = statusResponse.errorBody()?.string()
-                        Log.e(TAG, "Failed to check status for job $jobId - Code: ${statusResponse.code()}, Error: $errorBody")
+                        Log.e(TAG, "Failed to check status for task $taskId - Code: ${statusResponse.code()}, Error: $errorBody")
                     }
                 }
 

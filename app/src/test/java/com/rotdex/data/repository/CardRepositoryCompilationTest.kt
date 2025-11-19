@@ -33,44 +33,39 @@ class CardRepositoryCompilationTest {
     fun `verify ImageJobData type is accessible`() {
         // This test will fail to compile if ImageJobData is not properly defined
         val jobData = ImageJobData(
-            id = "test-id",
-            status = "processing",
-            created_at = "2025-11-19T00:00:00Z"
+            task_id = "test-task-id",
+            status = "IN_PROGRESS",
+            generated = emptyList()
         )
-        assertEquals("test-id", jobData.id)
-        assertEquals("processing", jobData.status)
-
-        // Test nullable id
-        val jobDataNullId = ImageJobData(
-            id = null,
-            status = "failed",
-            created_at = null
-        )
-        assertNull(jobDataNullId.id)
+        assertEquals("test-task-id", jobData.task_id)
+        assertEquals("IN_PROGRESS", jobData.status)
+        assertTrue(jobData.generated.isEmpty())
     }
 
     @Test
-    fun `verify ImageJobResult type is accessible`() {
-        // This test will fail to compile if ImageJobResult is not properly defined
-        val jobResult = ImageJobResult(
-            id = "test-id",
-            status = "completed",
-            image = ImageResult(url = "https://example.com/image.png")
-        )
-        assertEquals("test-id", jobResult.id)
-        assertEquals("completed", jobResult.status)
-        assertNotNull(jobResult.image)
-    }
-
-    @Test
-    fun `verify ImageResult type is accessible`() {
-        // This test will fail to compile if ImageResult is not properly defined
-        val imageResult = ImageResult(
+    fun `verify GeneratedImage type is accessible`() {
+        // This test will fail to compile if GeneratedImage is not properly defined
+        val generatedImage = GeneratedImage(
             url = "https://example.com/image.png",
             base64 = null
         )
-        assertEquals("https://example.com/image.png", imageResult.url)
-        assertNull(imageResult.base64)
+        assertEquals("https://example.com/image.png", generatedImage.url)
+        assertNull(generatedImage.base64)
+    }
+
+    @Test
+    fun `verify ImageJobData with generated images is accessible`() {
+        // This test will fail to compile if the structure is not properly defined
+        val jobData = ImageJobData(
+            task_id = "test-task-id",
+            status = "COMPLETED",
+            generated = listOf(
+                GeneratedImage(url = "https://example.com/image.png")
+            )
+        )
+        assertEquals("COMPLETED", jobData.status)
+        assertEquals(1, jobData.generated.size)
+        assertEquals("https://example.com/image.png", jobData.generated.first().url)
     }
 
     @Test
@@ -94,34 +89,31 @@ class CardRepositoryCompilationTest {
     @Test
     fun `verify all Freepik API response types have proper structure`() {
         // Create a full response chain to verify all types work together
-        val imageResult = ImageResult(
+        val generatedImage = GeneratedImage(
             url = "https://example.com/image.png",
             base64 = null
         )
 
-        val jobResult = ImageJobResult(
-            id = "job-123",
-            status = "completed",
-            image = imageResult
-        )
-
-        val statusResponse = ImageStatusResponse(
-            data = jobResult
-        )
-
         val jobData = ImageJobData(
-            id = "job-123",
-            status = "processing",
-            created_at = "2025-11-19T00:00:00Z"
+            task_id = "task-123",
+            status = "COMPLETED",
+            generated = listOf(generatedImage)
         )
 
         val generationResponse = ImageGenerationResponse(
             data = jobData
         )
 
+        // Status response uses the same structure (typealias)
+        val statusResponse: ImageStatusResponse = generationResponse
+
         // Verify the chain
-        assertNotNull(statusResponse.data.image)
-        assertEquals("https://example.com/image.png", statusResponse.data.image?.url)
-        assertEquals("job-123", generationResponse.data.id)
+        assertEquals("task-123", generationResponse.data.task_id)
+        assertEquals("COMPLETED", generationResponse.data.status)
+        assertEquals(1, generationResponse.data.generated.size)
+        assertEquals("https://example.com/image.png", generationResponse.data.generated.first().url)
+
+        // Verify typealias works
+        assertEquals("task-123", statusResponse.data.task_id)
     }
 }
