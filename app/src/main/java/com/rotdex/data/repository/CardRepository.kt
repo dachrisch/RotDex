@@ -4,6 +4,8 @@ import android.content.Context
 import android.util.Base64
 import com.rotdex.data.api.AiApiService
 import com.rotdex.data.api.ImageGenerationRequest
+import com.rotdex.data.api.ImageGenerationResponse
+import com.rotdex.data.api.ImageStatusResponse
 import com.rotdex.data.database.CardDao
 import com.rotdex.data.database.FusionHistoryDao
 import com.rotdex.data.manager.FusionManager
