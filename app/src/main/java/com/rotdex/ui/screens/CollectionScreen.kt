@@ -9,8 +9,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,7 +40,6 @@ fun CollectionScreen(
 ) {
     val cards by viewModel.cards.collectAsState()
     val selectedRarity by viewModel.selectedRarity.collectAsState()
-    val sortOrder by viewModel.sortOrder.collectAsState()
     val stats = viewModel.getCollectionStats()
 
     var showFilterMenu by remember { mutableStateOf(false) }
@@ -84,7 +83,7 @@ fun CollectionScreen(
 
                     // Sort button
                     IconButton(onClick = { showSortMenu = true }) {
-                        Icon(Icons.Default.Sort, contentDescription = "Sort")
+                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
                     }
                     DropdownMenu(
                         expanded = showSortMenu,
