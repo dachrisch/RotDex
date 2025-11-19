@@ -1,0 +1,47 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Card background -->
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M32,24 L76,24 C78.21,24 80,25.79 80,28 L80,80 C80,82.21 78.21,84 76,84 L32,84 C29.79,84 28,82.21 28,80 L28,28 C28,25.79 29.79,24 32,24 Z"/>
+
+    <!-- Card inner glow -->
+    <path
+        android:fillColor="#E8DEF8"
+        android:fillAlpha="0.2"
+        android:pathData="M34,28 L74,28 C75.1,28 76,28.9 76,30 L76,78 C76,79.1 75.1,80 74,80 L34,80 C32.9,80 32,79.1 32,78 L32,30 C32,28.9 32.9,28 34,28 Z"/>
+
+    <!-- Central star -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M54,40 L57.09,49.51 L67.12,49.51 L59.02,55.49 L62.11,65 L54,59.02 L45.89,65 L48.98,55.49 L40.88,49.51 L50.91,49.51 Z"/>
+
+    <!-- Top-left sparkle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.9"
+        android:pathData="M40,34 L41.5,37.5 L45,37.5 L42.25,39.5 L43.75,43 L40,40.5 L36.25,43 L37.75,39.5 L35,37.5 L38.5,37.5 Z"/>
+
+    <!-- Top-right sparkle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.9"
+        android:pathData="M68,34 L69.5,37.5 L73,37.5 L70.25,39.5 L71.75,43 L68,40.5 L64.25,43 L65.75,39.5 L63,37.5 L66.5,37.5 Z"/>
+
+    <!-- Bottom sparkle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.9"
+        android:pathData="M54,70 L55.5,73.5 L59,73.5 L56.25,75.5 L57.75,79 L54,76.5 L50.25,79 L51.75,75.5 L49,73.5 L52.5,73.5 Z"/>
+
+    <!-- Card border -->
+    <path
+        android:strokeColor="#FFD700"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M32,24 L76,24 C78.21,24 80,25.79 80,28 L80,80 C80,82.21 78.21,84 76,84 L32,84 C29.79,84 28,82.21 28,80 L28,28 C28,25.79 29.79,24 32,24 Z"/>
+</vector>

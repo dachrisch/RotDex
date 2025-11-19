@@ -1,0 +1,30 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Gradient background -->
+    <path
+        android:fillColor="#1C1B1F"
+        android:pathData="M0,0 L108,0 L108,108 L0,108 Z"/>
+
+    <!-- Subtle pattern -->
+    <path
+        android:fillColor="#2D2C33"
+        android:fillAlpha="0.3"
+        android:pathData="M20,20 L30,20 L30,30 L20,30 Z
+                       M40,20 L50,20 L50,30 L40,30 Z
+                       M60,20 L70,20 L70,30 L60,30 Z
+                       M80,20 L90,20 L90,30 L80,30 Z
+                       M30,40 L40,40 L40,50 L30,50 Z
+                       M50,40 L60,40 L60,50 L50,50 Z
+                       M70,40 L80,40 L80,50 L70,50 Z
+                       M20,60 L30,60 L30,70 L20,70 Z
+                       M40,60 L50,60 L50,70 L40,70 Z
+                       M60,60 L70,60 L70,70 L60,70 Z
+                       M80,60 L90,60 L90,70 L80,70 Z
+                       M30,80 L40,80 L40,90 L30,90 Z
+                       M50,80 L60,80 L60,90 L50,90 Z
+                       M70,80 L80,80 L80,90 L70,90 Z"/>
+</vector>
