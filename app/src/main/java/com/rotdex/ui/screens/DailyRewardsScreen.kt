@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.rotdex.data.models.*
 import com.rotdex.ui.viewmodel.DailyRewardsViewModel
 import com.rotdex.ui.viewmodel.SpinState
@@ -35,7 +36,7 @@ import kotlin.math.sin
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DailyRewardsScreen(
-    viewModel: DailyRewardsViewModel,
+    viewModel: DailyRewardsViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit
 ) {
     val userProfile by viewModel.userProfile.collectAsState()

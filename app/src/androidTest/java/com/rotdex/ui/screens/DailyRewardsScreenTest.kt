@@ -3,10 +3,7 @@ package com.rotdex.ui.screens
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.rotdex.data.models.UserProfile
 import com.rotdex.ui.theme.RotDexTheme
-import com.rotdex.ui.viewmodel.DailyRewardsState
-import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
