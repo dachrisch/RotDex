@@ -499,14 +499,13 @@ fun GeneratingAnimation() {
                 // Orbiting sparkles
                 for (i in 0..2) {
                     val angle = rotation + (i * 120f)
+                    val offsetX = (50 * kotlin.math.cos(Math.toRadians(angle.toDouble()))).toFloat()
+                    val offsetY = (50 * kotlin.math.sin(Math.toRadians(angle.toDouble()))).toFloat()
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = null,
                         modifier = Modifier
-                            .offset(
-                                x = (50.dp * kotlin.math.cos(Math.toRadians(angle.toDouble()))).dp,
-                                y = (50.dp * kotlin.math.sin(Math.toRadians(angle.toDouble()))).dp
-                            )
+                            .offset(x = offsetX.dp, y = offsetY.dp)
                             .size(16.dp)
                             .alpha(alpha),
                         tint = MaterialTheme.colorScheme.secondary
