@@ -43,10 +43,10 @@ jobs:
           ${{ runner.os }}-gradle-
 
     - name: Compile Kotlin sources
-      run: ./gradlew compileDebugKotlin --no-daemon
+      run: ./gradlew compileDebugKotlin compileDebugAndroidTestKotlin --no-daemon
 
     - name: Verify compilation success
-      run: echo "✓ Compilation successful - no Kotlin errors found"
+      run: echo "✓ Compilation successful - no Kotlin errors found in main or test sources"
 
   test:
     name: Run Tests
