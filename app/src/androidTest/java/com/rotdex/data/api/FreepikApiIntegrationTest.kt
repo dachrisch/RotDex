@@ -58,28 +58,28 @@ class FreepikApiIntegrationTest {
     fun imageGenerationResponse_canBeInstantiated() {
         val jobData = ImageJobData(
             task_id = "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
-            status = "IN_PROGRESS",
+            status = ImageJobStatus.IN_PROGRESS,
             generated = emptyList()
         )
         val response = ImageGenerationResponse(data = jobData)
 
         assertNotNull(response)
         assertEquals("046b6c7f-0b8a-43b9-b35d-6489e6daee91", response.data.task_id)
-        assertEquals("IN_PROGRESS", response.data.status)
+        assertEquals(ImageJobStatus.IN_PROGRESS, response.data.status)
     }
 
     @Test
     fun imageStatusResponse_canBeInstantiated() {
         val jobData = ImageJobData(
             task_id = "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
-            status = "COMPLETED",
+            status = ImageJobStatus.COMPLETED,
             generated = listOf("https://example.com/image.png"),
             has_nsfw = listOf(false)
         )
         val response: ImageStatusResponse = ImageGenerationResponse(data = jobData)
 
         assertNotNull(response)
-        assertEquals("COMPLETED", response.data.status)
+        assertEquals(ImageJobStatus.COMPLETED, response.data.status)
         assertEquals(1, response.data.generated.size)
         assertEquals("https://example.com/image.png", response.data.generated.first())
     }
@@ -88,7 +88,7 @@ class FreepikApiIntegrationTest {
     fun imageJobData_handlesMultipleGeneratedUrls() {
         val jobData = ImageJobData(
             task_id = "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
-            status = "COMPLETED",
+            status = ImageJobStatus.COMPLETED,
             generated = listOf(
                 "https://example.com/image1.png",
                 "https://example.com/image2.png"
@@ -104,7 +104,7 @@ class FreepikApiIntegrationTest {
     fun imageStatusResponse_handlesEmptyGenerated() {
         val jobData = ImageJobData(
             task_id = "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
-            status = "IN_PROGRESS",
+            status = ImageJobStatus.IN_PROGRESS,
             generated = emptyList()
         )
         val response: ImageStatusResponse = ImageGenerationResponse(data = jobData)
@@ -117,7 +117,7 @@ class FreepikApiIntegrationTest {
     fun imageJobData_handlesOptionalHasNsfw() {
         val jobDataWithNsfw = ImageJobData(
             task_id = "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
-            status = "COMPLETED",
+            status = ImageJobStatus.COMPLETED,
             generated = listOf("https://example.com/image.png"),
             has_nsfw = listOf(false)
         )
@@ -125,9 +125,17 @@ class FreepikApiIntegrationTest {
 
         val jobDataWithoutNsfw = ImageJobData(
             task_id = "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
-            status = "IN_PROGRESS",
+            status = ImageJobStatus.IN_PROGRESS,
             generated = emptyList()
         )
         assertNull(jobDataWithoutNsfw.has_nsfw)
+    }
+
+    @Test
+    fun imageJobStatus_enumValuesWork() {
+        // Test all enum values
+        assertEquals(ImageJobStatus.IN_PROGRESS, ImageJobStatus.IN_PROGRESS)
+        assertEquals(ImageJobStatus.COMPLETED, ImageJobStatus.COMPLETED)
+        assertEquals(ImageJobStatus.FAILED, ImageJobStatus.FAILED)
     }
 }

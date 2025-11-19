@@ -39,7 +39,7 @@ class FreepikApiModelsTest {
 
         assertNotNull(response)
         assertEquals("046b6c7f-0b8a-43b9-b35d-6489e6daee91", response.data.task_id)
-        assertEquals("IN_PROGRESS", response.data.status)
+        assertEquals(ImageJobStatus.IN_PROGRESS, response.data.status)
         assertTrue(response.data.generated.isEmpty())
     }
 
@@ -60,7 +60,7 @@ class FreepikApiModelsTest {
 
         assertNotNull(response)
         assertEquals("046b6c7f-0b8a-43b9-b35d-6489e6daee91", response.data.task_id)
-        assertEquals("COMPLETED", response.data.status)
+        assertEquals(ImageJobStatus.COMPLETED, response.data.status)
         assertEquals(1, response.data.generated.size)
         assertEquals("https://example.com/image.png", response.data.generated.first())
         assertEquals(false, response.data.has_nsfw?.first())
@@ -82,7 +82,7 @@ class FreepikApiModelsTest {
 
         assertNotNull(response)
         assertEquals("046b6c7f-0b8a-43b9-b35d-6489e6daee91", response.data.task_id)
-        assertEquals("FAILED", response.data.status)
+        assertEquals(ImageJobStatus.FAILED, response.data.status)
         assertTrue(response.data.generated.isEmpty())
     }
 

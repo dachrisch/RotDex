@@ -6,6 +6,7 @@ import android.util.Log
 import com.rotdex.data.api.AiApiService
 import com.rotdex.data.api.ImageGenerationRequest
 import com.rotdex.data.api.ImageGenerationResponse
+import com.rotdex.data.api.ImageJobStatus
 import com.rotdex.data.api.ImageStatusResponse
 import com.rotdex.data.database.CardDao
 import com.rotdex.data.database.FusionHistoryDao
@@ -120,21 +121,18 @@ class CardRepository(
                         Log.d(TAG, "Task $taskId status: ${result.status}, Generated images: ${result.generated.size}")
 
                         when (result.status) {
-                            "COMPLETED" -> {
+                            ImageJobStatus.COMPLETED -> {
                                 // Get the first generated image URL (generated is a list of URL strings)
                                 imageUrl = result.generated.firstOrNull()
                                 Log.i(TAG, "Image generation completed! URL: $imageUrl")
                                 break
                             }
-                            "FAILED" -> {
+                            ImageJobStatus.FAILED -> {
                                 Log.e(TAG, "Image generation failed for task $taskId")
                                 return Result.failure(Exception("Image generation failed"))
                             }
-                            "IN_PROGRESS" -> {
+                            ImageJobStatus.IN_PROGRESS -> {
                                 Log.d(TAG, "Task $taskId still in progress... (attempt $attempts/$maxAttempts)")
-                            }
-                            else -> {
-                                Log.w(TAG, "Unknown status '${result.status}' for task $taskId")
                             }
                         }
                     } else {

@@ -2,10 +2,9 @@ package com.rotdex.data.repository
 
 import com.rotdex.data.api.AiApiService
 import com.rotdex.data.api.ImageGenerationResponse
+import com.rotdex.data.api.ImageJobStatus
 import com.rotdex.data.api.ImageStatusResponse
 import com.rotdex.data.api.ImageJobData
-import com.rotdex.data.api.ImageJobResult
-import com.rotdex.data.api.ImageResult
 import org.junit.Test
 import org.junit.Assert.*
 
@@ -34,11 +33,11 @@ class CardRepositoryCompilationTest {
         // This test will fail to compile if ImageJobData is not properly defined
         val jobData = ImageJobData(
             task_id = "test-task-id",
-            status = "IN_PROGRESS",
+            status = ImageJobStatus.IN_PROGRESS,
             generated = emptyList()
         )
         assertEquals("test-task-id", jobData.task_id)
-        assertEquals("IN_PROGRESS", jobData.status)
+        assertEquals(ImageJobStatus.IN_PROGRESS, jobData.status)
         assertTrue(jobData.generated.isEmpty())
     }
 
@@ -47,10 +46,10 @@ class CardRepositoryCompilationTest {
         // This test will fail to compile if the structure is not properly defined
         val jobData = ImageJobData(
             task_id = "test-task-id",
-            status = "COMPLETED",
+            status = ImageJobStatus.COMPLETED,
             generated = listOf("https://example.com/image.png")
         )
-        assertEquals("COMPLETED", jobData.status)
+        assertEquals(ImageJobStatus.COMPLETED, jobData.status)
         assertEquals(1, jobData.generated.size)
         assertEquals("https://example.com/image.png", jobData.generated.first())
     }
@@ -60,7 +59,7 @@ class CardRepositoryCompilationTest {
         // Test with has_nsfw field
         val jobDataWithNsfw = ImageJobData(
             task_id = "test-task-id",
-            status = "COMPLETED",
+            status = ImageJobStatus.COMPLETED,
             generated = listOf("https://example.com/image.png"),
             has_nsfw = listOf(false)
         )
@@ -70,10 +69,21 @@ class CardRepositoryCompilationTest {
         // Test without has_nsfw field (null)
         val jobDataWithoutNsfw = ImageJobData(
             task_id = "test-task-id2",
-            status = "IN_PROGRESS",
+            status = ImageJobStatus.IN_PROGRESS,
             generated = emptyList()
         )
         assertNull(jobDataWithoutNsfw.has_nsfw)
+    }
+
+    @Test
+    fun `verify ImageJobStatus enum is accessible`() {
+        // Test all enum values
+        assertEquals(ImageJobStatus.IN_PROGRESS, ImageJobStatus.valueOf("IN_PROGRESS"))
+        assertEquals(ImageJobStatus.COMPLETED, ImageJobStatus.valueOf("COMPLETED"))
+        assertEquals(ImageJobStatus.FAILED, ImageJobStatus.valueOf("FAILED"))
+
+        // Verify enum has exactly 3 values
+        assertEquals(3, ImageJobStatus.values().size)
     }
 
     @Test
@@ -99,7 +109,7 @@ class CardRepositoryCompilationTest {
         // Create a full response chain to verify all types work together
         val jobData = ImageJobData(
             task_id = "task-123",
-            status = "COMPLETED",
+            status = ImageJobStatus.COMPLETED,
             generated = listOf("https://example.com/image.png"),
             has_nsfw = listOf(false)
         )
@@ -113,7 +123,7 @@ class CardRepositoryCompilationTest {
 
         // Verify the chain
         assertEquals("task-123", generationResponse.data.task_id)
-        assertEquals("COMPLETED", generationResponse.data.status)
+        assertEquals(ImageJobStatus.COMPLETED, generationResponse.data.status)
         assertEquals(1, generationResponse.data.generated.size)
         assertEquals("https://example.com/image.png", generationResponse.data.generated.first())
         assertEquals(false, generationResponse.data.has_nsfw?.first())
