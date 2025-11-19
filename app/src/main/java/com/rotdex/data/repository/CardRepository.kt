@@ -2,6 +2,7 @@ package com.rotdex.data.repository
 
 import android.content.Context
 import android.util.Base64
+import android.util.Log
 import com.rotdex.data.api.AiApiService
 import com.rotdex.data.api.ImageGenerationRequest
 import com.rotdex.data.api.ImageGenerationResponse
@@ -33,6 +34,10 @@ class CardRepository(
 
     private val fusionManager = FusionManager(cardDao, fusionHistoryDao)
 
+    companion object {
+        private const val TAG = "CardRepository"
+    }
+
     // MARK: - Card Collection Operations
 
     fun getAllCards(): Flow<List<Card>> = cardDao.getAllCards()
@@ -62,57 +67,88 @@ class CardRepository(
      */
     suspend fun generateCard(prompt: String): Result<Card> {
         return try {
+            Log.d(TAG, "Starting card generation for prompt: $prompt")
+
             // Check and spend energy before generating
+            Log.d(TAG, "Checking energy availability (need ${GameConfig.CARD_GENERATION_ENERGY_COST})")
             val energySpent = userRepository.spendEnergy(GameConfig.CARD_GENERATION_ENERGY_COST)
             if (!energySpent) {
+                Log.w(TAG, "Insufficient energy for card generation")
                 return Result.failure(InsufficientEnergyException(
                     "Not enough energy to generate card. Need ${GameConfig.CARD_GENERATION_ENERGY_COST} energy."
                 ))
             }
+            Log.d(TAG, "Energy spent successfully")
 
             // Call Freepik API to start image generation
-            val request = ImageGenerationRequest.fromPrompt(enhancePrompt(prompt))
+            val enhancedPrompt = enhancePrompt(prompt)
+            Log.d(TAG, "Enhanced prompt: $enhancedPrompt")
+            val request = ImageGenerationRequest.fromPrompt(enhancedPrompt)
+            Log.d(TAG, "Calling Freepik API to start image generation")
             val response = aiApiService.generateImage(request)
 
             if (response.isSuccessful && response.body() != null) {
                 val jobId = response.body()!!.data.id
+                val status = response.body()!!.data.status
+                Log.i(TAG, "Image generation job created - ID: $jobId, Status: $status")
 
                 // Poll for completion (max 30 seconds, check every 2 seconds)
                 var attempts = 0
                 val maxAttempts = 15
                 var imageUrl: String? = null
 
+                Log.d(TAG, "Starting polling loop (max $maxAttempts attempts)")
                 while (attempts < maxAttempts) {
                     delay(2000) // Wait 2 seconds between checks
+                    attempts++
 
+                    Log.d(TAG, "Polling attempt $attempts/$maxAttempts - Checking status for job $jobId")
                     val statusResponse = aiApiService.checkImageStatus(jobId)
+
                     if (statusResponse.isSuccessful && statusResponse.body() != null) {
                         val result = statusResponse.body()!!.data
+                        Log.d(TAG, "Job $jobId status: ${result.status}")
 
                         when (result.status) {
                             "completed" -> {
                                 imageUrl = result.image?.url
+                                Log.i(TAG, "Image generation completed! URL: $imageUrl")
                                 break
                             }
                             "failed" -> {
+                                Log.e(TAG, "Image generation failed for job $jobId")
                                 return Result.failure(Exception("Image generation failed"))
                             }
-                            // "processing" - continue polling
+                            "processing" -> {
+                                Log.d(TAG, "Job $jobId still processing... (attempt $attempts/$maxAttempts)")
+                            }
+                            else -> {
+                                Log.w(TAG, "Unknown status '${result.status}' for job $jobId")
+                            }
                         }
+                    } else {
+                        val errorBody = statusResponse.errorBody()?.string()
+                        Log.e(TAG, "Failed to check status for job $jobId - Code: ${statusResponse.code()}, Error: $errorBody")
                     }
-                    attempts++
                 }
 
                 if (imageUrl == null) {
+                    Log.e(TAG, "Image generation timed out after $attempts attempts (${attempts * 2}s)")
                     return Result.failure(Exception("Image generation timed out"))
                 }
 
                 // Download and save image from URL
+                Log.d(TAG, "Downloading image from: $imageUrl")
                 val imageFile = downloadAndSaveImage(imageUrl)
-                    ?: return Result.failure(Exception("Failed to download image"))
+                if (imageFile == null) {
+                    Log.e(TAG, "Failed to download image from $imageUrl")
+                    return Result.failure(Exception("Failed to download image"))
+                }
+                Log.i(TAG, "Image downloaded and saved to: ${imageFile.absolutePath}")
 
                 // Determine random rarity
                 val rarity = determineRarity()
+                Log.d(TAG, "Assigned rarity: ${rarity.name} (drop rate: ${rarity.dropRate})")
 
                 // Create and save card with file path
                 val card = Card(
@@ -121,20 +157,26 @@ class CardRepository(
                     rarity = rarity,
                     createdAt = System.currentTimeMillis()
                 )
+                Log.d(TAG, "Creating card in database with prompt: '$prompt', rarity: ${rarity.name}")
 
                 val cardId = cardDao.insertCard(card)
+                Log.d(TAG, "Card inserted with ID: $cardId")
                 val savedCard = cardDao.getCardById(cardId)
 
                 if (savedCard != null) {
+                    Log.i(TAG, "Card generation completed successfully! Card ID: $cardId, Rarity: ${rarity.name}")
                     Result.success(savedCard)
                 } else {
+                    Log.e(TAG, "Failed to retrieve saved card from database (ID: $cardId)")
                     Result.failure(Exception("Failed to save card"))
                 }
             } else {
                 val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                Log.e(TAG, "Freepik API error - Code: ${response.code()}, Message: $errorBody")
                 Result.failure(Exception("API error ${response.code()}: $errorBody"))
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Exception during card generation: ${e.message}", e)
             Result.failure(e)
         }
     }
