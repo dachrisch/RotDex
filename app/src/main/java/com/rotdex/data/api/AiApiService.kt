@@ -22,14 +22,28 @@ interface AiApiService {
  * Request model for Gemini generateContent API
  */
 data class ImageGenerationRequest(
-    val contents: String
+    val contents: List<ContentRequest>
 ) {
     companion object {
         fun fromPrompt(prompt: String): ImageGenerationRequest {
-            return ImageGenerationRequest(contents = prompt)
+            return ImageGenerationRequest(
+                contents = listOf(
+                    ContentRequest(
+                        parts = listOf(PartRequest(text = prompt))
+                    )
+                )
+            )
         }
     }
 }
+
+data class ContentRequest(
+    val parts: List<PartRequest>
+)
+
+data class PartRequest(
+    val text: String
+)
 
 /**
  * Response model from Gemini generateContent API
