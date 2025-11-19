@@ -6,26 +6,28 @@ import retrofit2.http.Headers
 import retrofit2.http.POST
 
 /**
- * API service for AI image generation
- * Configure your API endpoint and key in local.properties
+ * API service for AI image generation using DeepSeek API
+ * Uses DeepSeek's image generation endpoint
  */
 interface AiApiService {
 
     @Headers("Content-Type: application/json")
-    @POST("generations")
+    @POST("images/generations")
     suspend fun generateImage(
         @Body request: ImageGenerationRequest
     ): Response<ImageGenerationResponse>
 }
 
 /**
- * Request model for image generation
+ * Request model for image generation using DeepSeek API
  */
 data class ImageGenerationRequest(
     val prompt: String,
+    val model: String = "deepseek-image",
     val size: String = "1024x1024",
     val quality: String = "standard",
-    val n: Int = 1
+    val n: Int = 1,
+    val response_format: String = "url"
 )
 
 /**

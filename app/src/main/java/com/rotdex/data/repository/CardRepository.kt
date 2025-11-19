@@ -94,7 +94,8 @@ class CardRepository(
                     Result.failure(Exception("Failed to save card"))
                 }
             } else {
-                Result.failure(Exception("API error: ${response.code()}"))
+                val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                Result.failure(Exception("API error ${response.code()}: $errorBody"))
             }
         } catch (e: Exception) {
             Result.failure(e)
