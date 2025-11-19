@@ -72,11 +72,15 @@ class CardRepository(
             val response = aiApiService.generateImage(request)
 
             if (response.isSuccessful && response.body() != null) {
-                val prediction = response.body()!!.predictions?.firstOrNull()
+                // Extract image from Gemini response
+                val candidate = response.body()!!.candidates?.firstOrNull()
+                    ?: return Result.failure(Exception("No response from Gemini"))
+
+                val imagePart = candidate.content.parts.firstOrNull { it.inlineData != null }
                     ?: return Result.failure(Exception("No image generated"))
 
                 // Decode base64 image and save to file
-                val imageFile = saveBase64Image(prediction.bytesBase64Encoded)
+                val imageFile = saveBase64Image(imagePart.inlineData!!.data)
                     ?: return Result.failure(Exception("Failed to save image"))
 
                 // Determine random rarity

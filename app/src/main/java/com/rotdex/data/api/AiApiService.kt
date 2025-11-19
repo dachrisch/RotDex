@@ -6,62 +6,54 @@ import retrofit2.http.Headers
 import retrofit2.http.POST
 
 /**
- * API service for AI image generation using Google Gemini Imagen API
- * Uses Google's Imagen model for image generation
+ * API service for AI image generation using Google Gemini native image generation
+ * Uses Gemini 2.5 Flash Image model
  */
 interface AiApiService {
 
     @Headers("Content-Type: application/json")
-    @POST("models/imagen-3.0-generate-001:predict")
+    @POST("models/gemini-2.5-flash-image:generateContent")
     suspend fun generateImage(
         @Body request: ImageGenerationRequest
     ): Response<ImageGenerationResponse>
 }
 
 /**
- * Request model for Google Imagen API
+ * Request model for Gemini generateContent API
  */
 data class ImageGenerationRequest(
-    val instances: List<ImagePromptInstance>,
-    val parameters: ImageGenerationParameters? = ImageGenerationParameters()
+    val contents: String
 ) {
     companion object {
         fun fromPrompt(prompt: String): ImageGenerationRequest {
-            return ImageGenerationRequest(
-                instances = listOf(ImagePromptInstance(prompt = prompt)),
-                parameters = ImageGenerationParameters()
-            )
+            return ImageGenerationRequest(contents = prompt)
         }
     }
 }
 
-data class ImagePromptInstance(
-    val prompt: String
-)
-
-data class ImageGenerationParameters(
-    val sampleCount: Int = 1,
-    val aspectRatio: String = "1:1",
-    val compressionQuality: String? = null,
-    val negativePrompt: String? = null,
-    val language: String = "en"
-)
-
 /**
- * Response model from Google Imagen API
+ * Response model from Gemini generateContent API
  */
 data class ImageGenerationResponse(
-    val predictions: List<ImagePrediction>? = null,
-    val metadata: ResponseMetadata? = null
+    val candidates: List<Candidate>? = null
 )
 
-data class ImagePrediction(
-    val bytesBase64Encoded: String,
-    val mimeType: String? = "image/png"
+data class Candidate(
+    val content: Content
 )
 
-data class ResponseMetadata(
-    val tokenMetadata: Any? = null
+data class Content(
+    val parts: List<Part>
+)
+
+data class Part(
+    val text: String? = null,
+    val inlineData: InlineData? = null
+)
+
+data class InlineData(
+    val mimeType: String,
+    val data: String  // Base64-encoded image
 )
 
 /**
