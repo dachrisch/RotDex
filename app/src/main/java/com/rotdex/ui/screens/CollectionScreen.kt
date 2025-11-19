@@ -1,5 +1,6 @@
 package com.rotdex.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,17 +11,22 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.rotdex.data.models.Card
@@ -44,6 +50,7 @@ fun CollectionScreen(
 
     var showFilterMenu by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
+    var selectedCard by remember { mutableStateOf<Card?>(null) }
 
     Scaffold(
         topBar = {
@@ -181,11 +188,22 @@ fun CollectionScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(cards) { card ->
-                        CardGridItem(card = card)
+                        CardGridItem(
+                            card = card,
+                            onClick = { selectedCard = card }
+                        )
                     }
                 }
             }
         }
+    }
+
+    // Fullscreen card viewer
+    selectedCard?.let { card ->
+        FullscreenCardView(
+            card = card,
+            onDismiss = { selectedCard = null }
+        )
     }
 }
 
@@ -253,12 +271,15 @@ fun StatItem(label: String, count: Int) {
  * Individual card in the grid
  */
 @Composable
-fun CardGridItem(card: Card) {
+fun CardGridItem(
+    card: Card,
+    onClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(0.75f)
-            .clickable { /* TODO: Show card detail */ },
+            .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
@@ -319,5 +340,129 @@ private fun getRarityColor(rarity: CardRarity): androidx.compose.ui.graphics.Col
         CardRarity.RARE -> MaterialTheme.colorScheme.primary
         CardRarity.EPIC -> MaterialTheme.colorScheme.secondary
         CardRarity.LEGENDARY -> androidx.compose.ui.graphics.Color(0xFFFFD700) // Gold
+    }
+}
+
+/**
+ * Fullscreen card viewer
+ */
+@Composable
+fun FullscreenCardView(
+    card: Card,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .clickable(onClick = onDismiss)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Close button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    IconButton(
+                        onClick = onDismiss,
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = Color.Black.copy(alpha = 0.5f),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
+                    }
+                }
+
+                // Card image (centered and scaled to fit)
+                AsyncImage(
+                    model = File(card.imageUrl),
+                    contentDescription = card.prompt,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentScale = ContentScale.Fit
+                )
+
+                // Card details
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.Black.copy(alpha = 0.8f)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Rarity badge
+                        Surface(
+                            color = getRarityColor(card.rarity),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = card.rarity.displayName.uppercase(),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+
+                        // Prompt
+                        Text(
+                            text = card.prompt,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White,
+                            lineHeight = 24.sp
+                        )
+
+                        // Created date
+                        Text(
+                            text = "Created ${formatTimestamp(card.createdAt)}",
+                            fontSize = 14.sp,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Format timestamp to readable date
+ */
+private fun formatTimestamp(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+
+    val seconds = diff / 1000
+    val minutes = seconds / 60
+    val hours = minutes / 60
+    val days = hours / 24
+
+    return when {
+        days > 0 -> "$days day${if (days > 1) "s" else ""} ago"
+        hours > 0 -> "$hours hour${if (hours > 1) "s" else ""} ago"
+        minutes > 0 -> "$minutes minute${if (minutes > 1) "s" else ""} ago"
+        else -> "Just now"
     }
 }
