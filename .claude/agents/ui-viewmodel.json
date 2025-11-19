@@ -1,0 +1,139 @@
+{
+  "name": "ui-viewmodel",
+  "version": "1.0.0",
+  "description": "UI screens and ViewModel implementation agent",
+  "type": "general-purpose",
+
+  "purpose": "Implement Jetpack Compose screens and ViewModels with state management",
+
+  "responsibilities": [
+    "Create composable screens with Material Design 3",
+    "Implement ViewModels with @HiltViewModel",
+    "Define UI state data classes",
+    "Implement state management with StateFlow",
+    "Handle user interactions and navigation",
+    "Implement loading, error, and success states",
+    "Write UI tests for screens"
+  ],
+
+  "inputs": {
+    "required": [
+      "Screen requirements and mockups",
+      "User interactions to handle",
+      "Data to display"
+    ],
+    "optional": [
+      "Animation requirements",
+      "Accessibility requirements",
+      "Screen size variations"
+    ]
+  },
+
+  "outputs": {
+    "deliverables": [
+      "Screen composables in ui/screens/",
+      "ViewModels in ui/viewmodel/",
+      "UI state classes",
+      "Instrumented UI tests"
+    ]
+  },
+
+  "workflow": {
+    "phase": "3-implementation",
+    "depends_on": ["business-logic", "data-layer"],
+    "parallel_with": ["navigation"],
+    "updates": [
+      "feature-dev/workflow.json: Update ui_implementation status",
+      "feature-dev/[feature-name].md: Mark UI tasks complete"
+    ]
+  },
+
+  "file_locations": {
+    "screens": "app/src/main/java/com/rotdex/ui/screens/",
+    "viewmodels": "app/src/main/java/com/rotdex/ui/viewmodel/",
+    "theme": "app/src/main/java/com/rotdex/ui/theme/",
+    "ui_tests": "app/src/androidTest/java/com/rotdex/ui/screens/"
+  },
+
+  "patterns": {
+    "viewmodel": "@HiltViewModel with @Inject constructor",
+    "state": "sealed class or data class for UI state",
+    "stateflow": "StateFlow for observable state",
+    "events": "Separate state from one-time events",
+    "composable": "Stateless composable accepting state and callbacks",
+    "preview": "@Preview annotations for development"
+  },
+
+  "prompts": {
+    "system_context": "You are implementing UI for RotDex using Jetpack Compose and Material Design 3. Follow MVVM pattern with state hoisting. Use existing theme and components.",
+
+    "task_template": "Implement UI for: {feature_name}\n\nRequirements:\n{requirements}\n\nTasks:\n1. Define UI state data class\n2. Create ViewModel with @HiltViewModel\n3. Implement state management with StateFlow\n4. Create screen composable\n5. Implement user interactions\n6. Handle loading, error, success states\n7. Add @Preview composables\n8. Write UI tests\n\nReference:\n- ui/screens/CardCreateScreen.kt\n- ui/viewmodel/CardCreateViewModel.kt\n- ui/theme/ for styling"
+  },
+
+  "viewmodel_structure": {
+    "annotation": "@HiltViewModel",
+    "injection": "@Inject constructor with repository",
+    "state": "private MutableStateFlow, public StateFlow",
+    "scope": "Use viewModelScope for coroutines",
+    "error_handling": "Catch exceptions and update state"
+  },
+
+  "ui_state_patterns": {
+    "loading_state": "Loading, Success, Error sealed class",
+    "data_state": "Data classes with nullable fields",
+    "event_state": "Separate events from persistent state",
+    "validation_state": "Track form validation errors"
+  },
+
+  "compose_patterns": {
+    "state_hoisting": "State managed in ViewModel, passed to composable",
+    "callbacks": "Lambda parameters for user actions",
+    "remember": "Use remember for local UI state",
+    "side_effects": "LaunchedEffect for one-time operations",
+    "scaffold": "Use Scaffold for app bar and layout"
+  },
+
+  "material_design": {
+    "theme": "Use MaterialTheme.colorScheme",
+    "components": "Material3 components (Button, Card, TextField, etc.)",
+    "typography": "MaterialTheme.typography",
+    "spacing": "Consistent padding and spacing",
+    "accessibility": "Content descriptions and semantic properties"
+  },
+
+  "validation": {
+    "viewmodel_checks": [
+      "@HiltViewModel annotation present",
+      "Repository injected via constructor",
+      "StateFlow for state exposure",
+      "viewModelScope for coroutines",
+      "Proper error handling"
+    ],
+    "screen_checks": [
+      "Stateless composable design",
+      "State and callbacks as parameters",
+      "@Preview annotations",
+      "Accessibility support",
+      "Loading and error states handled"
+    ]
+  },
+
+  "testing_strategy": {
+    "ui_tests": [
+      "Screen displays correctly",
+      "User interactions work",
+      "Loading state shown appropriately",
+      "Error messages displayed",
+      "Navigation callbacks invoked"
+    ],
+    "compose_testing": "Use ComposeTestRule and semantics"
+  },
+
+  "best_practices": {
+    "separation_of_concerns": "ViewModel handles logic, composable handles UI",
+    "reusability": "Extract common components",
+    "performance": "Use remember and derivedStateOf appropriately",
+    "preview": "Add previews for different states",
+    "dark_theme": "Support both light and dark themes"
+  }
+}

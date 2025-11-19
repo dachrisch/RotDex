@@ -1,0 +1,111 @@
+{
+  "name": "api-integration",
+  "version": "1.0.0",
+  "description": "API service and network integration agent",
+  "type": "general-purpose",
+
+  "purpose": "Implement Retrofit API services, request/response models, and network configuration",
+
+  "responsibilities": [
+    "Define API service interfaces with Retrofit",
+    "Create request and response data models",
+    "Add JSON serialization annotations",
+    "Configure NetworkModule for Hilt injection",
+    "Implement error handling and logging",
+    "Write integration tests for API calls"
+  ],
+
+  "inputs": {
+    "required": [
+      "API endpoint specifications",
+      "Request/response models",
+      "Authentication requirements"
+    ],
+    "optional": [
+      "Rate limiting strategy",
+      "Caching requirements",
+      "Timeout configurations"
+    ]
+  },
+
+  "outputs": {
+    "deliverables": [
+      "API service interface in data/api/",
+      "Request/response models",
+      "NetworkModule updates",
+      "Integration tests"
+    ]
+  },
+
+  "workflow": {
+    "phase": "3-implementation",
+    "parallel_with": ["data-layer", "business-logic"],
+    "updates": [
+      "feature-dev/workflow.json: Update api_integration status",
+      "feature-dev/[feature-name].md: Mark API tasks complete"
+    ]
+  },
+
+  "file_locations": {
+    "services": "app/src/main/java/com/rotdex/data/api/",
+    "di_module": "app/src/main/java/com/rotdex/di/NetworkModule.kt",
+    "tests": "app/src/androidTest/java/com/rotdex/data/api/"
+  },
+
+  "patterns": {
+    "service_interface": "interface with @GET, @POST, @Headers annotations",
+    "suspend_functions": "All API calls are suspend functions",
+    "response_wrapper": "Response<T> for HTTP response details",
+    "error_handling": "Try-catch in repository, not in service",
+    "logging": "OkHttp logging interceptor for debugging"
+  },
+
+  "prompts": {
+    "system_context": "You are implementing API integration for RotDex using Retrofit and OkHttp. Follow existing patterns in AiApiService. Use Gson for JSON serialization.",
+
+    "task_template": "Implement API integration for: {feature_name}\n\nAPI Details:\n{api_specs}\n\nTasks:\n1. Create API service interface with Retrofit annotations\n2. Define request/response data classes\n3. Add @SerializedName for JSON fields\n4. Update NetworkModule to provide service\n5. Add logging for debugging\n6. Write integration tests\n\nReference:\n- data/api/AiApiService.kt\n- di/NetworkModule.kt"
+  },
+
+  "retrofit_annotations": {
+    "http_methods": ["@GET", "@POST", "@PUT", "@DELETE", "@PATCH"],
+    "parameters": ["@Path", "@Query", "@Body", "@Header", "@HeaderMap"],
+    "configuration": ["@Headers", "@Multipart", "@FormUrlEncoded"]
+  },
+
+  "validation": {
+    "service_checks": [
+      "All methods are suspend functions",
+      "Proper HTTP annotations",
+      "Response types defined",
+      "Error responses handled"
+    ],
+    "model_checks": [
+      "Data classes for immutability",
+      "@SerializedName for JSON fields",
+      "Nullable types where appropriate",
+      "Default values for optional fields"
+    ],
+    "di_checks": [
+      "Service provided in NetworkModule",
+      "Retrofit configured with base URL",
+      "Interceptors added (logging, auth)"
+    ]
+  },
+
+  "testing_strategy": {
+    "integration_tests": [
+      "Service injection via Hilt",
+      "Request serialization",
+      "Response deserialization",
+      "Error response handling"
+    ],
+    "mock_server": "Consider MockWebServer for testing"
+  },
+
+  "security": {
+    "api_keys": "Never hardcode API keys - use BuildConfig",
+    "https": "Always use HTTPS",
+    "headers": "Properly configure authentication headers",
+    "sensitive_data": "Never log sensitive data"
+  }
+}

@@ -12,6 +12,15 @@ The `feature-dev/` directory serves as:
 
 ## Files
 
+### `agent-workflow.md` ⭐ NEW
+**Multi-agent feature development workflow documentation**:
+- 5-phase agent-driven development process
+- Agent definitions and responsibilities
+- Parallel execution strategies
+- Workflow coordination via workflow.json
+- Example workflows for simple and complex features
+- Quality gates and best practices
+
 ### `card-generation-implementation.md`
 Comprehensive documentation of the card generation feature implementation:
 - Complete implementation timeline with all commits
@@ -35,13 +44,16 @@ Structured workflow state for agent coordination:
 ## Usage
 
 ### For Developers
-- **Starting new work?** Check `workflow.json` for next priorities and current status
+- **Starting new work?** Read `agent-workflow.md` for the multi-agent development process
+- **Check priorities:** Review `workflow.json` for next priorities and current status
 - **Need context?** Read implementation docs to understand what's already done
 - **Debugging?** Check known issues and error handling sections
 - **Adding tests?** Review existing test coverage and strategy
 
 ### For AI Agents
+- **New to this project?** Start with `agent-workflow.md` to understand the development process
 - **Task coordination:** Read `workflow.json` to understand current state and next tasks
+- **Agent definitions:** Check `.claude/agents/*.json` for your role and responsibilities
 - **Context loading:** Use implementation docs to get full context on completed work
 - **Handoff:** Update `workflow.json` when completing tasks or switching focus
 - **Consistency:** Follow patterns and conventions documented here
@@ -68,8 +80,10 @@ Structured workflow state for agent coordination:
 
 ## Related Documentation
 
+- **agent-workflow.md** - Multi-agent development workflow (START HERE for new features)
+- **.claude/agents/*.json** - Agent definitions and configurations
 - **CLAUDE.md** - General project guidance and architecture
-- **TESTING.md** - Testing infrastructure and best practices
+- **docs/features/STATUS.md** - Feature status tracking
 - **README.md** (root) - Project overview and setup instructions
 
 ## Structure
@@ -77,9 +91,21 @@ Structured workflow state for agent coordination:
 ```
 feature-dev/
 ├── README.md                              # This file
+├── agent-workflow.md                      # Multi-agent development workflow ⭐
 ├── workflow.json                          # Structured workflow state
 ├── card-generation-implementation.md      # Card generation feature docs
 └── [future-feature]-implementation.md     # Future feature docs
+
+.claude/agents/                            # Agent definitions
+├── planning.json                          # Phase 1: Feature planning
+├── exploration.json                       # Phase 2: Codebase exploration
+├── data-layer.json                        # Phase 3a: Database implementation
+├── api-integration.json                   # Phase 3b: API implementation
+├── business-logic.json                    # Phase 3c: Repository/Manager implementation
+├── ui-viewmodel.json                      # Phase 3d: UI and ViewModel implementation
+├── navigation.json                        # Phase 3e: Navigation integration
+├── testing.json                           # Phase 4: Test implementation
+└── review.json                            # Phase 5: Code review
 ```
 
 ## Conventions

@@ -1,0 +1,193 @@
+{
+  "name": "testing",
+  "version": "1.0.0",
+  "description": "Test implementation and quality assurance agent",
+  "type": "general-purpose",
+
+  "purpose": "Write comprehensive unit and instrumented tests for all layers",
+
+  "responsibilities": [
+    "Write unit tests for repositories and business logic",
+    "Write instrumented tests for UI",
+    "Write integration tests for API and database",
+    "Ensure proper test coverage",
+    "Verify error handling paths",
+    "Test edge cases and boundary conditions"
+  ],
+
+  "inputs": {
+    "required": [
+      "Components to test (repositories, ViewModels, screens)",
+      "Test scenarios and edge cases",
+      "Expected behaviors"
+    ],
+    "optional": [
+      "Performance test requirements",
+      "Load test scenarios"
+    ]
+  },
+
+  "outputs": {
+    "deliverables": [
+      "Unit tests in app/src/test/",
+      "Instrumented tests in app/src/androidTest/",
+      "Test coverage report",
+      "Documentation of test scenarios"
+    ]
+  },
+
+  "workflow": {
+    "phase": "4-testing",
+    "depends_on": ["All implementation phases"],
+    "updates": [
+      "feature-dev/workflow.json: Update testing status",
+      "feature-dev/[feature-name].md: Document test coverage"
+    ]
+  },
+
+  "file_locations": {
+    "unit_tests": "app/src/test/java/com/rotdex/",
+    "instrumented_tests": "app/src/androidTest/java/com/rotdex/",
+    "test_utilities": "app/src/androidTest/java/com/rotdex/test/"
+  },
+
+  "test_types": {
+    "unit_tests": {
+      "target": "Repositories, Managers, ViewModels, Utility functions",
+      "framework": "JUnit4",
+      "mocking": "Mockito or MockK",
+      "coroutines": "kotlinx-coroutines-test"
+    },
+    "instrumented_tests": {
+      "target": "UI screens, Navigation, Database operations",
+      "framework": "AndroidJUnit4",
+      "compose": "androidx.compose.ui:ui-test-junit4",
+      "database": "In-memory Room database"
+    },
+    "integration_tests": {
+      "target": "API integration, Hilt DI, End-to-end flows",
+      "framework": "AndroidJUnit4 with Hilt testing"
+    }
+  },
+
+  "prompts": {
+    "system_context": "You are writing tests for RotDex. Follow existing test patterns. Use JUnit4 for unit tests and Compose testing library for UI tests.",
+
+    "task_template": "Write tests for: {feature_name}\n\nComponents:\n{components}\n\nTest scenarios:\n1. Happy path\n2. Error cases\n3. Edge cases\n4. Boundary conditions\n\nTest types needed:\n- Unit tests for business logic\n- UI tests for screens\n- Integration tests for data flow\n\nReference existing tests:\n- test/java/com/rotdex/data/api/FreepikApiModelsTest.kt\n- androidTest/java/com/rotdex/ui/screens/HomeScreenTest.kt"
+  },
+
+  "unit_test_patterns": {
+    "repository": {
+      "setup": "Mock DAOs and API services",
+      "tests": [
+        "Successful operations return success",
+        "Failures return error Result",
+        "Exceptions are caught and wrapped",
+        "Correct data transformations"
+      ]
+    },
+    "viewmodel": {
+      "setup": "Mock repository",
+      "tests": [
+        "Initial state is correct",
+        "State updates on actions",
+        "Error state on failures",
+        "Loading state during operations"
+      ],
+      "coroutines": "Use TestCoroutineDispatcher"
+    },
+    "manager": {
+      "setup": "Mock dependencies",
+      "tests": [
+        "Business logic correctness",
+        "Validation rules work",
+        "Edge case handling"
+      ]
+    }
+  },
+
+  "ui_test_patterns": {
+    "screen": {
+      "setup": "Use createAndroidComposeRule",
+      "tests": [
+        "Content displays correctly",
+        "User interactions trigger callbacks",
+        "Loading state shows progress",
+        "Error state shows message",
+        "Navigation works"
+      ]
+    },
+    "compose_testing": {
+      "find": "onNodeWithText, onNodeWithContentDescription, onNodeWithTag",
+      "assert": "assertIsDisplayed, assertTextEquals, assertExists",
+      "action": "performClick, performTextInput, performScrollTo"
+    }
+  },
+
+  "integration_test_patterns": {
+    "database": {
+      "setup": "Use in-memory database",
+      "tests": [
+        "Entities persist correctly",
+        "Queries return expected results",
+        "Relationships work",
+        "Migrations work (if applicable)"
+      ]
+    },
+    "api": {
+      "setup": "Use Hilt test modules",
+      "tests": [
+        "Request serialization",
+        "Response deserialization",
+        "Error response handling"
+      ]
+    },
+    "hilt": {
+      "annotation": "@HiltAndroidTest",
+      "rule": "HiltAndroidRule",
+      "tests": [
+        "Dependencies inject correctly",
+        "Module bindings work"
+      ]
+    }
+  },
+
+  "validation": {
+    "coverage_criteria": {
+      "repositories": "> 80% coverage",
+      "viewmodels": "> 70% coverage",
+      "managers": "> 80% coverage",
+      "ui": "Critical paths tested"
+    },
+    "test_quality": [
+      "Tests are independent",
+      "Tests are deterministic",
+      "Tests are fast",
+      "Tests are maintainable",
+      "Tests document behavior"
+    ]
+  },
+
+  "commands": {
+    "run_unit_tests": "./gradlew testDebugUnitTest",
+    "run_instrumented_tests": "./gradlew connectedDebugAndroidTest",
+    "run_specific_test": "./gradlew test --tests \"ClassName.testMethod\"",
+    "coverage_report": "./gradlew jacocoTestReport"
+  },
+
+  "best_practices": {
+    "naming": "test_methodName_scenario_expectedResult",
+    "given_when_then": "Structure tests with Given/When/Then",
+    "one_assertion": "Test one thing per test method",
+    "clear_failures": "Failures should clearly indicate what broke",
+    "no_logic": "Tests should not contain complex logic",
+    "fast": "Keep tests fast - mock external dependencies"
+  },
+
+  "common_issues": {
+    "coroutine_tests": "Use runTest or runBlockingTest",
+    "ui_thread": "UI tests must run on main thread",
+    "async_assertions": "Use waitUntil or advanceUntilIdle",
+    "flaky_tests": "Avoid time-based delays, use idling resources"
+  }
+}

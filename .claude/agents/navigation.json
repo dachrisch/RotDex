@@ -1,0 +1,131 @@
+{
+  "name": "navigation",
+  "version": "1.0.0",
+  "description": "Navigation and routing implementation agent",
+  "type": "general-purpose",
+
+  "purpose": "Implement navigation routes and integrate screens into app navigation graph",
+
+  "responsibilities": [
+    "Add routes to Screen sealed class",
+    "Update NavGraph with new composable entries",
+    "Implement navigation callbacks",
+    "Handle navigation arguments if needed",
+    "Test navigation flows",
+    "Update deep linking if applicable"
+  ],
+
+  "inputs": {
+    "required": [
+      "New screens to integrate",
+      "Navigation flows (from where, to where)",
+      "Navigation arguments"
+    ],
+    "optional": [
+      "Deep link patterns",
+      "Back stack behavior",
+      "Shared element transitions"
+    ]
+  },
+
+  "outputs": {
+    "deliverables": [
+      "Updated Screen sealed class",
+      "Updated NavGraph.kt",
+      "Navigation callback implementations",
+      "Navigation tests"
+    ]
+  },
+
+  "workflow": {
+    "phase": "3-implementation",
+    "depends_on": ["ui-viewmodel"],
+    "updates": [
+      "feature-dev/workflow.json: Update navigation status",
+      "feature-dev/[feature-name].md: Mark navigation tasks complete"
+    ]
+  },
+
+  "file_locations": {
+    "navigation": "app/src/main/java/com/rotdex/ui/navigation/NavGraph.kt",
+    "tests": "app/src/androidTest/java/com/rotdex/ui/navigation/"
+  },
+
+  "patterns": {
+    "route_definition": "object in Screen sealed class",
+    "composable_entry": "composable(Screen.X.route) { }",
+    "viewmodel_injection": "hiltViewModel() in composable",
+    "navigation_callback": "onNavigateToX lambda parameter",
+    "nav_controller": "navController.navigate(route)",
+    "back_navigation": "navController.popBackStack()"
+  },
+
+  "prompts": {
+    "system_context": "You are implementing navigation for RotDex using Jetpack Navigation Compose. Follow existing patterns in NavGraph.kt for consistency.",
+
+    "task_template": "Add navigation for: {feature_name}\n\nScreens to integrate:\n{screens}\n\nTasks:\n1. Add route(s) to Screen sealed class\n2. Add composable entry to NavGraph\n3. Inject ViewModel with hiltViewModel()\n4. Pass navigation callbacks to screen\n5. Update calling screens with navigation actions\n6. Test navigation flow\n\nReference:\n- ui/navigation/NavGraph.kt"
+  },
+
+  "screen_sealed_class": {
+    "pattern": "object FeatureName : Screen(\"feature_name\")",
+    "with_args": "object Detail : Screen(\"detail/{id}\") { fun createRoute(id: Long) = \"detail/$id\" }",
+    "example": "object Collection : Screen(\"collection\")"
+  },
+
+  "navgraph_pattern": {
+    "simple": "composable(Screen.Feature.route) { FeatureScreen(...) }",
+    "with_viewmodel": "composable(Screen.Feature.route) { val vm: VM = hiltViewModel(); FeatureScreen(vm, ...) }",
+    "with_args": "composable(Screen.Detail.route, arguments = listOf(navArgument(\"id\") { ... })) { ... }",
+    "navigation_callbacks": "onNavigateBack = { navController.popBackStack() }"
+  },
+
+  "navigation_arguments": {
+    "required": "navArgument(\"name\") { type = NavType.StringType }",
+    "optional": "navArgument(\"name\") { type = NavType.StringType; nullable = true }",
+    "extraction": "it.arguments?.getString(\"name\")"
+  },
+
+  "validation": {
+    "route_checks": [
+      "Route added to Screen sealed class",
+      "Route is unique",
+      "Arguments defined if needed"
+    ],
+    "navgraph_checks": [
+      "Composable entry added",
+      "ViewModel injected with hiltViewModel()",
+      "Navigation callbacks implemented",
+      "Arguments properly extracted"
+    ],
+    "integration_checks": [
+      "Can navigate to screen from appropriate places",
+      "Back navigation works correctly",
+      "Arguments passed correctly"
+    ]
+  },
+
+  "testing_strategy": {
+    "navigation_tests": [
+      "Screen appears when route is navigated to",
+      "Arguments are received correctly",
+      "Back navigation works",
+      "Deep links work (if applicable)"
+    ],
+    "test_navcontroller": "Use TestNavHostController for testing"
+  },
+
+  "best_practices": {
+    "route_naming": "Use lowercase with underscores",
+    "type_safety": "Use sealed class instead of string routes where possible",
+    "deep_linking": "Consider deep link support for important screens",
+    "back_stack": "Clear back stack when needed (e.g., after logout)",
+    "arguments": "Keep navigation arguments minimal and primitive types"
+  },
+
+  "common_patterns": {
+    "bottom_nav": "Not yet implemented in RotDex",
+    "drawer_nav": "Not yet implemented in RotDex",
+    "single_screen": "Current pattern - navigate to screen and back",
+    "replacement": "navController.navigate(route) { popUpTo(...) { inclusive = true } }"
+  }
+}
