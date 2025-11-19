@@ -27,9 +27,10 @@ object RepositoryModule {
     fun provideCardRepository(
         cardDao: CardDao,
         fusionHistoryDao: FusionHistoryDao,
-        aiApiService: AiApiService
+        aiApiService: AiApiService,
+        userRepository: UserRepository
     ): CardRepository {
-        return CardRepository(cardDao, fusionHistoryDao, aiApiService)
+        return CardRepository(cardDao, fusionHistoryDao, aiApiService, userRepository)
     }
 
     @Provides

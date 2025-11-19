@@ -18,7 +18,8 @@ import kotlin.random.Random
 class CardRepository(
     private val cardDao: CardDao,
     private val fusionHistoryDao: FusionHistoryDao,
-    private val aiApiService: AiApiService
+    private val aiApiService: AiApiService,
+    private val userRepository: UserRepository
 ) {
 
     private val fusionManager = FusionManager(cardDao, fusionHistoryDao)
@@ -46,11 +47,20 @@ class CardRepository(
 
     /**
      * Generates a new brainrot card using AI
+     * Costs energy to generate - checks and spends energy before generating
      * @param prompt User's input describing the card
      * @return Result with the generated Card or an error
      */
     suspend fun generateCard(prompt: String): Result<Card> {
         return try {
+            // Check and spend energy before generating
+            val energySpent = userRepository.spendEnergy(GameConfig.CARD_GENERATION_ENERGY_COST)
+            if (!energySpent) {
+                return Result.failure(InsufficientEnergyException(
+                    "Not enough energy to generate card. Need ${GameConfig.CARD_GENERATION_ENERGY_COST} energy."
+                ))
+            }
+
             // Call AI API to generate image
             val request = ImageGenerationRequest(
                 prompt = enhancePrompt(prompt),

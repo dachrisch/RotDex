@@ -5,9 +5,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.rotdex.ui.screens.CardCreateScreen
 import com.rotdex.ui.screens.DailyRewardsScreen
 import com.rotdex.ui.screens.FusionScreen
 import com.rotdex.ui.screens.HomeScreen
+import com.rotdex.ui.viewmodel.CardCreateViewModel
 import com.rotdex.ui.viewmodel.DailyRewardsViewModel
 import com.rotdex.ui.viewmodel.FusionViewModel
 
@@ -60,8 +62,9 @@ fun NavGraph(
         }
 
         composable(Screen.CardCreate.route) {
-            PlaceholderScreen(
-                title = "Create Card",
+            val viewModel: CardCreateViewModel = hiltViewModel()
+            CardCreateScreen(
+                viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
