@@ -51,6 +51,7 @@ fun CardCreateScreen(
     val generationState by viewModel.cardGenerationState.collectAsState()
     var promptText by remember { mutableStateOf("") }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -191,82 +192,8 @@ fun CardCreateScreen(
                 }
             }
 
-            // State Messages
+            // State Messages (non-fullscreen states only)
             when (val state = generationState) {
-                is CardGenerationState.Generating -> {
-                    GeneratingAnimation()
-                }
-
-                is CardGenerationState.Success -> {
-                    AnimatedCardReveal {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Text(
-                                text = "✅ Card Created!",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-
-                            // Display the generated card image
-                            AsyncImage(
-                                model = File(state.card.imageUrl),
-                                contentDescription = "Generated card: ${state.card.prompt}",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(300.dp)
-                                    .clip(RoundedCornerShape(12.dp)),
-                                contentScale = ContentScale.Crop
-                            )
-
-                            Text(
-                                text = "Rarity: ${state.card.rarity.name}",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                            Text(
-                                text = state.card.prompt,
-                                fontSize = 14.sp,
-                                textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
-                            )
-
-                            // Action buttons
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Button(
-                                    onClick = onNavigateToCollection,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("View in Collection")
-                                }
-                                Button(
-                                    onClick = {
-                                        promptText = ""
-                                        viewModel.resetState()
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("Create Another")
-                                }
-                            }
-                        }
-                    }
-                    }
-                }
-
                 is CardGenerationState.InsufficientEnergy -> {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -372,10 +299,29 @@ fun CardCreateScreen(
             }
         }
     }
+
+    // Full-screen generation animation overlay
+    if (generationState is CardGenerationState.Generating) {
+        GeneratingAnimation()
+    }
+
+    // Full-screen card reveal overlay
+    if (generationState is CardGenerationState.Success) {
+        FullScreenCardReveal(
+            card = (generationState as CardGenerationState.Success).card,
+            onViewCollection = onNavigateToCollection,
+            onCreateAnother = {
+                promptText = ""
+                viewModel.resetState()
+            }
+        )
+    }
+    }
 }
 
 /**
  * Engaging animation displayed while card is being generated
+ * Full-screen overlay (fills screen below header)
  */
 @Composable
 fun GeneratingAnimation() {
@@ -431,31 +377,30 @@ fun GeneratingAnimation() {
         }
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-        )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface)
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            verticalArrangement = Arrangement.Center
         ) {
-            // Animated generation visual
+            // Animated generation visual - larger for full screen
             Box(
-                modifier = Modifier.size(120.dp),
+                modifier = Modifier.size(240.dp),
                 contentAlignment = Alignment.Center
             ) {
                 // Outer rotating ring
                 Box(
                     modifier = Modifier
-                        .size(100.dp)
+                        .size(200.dp)
                         .rotate(rotation)
                         .border(
-                            width = 4.dp,
+                            width = 6.dp,
                             brush = Brush.sweepGradient(
                                 colors = listOf(
                                     MaterialTheme.colorScheme.primary,
@@ -471,7 +416,7 @@ fun GeneratingAnimation() {
                 // Pulsing center
                 Box(
                     modifier = Modifier
-                        .size(60.dp * scale)
+                        .size(120.dp * scale)
                         .alpha(alpha)
                         .background(
                             brush = Brush.radialGradient(
@@ -488,7 +433,7 @@ fun GeneratingAnimation() {
                         imageVector = Icons.Default.Star,
                         contentDescription = null,
                         modifier = Modifier
-                            .size(30.dp)
+                            .size(60.dp)
                             .rotate(-rotation),
                         tint = MaterialTheme.colorScheme.onPrimary
                     )
@@ -497,21 +442,23 @@ fun GeneratingAnimation() {
                 // Orbiting sparkles
                 for (i in 0..2) {
                     val angle = rotation + (i * 120f)
-                    val offsetX = (50 * kotlin.math.cos(Math.toRadians(angle.toDouble()))).toFloat()
-                    val offsetY = (50 * kotlin.math.sin(Math.toRadians(angle.toDouble()))).toFloat()
+                    val offsetX = (100 * kotlin.math.cos(Math.toRadians(angle.toDouble()))).toFloat()
+                    val offsetY = (100 * kotlin.math.sin(Math.toRadians(angle.toDouble()))).toFloat()
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = null,
                         modifier = Modifier
                             .offset(x = offsetX.dp, y = offsetY.dp)
-                            .size(16.dp)
+                            .size(32.dp)
                             .alpha(alpha),
                         tint = MaterialTheme.colorScheme.secondary
                     )
                 }
             }
 
-            // Animated status text
+            Spacer(modifier = Modifier.height(48.dp))
+
+            // Animated status text - larger for full screen
             AnimatedContent(
                 targetState = messages[messageIndex],
                 transitionSpec = {
@@ -522,16 +469,21 @@ fun GeneratingAnimation() {
             ) { message ->
                 Text(
                     text = message,
-                    fontSize = 18.sp,
+                    fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
+            Spacer(modifier = Modifier.height(24.dp))
+
             LinearProgressIndicator(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.primary
+                modifier = Modifier
+                    .fillMaxWidth(0.6f)
+                    .height(4.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         }
     }
@@ -570,5 +522,135 @@ fun AnimatedCardReveal(
         )
     ) {
         content()
+    }
+}
+
+/**
+ * Full-screen card reveal splash
+ */
+@Composable
+fun FullScreenCardReveal(
+    card: com.rotdex.data.models.Card,
+    onViewCollection: () -> Unit,
+    onCreateAnother: () -> Unit
+) {
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(300)
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(
+            animationSpec = tween(800, easing = FastOutSlowInEasing)
+        ) + scaleIn(
+            initialScale = 0.5f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            )
+        ),
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.tertiaryContainer
+                        )
+                    )
+                )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                // Success message
+                Text(
+                    text = "✨ Card Created! ✨",
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Card image - large and centered
+                AsyncImage(
+                    model = File(card.imageUrl),
+                    contentDescription = "Generated card: ${card.prompt}",
+                    modifier = Modifier
+                        .fillMaxWidth(0.85f)
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(24.dp))
+                        .border(
+                            width = 4.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = RoundedCornerShape(24.dp)
+                        ),
+                    contentScale = ContentScale.Crop
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Rarity badge
+                Surface(
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text(
+                        text = card.rarity.name,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Prompt
+                Text(
+                    text = card.prompt,
+                    fontSize = 18.sp,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // Action buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onCreateAnother,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    ) {
+                        Text("Create Another", fontSize = 16.sp)
+                    }
+                    Button(
+                        onClick = onViewCollection,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("View Collection", fontSize = 16.sp)
+                    }
+                }
+            }
+        }
     }
 }
