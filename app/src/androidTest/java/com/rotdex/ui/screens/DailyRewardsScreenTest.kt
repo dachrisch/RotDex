@@ -33,8 +33,21 @@ class DailyRewardsScreenTest {
             }
         }
 
+        // Wait for initial composition to complete
+        composeTestRule.waitForIdle()
+
         // Verify the screen title is present
         composeTestRule.onNodeWithText("Daily Rewards").assertExists()
+
+        // Wait a bit longer to allow async operations (ViewModel initialization, etc.)
+        // This ensures all UI components including animated ones are rendered
+        composeTestRule.mainClock.advanceTimeBy(1000L)
+        composeTestRule.waitForIdle()
+
+        // The test will fail with NoSuchMethodError if:
+        // - CircularProgressIndicator tries to use incompatible animation APIs
+        // - Keyframes animation methods are missing
+        // - Any other runtime linkage errors occur
     }
 
     @Test
@@ -72,5 +85,38 @@ class DailyRewardsScreenTest {
 
         // Verify callback was triggered
         assert(backPressed)
+    }
+
+    @Test
+    fun dailyRewardsScreenAnimationsRenderCorrectly() {
+        // This test specifically verifies that animated components (CircularProgressIndicator)
+        // can render without NoSuchMethodError from keyframes animations.
+        // This catches Compose BOM version incompatibilities.
+        composeTestRule.setContent {
+            RotDexTheme {
+                DailyRewardsScreen(
+                    onNavigateBack = {}
+                )
+            }
+        }
+
+        // Wait for initial composition
+        composeTestRule.waitForIdle()
+
+        // Advance time to trigger animations
+        // CircularProgressIndicator uses keyframes animations internally
+        // If the animation library is incompatible, this will throw NoSuchMethodError
+        composeTestRule.mainClock.advanceTimeBy(2000L)
+        composeTestRule.waitForIdle()
+
+        // Advance time multiple times to ensure animations are running
+        repeat(5) {
+            composeTestRule.mainClock.advanceTimeBy(500L)
+            composeTestRule.waitForIdle()
+        }
+
+        // If we reach here without crash, animations are working correctly
+        // with compatible Compose library versions
+        composeTestRule.onNodeWithText("Daily Rewards").assertExists()
     }
 }

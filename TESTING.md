@@ -36,17 +36,38 @@ Instrumented tests run on an Android device or emulator and verify that the UI r
 
 ### Current Coverage
 
+#### Screen-Specific Tests
 - **HomeScreenTest**: Verifies HomeScreen renders and navigation buttons work
-- **DailyRewardsScreenTest**: Ensures DailyRewardsScreen renders without runtime crashes
+- **DailyRewardsScreenTest**: Ensures DailyRewardsScreen renders without runtime crashes, includes animation testing
 - **FusionScreenTest**: Validates FusionScreen renders and back navigation works
+
+#### Runtime Error Detection
+- **ComposeRuntimeErrorTest**: Comprehensive test that catches library incompatibilities across all screens
+  - ✅ Detects NoSuchMethodError from Compose BOM version mismatches
+  - ✅ Catches animation API incompatibilities (e.g., CircularProgressIndicator keyframes)
+  - ✅ Identifies missing dependencies that compile but fail at runtime
+  - ✅ Validates all screens render with proper animation support
 
 ### Why Instrumented Tests?
 
 Instrumented tests catch runtime errors that unit tests can't detect, such as:
-- **NoSuchMethodError** from library version mismatches
+- **NoSuchMethodError** from library version mismatches (e.g., Compose BOM 2024.01.00 animation incompatibility)
 - **UI rendering crashes** from Compose components
 - **Animation failures** from missing dependencies
 - **Integration issues** between ViewModels and UI
+
+### Real-World Example
+
+**Problem**: Compose BOM 2024.01.00 provided incompatible animation library versions
+- Compiled successfully ✅
+- Linted successfully ✅
+- **Crashed at runtime** ❌ with `NoSuchMethodError: KeyframesSpec$KeyframeEntity.at()`
+
+**Solution**: `ComposeRuntimeErrorTest.dailyRewardsScreen_rendersWithoutRuntimeErrors()`
+- Renders DailyRewardsScreen with CircularProgressIndicator
+- Advances animation clock to trigger keyframes animations
+- **Would have failed immediately** with the old BOM
+- **Passes now** with Compose BOM 2024.06.00
 
 ## CI/CD
 
