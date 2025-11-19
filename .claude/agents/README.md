@@ -4,17 +4,17 @@ This directory contains specialized agent configurations for feature development
 
 ## Agent Overview
 
-| Agent | Type | Phase | Purpose |
-|-------|------|-------|---------|
-| **planning** | Plan | 1 | Analyze requirements and create implementation plan |
-| **exploration** | Explore | 2 | Find existing patterns and reusable components |
-| **data-layer** | general-purpose | 3a | Implement Room entities, DAOs, and migrations |
-| **api-integration** | general-purpose | 3b | Implement API services and network integration |
-| **business-logic** | general-purpose | 3c | Implement repositories and manager classes |
-| **ui-viewmodel** | general-purpose | 3d | Implement Compose screens and ViewModels |
-| **navigation** | general-purpose | 3e | Integrate navigation routes and flows |
-| **testing** | general-purpose | 4 | Write unit and instrumented tests |
-| **review** | general-purpose | 5 | Code review and quality assurance |
+| Agent               | Type            | Phase | Purpose                                             |
+|---------------------|-----------------|-------|-----------------------------------------------------|
+| **planning**        | Plan            | 1     | Analyze requirements and create implementation plan |
+| **exploration**     | Explore         | 2     | Find existing patterns and reusable components      |
+| **data-layer**      | general-purpose | 3a    | Implement Room entities, DAOs, and migrations       |
+| **api-integration** | general-purpose | 3b    | Implement API services and network integration      |
+| **business-logic**  | general-purpose | 3c    | Implement repositories and manager classes          |
+| **ui-viewmodel**    | general-purpose | 3d    | Implement Compose screens and ViewModels            |
+| **navigation**      | general-purpose | 3e    | Integrate navigation routes and flows               |
+| **testing**         | general-purpose | 4     | Write unit and instrumented tests                   |
+| **review**          | general-purpose | 5     | Code review and quality assurance                   |
 
 ## Development Workflow
 
@@ -54,7 +54,7 @@ This directory contains specialized agent configurations for feature development
 
 ## Agent Capabilities
 
-### Phase 1: Planning (`planning.json`)
+### Phase 1: Planning (`planning.yaml`)
 **What it does:**
 - Breaks down features into tasks
 - Identifies affected components (Database, API, Repository, ViewModel, UI)
@@ -71,7 +71,7 @@ This directory contains specialized agent configurations for feature development
 
 ---
 
-### Phase 2: Exploration (`exploration.json`)
+### Phase 2: Exploration (`exploration.yaml`)
 **What it does:**
 - Finds similar existing features
 - Identifies reusable patterns and components
@@ -91,7 +91,7 @@ This directory contains specialized agent configurations for feature development
 
 ### Phase 3: Parallel Implementation
 
-#### 3a. Data Layer (`data-layer.json`)
+#### 3a. Data Layer (`data-layer.yaml`)
 **What it does:**
 - Creates Room entities and DAOs
 - Adds database migrations
@@ -109,7 +109,7 @@ This directory contains specialized agent configurations for feature development
 
 ---
 
-#### 3b. API Integration (`api-integration.json`)
+#### 3b. API Integration (`api-integration.yaml`)
 **What it does:**
 - Defines Retrofit API services
 - Creates request/response models
@@ -126,7 +126,7 @@ This directory contains specialized agent configurations for feature development
 
 ---
 
-#### 3c. Business Logic (`business-logic.json`)
+#### 3c. Business Logic (`business-logic.yaml`)
 **What it does:**
 - Creates repository classes
 - Implements manager classes
@@ -145,7 +145,7 @@ This directory contains specialized agent configurations for feature development
 
 ---
 
-#### 3d. UI & ViewModel (`ui-viewmodel.json`)
+#### 3d. UI & ViewModel (`ui-viewmodel.yaml`)
 **What it does:**
 - Creates Compose screens
 - Implements ViewModels with state management
@@ -164,7 +164,7 @@ This directory contains specialized agent configurations for feature development
 
 ---
 
-#### 3e. Navigation (`navigation.json`)
+#### 3e. Navigation (`navigation.yaml`)
 **What it does:**
 - Adds routes to navigation graph
 - Integrates screens into app flow
@@ -179,7 +179,7 @@ This directory contains specialized agent configurations for feature development
 
 ---
 
-### Phase 4: Testing (`testing.json`)
+### Phase 4: Testing (`testing.yaml`)
 **What it does:**
 - Writes unit tests for business logic
 - Writes instrumented tests for UI
@@ -197,7 +197,7 @@ This directory contains specialized agent configurations for feature development
 
 ---
 
-### Phase 5: Review (`review.json`)
+### Phase 5: Review (`review.yaml`)
 **What it does:**
 - Reviews for security vulnerabilities
 - Checks error handling
@@ -221,7 +221,7 @@ This directory contains specialized agent configurations for feature development
 ```
 Use Task tool with:
 - subagent_type: "general-purpose" (or "Plan"/"Explore")
-- prompt: Reference agent config from .claude/agents/[agent-name].json
+- prompt: Reference agent config from .claude/agents/[agent-name].yaml
 - description: Short task description
 ```
 
@@ -242,34 +242,41 @@ This executes all agents simultaneously for maximum efficiency.
 
 ## Agent Configuration Format
 
-Each agent JSON file contains:
+Each agent YAML file contains:
 
-```json
-{
-  "name": "agent-name",
-  "version": "1.0.0",
-  "description": "What this agent does",
-  "type": "general-purpose|Plan|Explore",
-  "purpose": "Detailed purpose",
-  "responsibilities": ["task1", "task2"],
-  "inputs": {
-    "required": ["input1"],
-    "optional": ["input2"]
-  },
-  "outputs": {
-    "deliverables": ["output1"],
-    "destination": "where files go"
-  },
-  "workflow": {
-    "phase": "when it runs",
-    "depends_on": ["prerequisites"],
-    "parallel_with": ["other agents"]
-  },
-  "prompts": {
-    "system_context": "Agent context",
-    "task_template": "Task structure"
-  }
-}
+```yaml
+name: agent-name
+version: 1.0.0
+description: What this agent does
+type: general-purpose|Plan|Explore
+
+purpose: Detailed purpose
+
+responsibilities:
+  - task1
+  - task2
+
+inputs:
+  required:
+    - input1
+  optional:
+    - input2
+
+outputs:
+  deliverables:
+    - output1
+  destination: where files go
+
+workflow:
+  phase: when it runs
+  depends_on:
+    - prerequisites
+  parallel_with:
+    - other agents
+
+prompts:
+  system_context: Agent context
+  task_template: Task structure
 ```
 
 ---

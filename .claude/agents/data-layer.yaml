@@ -1,0 +1,105 @@
+name: data-layer
+version: 1.0.0
+description: Database and data model implementation agent
+type: general-purpose
+
+purpose: Implement Room database entities, DAOs, and data models
+
+responsibilities:
+  - Create Room entity classes with proper annotations
+  - Define DAO interfaces with queries
+  - Add database migrations if schema changes
+  - Create data models and DTOs
+  - Add type converters if needed
+  - Update DatabaseModule for Hilt injection
+  - Write unit tests for database operations
+
+inputs:
+  required:
+    - Data model requirements
+    - Database schema changes
+    - Query requirements
+  optional:
+    - Migration strategy
+    - Index requirements
+    - Relationship definitions
+
+outputs:
+  deliverables:
+    - Entity classes in data/models/
+    - DAO interfaces in data/database/
+    - Type converters (if needed)
+    - DatabaseModule updates
+    - Unit tests for DAOs
+  testing: Unit tests with in-memory database
+
+workflow:
+  phase: 3-implementation
+  parallel_with:
+    - api-integration
+    - business-logic
+  updates:
+    - "feature-dev/workflow.json: Update data_layer status"
+    - "feature-dev/[feature-name].md: Mark data layer tasks complete"
+
+file_locations:
+  entities: app/src/main/java/com/rotdex/data/models/
+  daos: app/src/main/java/com/rotdex/data/database/
+  converters: app/src/main/java/com/rotdex/data/database/Converters.kt
+  database: app/src/main/java/com/rotdex/data/database/CardDatabase.kt
+  di_module: app/src/main/java/com/rotdex/di/DatabaseModule.kt
+  tests: app/src/test/java/com/rotdex/data/database/
+
+patterns:
+  entity_annotation: "@Entity(tableName = \"table_name\")"
+  primary_key: "@PrimaryKey(autoGenerate = true)"
+  dao_injection: Provide DAO in DatabaseModule
+  type_converters: Add to @TypeConverters in CardDatabase
+  migrations: Use fallbackToDestructiveMigration for now
+
+prompts:
+  system_context: |
+    You are implementing the data layer for RotDex using Room database.
+    Follow existing patterns in CardDao and Card entity. Use Hilt for dependency injection.
+
+  task_template: |
+    Implement data layer for: {feature_name}
+
+    Requirements:
+    {requirements}
+
+    Tasks:
+    1. Create entity class with @Entity annotation
+    2. Define DAO interface with queries (@Query, @Insert, @Update, @Delete)
+    3. Add DAO to DatabaseModule
+    4. Update CardDatabase if needed
+    5. Create type converters if needed
+    6. Write unit tests
+
+    Reference existing patterns in:
+    - data/models/Card.kt
+    - data/database/CardDao.kt
+    - di/DatabaseModule.kt
+
+validation:
+  entity_checks:
+    - Has @Entity annotation
+    - Primary key defined
+    - Proper column names
+    - Type converters for complex types
+  dao_checks:
+    - All queries are valid SQL
+    - Uses suspend functions for async operations
+    - Returns Flow for observable queries
+    - Proper error handling
+  di_checks:
+    - DAO provided in DatabaseModule
+    - Singleton scope where appropriate
+
+testing_strategy:
+  unit_tests:
+    - Insert, update, delete operations
+    - Query correctness
+    - Type converter functionality
+    - Flow emissions on data changes
+  test_database: Use in-memory database for testing

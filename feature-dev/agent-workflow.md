@@ -446,7 +446,7 @@ cp feature-dev/TEMPLATE.md feature-dev/[feature-name].md
 
 ## References
 
-- **Agent Definitions**: `.claude/agents/*.json`
+- **Agent Definitions**: `.claude/agents/*.yaml`
 - **Architecture Guide**: `CLAUDE.md`
 - **Feature Status**: `docs/features/STATUS.md`
 - **Workflow State**: `feature-dev/workflow.json`

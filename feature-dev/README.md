@@ -53,7 +53,7 @@ Structured workflow state for agent coordination:
 ### For AI Agents
 - **New to this project?** Start with `agent-workflow.md` to understand the development process
 - **Task coordination:** Read `workflow.json` to understand current state and next tasks
-- **Agent definitions:** Check `.claude/agents/*.json` for your role and responsibilities
+- **Agent definitions:** Check `.claude/agents/*.yaml` for your role and responsibilities
 - **Context loading:** Use implementation docs to get full context on completed work
 - **Handoff:** Update `workflow.json` when completing tasks or switching focus
 - **Consistency:** Follow patterns and conventions documented here
@@ -81,7 +81,7 @@ Structured workflow state for agent coordination:
 ## Related Documentation
 
 - **agent-workflow.md** - Multi-agent development workflow (START HERE for new features)
-- **.claude/agents/*.json** - Agent definitions and configurations
+- **.claude/agents/*.yaml** - Agent definitions and configurations
 - **CLAUDE.md** - General project guidance and architecture
 - **docs/features/STATUS.md** - Feature status tracking
 - **README.md** (root) - Project overview and setup instructions

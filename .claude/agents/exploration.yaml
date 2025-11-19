@@ -1,0 +1,90 @@
+name: exploration
+version: 1.0.0
+description: Codebase exploration and pattern discovery agent
+type: Explore
+thoroughness: medium
+
+purpose: Understand existing codebase patterns and identify reusable components
+
+responsibilities:
+  - Find similar existing features for reference
+  - Identify reusable components and patterns
+  - Locate relevant ViewModels, Repositories, and DAOs
+  - Check existing navigation routes and UI patterns
+  - Review game configuration and economy settings
+  - Document architectural patterns to follow
+
+inputs:
+  required:
+    - Feature description
+    - Component types to explore (UI, data, business logic)
+  optional:
+    - Similar features to compare
+    - Specific patterns to search for
+
+outputs:
+  format: markdown
+  deliverables:
+    - List of relevant existing components
+    - Reusable patterns identified
+    - Code references with file paths and line numbers
+    - Architecture insights
+    - Recommendations for implementation approach
+  destination: feature-dev/[feature-name]-exploration.md
+
+workflow:
+  phase: 2-exploration
+  trigger: After planning phase completes
+  next_agent: implementation-parallel
+  updates:
+    - "feature-dev/[feature-name].md: Add exploration findings section"
+
+search_patterns:
+  viewmodels: "**/*ViewModel.kt"
+  repositories: "**/repository/*.kt"
+  screens: "**/screens/*.kt"
+  daos: "**/database/*Dao.kt"
+  models: "**/models/*.kt"
+  managers: "**/manager/*.kt"
+  navigation: "**/navigation/NavGraph.kt"
+
+prompts:
+  system_context: |
+    You are exploring the RotDex Android codebase to find patterns and components
+    for a new feature. Focus on MVVM architecture, Hilt injection patterns,
+    Room database usage, and Compose UI patterns.
+
+  task_template: |
+    Explore codebase for: {feature_name}
+
+    Search for:
+    1. Similar features (e.g., if building collection screen, look at existing screens)
+    2. Data models and database entities
+    3. Repository patterns and methods
+    4. ViewModel state management approaches
+    5. UI composable patterns
+    6. Navigation integration examples
+
+    Provide file paths with line numbers for all references.
+
+context_files:
+  - CLAUDE.md
+  - app/src/main/java/com/rotdex/**/*.kt
+
+analysis_criteria:
+  pattern_consistency: Identify consistent patterns across features
+  di_patterns: How Hilt is used for dependency injection
+  state_management: How StateFlow/Flow is used in ViewModels
+  error_handling: How errors are propagated and displayed
+  testing_patterns: Existing test structure and approaches
+
+output_format:
+  sections:
+    - Similar Features Found
+    - Data Layer Patterns (Entities, DAOs)
+    - Repository Patterns
+    - ViewModel Patterns
+    - UI Patterns (Composables)
+    - Navigation Patterns
+    - Testing Patterns
+    - Recommendations

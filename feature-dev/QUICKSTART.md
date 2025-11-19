@@ -113,7 +113,7 @@ Message 1 with 4 Task tool calls:
 
 | What | Where |
 |------|-------|
-| Agent configs | `.claude/agents/*.json` |
+| Agent configs | `.claude/agents/*.yaml` |
 | Workflow docs | `feature-dev/agent-workflow.md` |
 | Feature status | `docs/features/STATUS.md` |
 | Workflow state | `feature-dev/workflow.json` |
