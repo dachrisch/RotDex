@@ -13,9 +13,11 @@ import com.rotdex.data.database.FusionHistoryDao
 import com.rotdex.data.manager.FusionManager
 import com.rotdex.data.manager.FusionStats
 import com.rotdex.data.models.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
@@ -220,39 +222,42 @@ class CardRepository(
 
     /**
      * Downloads image from URL and saves to local storage
+     * Uses IO dispatcher to avoid NetworkOnMainThreadException
      * @param imageUrl URL of the image to download
      * @return File object or null if download/save failed
      */
-    private fun downloadAndSaveImage(imageUrl: String): File? {
-        return try {
-            // Download image from URL
-            val url = URL(imageUrl)
-            val connection = url.openConnection()
-            connection.connect()
-            val inputStream = connection.getInputStream()
-            val imageBytes = inputStream.readBytes()
-            inputStream.close()
+    private suspend fun downloadAndSaveImage(imageUrl: String): File? {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Download image from URL
+                val url = URL(imageUrl)
+                val connection = url.openConnection()
+                connection.connect()
+                val inputStream = connection.getInputStream()
+                val imageBytes = inputStream.readBytes()
+                inputStream.close()
 
-            // Create unique filename
-            val timestamp = System.currentTimeMillis()
-            val filename = "card_${timestamp}.png"
+                // Create unique filename
+                val timestamp = System.currentTimeMillis()
+                val filename = "card_${timestamp}.png"
 
-            // Get app's private storage directory
-            val imagesDir = File(context.filesDir, "card_images")
-            if (!imagesDir.exists()) {
-                imagesDir.mkdirs()
+                // Get app's private storage directory
+                val imagesDir = File(context.filesDir, "card_images")
+                if (!imagesDir.exists()) {
+                    imagesDir.mkdirs()
+                }
+
+                // Save to file
+                val imageFile = File(imagesDir, filename)
+                FileOutputStream(imageFile).use { outputStream ->
+                    outputStream.write(imageBytes)
+                }
+
+                imageFile
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
             }
-
-            // Save to file
-            val imageFile = File(imagesDir, filename)
-            FileOutputStream(imageFile).use { outputStream ->
-                outputStream.write(imageBytes)
-            }
-
-            imageFile
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
         }
     }
 
