@@ -84,7 +84,6 @@ jobs:
 
     - name: Run Lint
       run: ./gradlew lintDebug
-      continue-on-error: true
 
     - name: Run Unit Tests
       run: ./gradlew testDebugUnitTest
