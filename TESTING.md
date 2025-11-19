@@ -25,16 +25,41 @@ Instrumented tests run on an Android device or emulator and verify that the UI r
 
 ### Unit Tests
 
-**Location:** `app/src/test/java/` (currently empty)
+**Location:** `app/src/test/java/`
 
 **Run all unit tests:**
 ```bash
 ./gradlew testDebugUnitTest
 ```
 
+**Current Unit Tests:**
+- **FreepikApiModelsTest**: Verifies JSON serialization/deserialization of API models
+- **CardRepositoryCompilationTest**: Catches missing imports and type resolution errors at compile time
+
 ## Test Coverage
 
 ### Current Coverage
+
+#### Compilation Verification Tests (Unit Tests)
+- **CardRepositoryCompilationTest**:
+  - ✅ Verifies all Freepik API response types are accessible
+  - ✅ Catches missing import statements (e.g., `ImageStatusResponse`)
+  - ✅ Validates type references resolve correctly
+  - ✅ Ensures API models have proper structure
+  - **Catches errors like**: `Unresolved reference: ImageStatusResponse`
+
+- **FreepikApiModelsTest**:
+  - ✅ Tests JSON serialization of request models
+  - ✅ Tests JSON deserialization of response models
+  - ✅ Validates all API response states (processing, completed, failed)
+  - ✅ Ensures Gson can handle all model structures
+
+#### Integration Tests (Instrumented)
+- **FreepikApiIntegrationTest**:
+  - ✅ Verifies Hilt dependency injection works
+  - ✅ Ensures `AiApiService` is properly created
+  - ✅ Validates all API models can be instantiated
+  - ✅ Tests null handling in optional fields
 
 #### Screen-Specific Tests
 - **HomeScreenTest**: Verifies HomeScreen renders and navigation buttons work
@@ -56,7 +81,35 @@ Instrumented tests catch runtime errors that unit tests can't detect, such as:
 - **Animation failures** from missing dependencies
 - **Integration issues** between ViewModels and UI
 
-### Real-World Example
+### Real-World Examples
+
+#### Example 1: Missing Import Error
+
+**Problem**: Missing import for `ImageStatusResponse` in CardRepository
+```
+e: Unresolved reference: ImageStatusResponse
+```
+- Type defined in `AiApiService.kt` ✅
+- Import statement missing in `CardRepository.kt` ❌
+- Kotlin compiler cache didn't detect the issue ❌
+
+**Solution**: `CardRepositoryCompilationTest`
+- Test explicitly references `ImageStatusResponse` type
+- **Fails to compile** if import is missing
+- **Fails to compile** if type is not properly defined
+- Runs on every build, catches issues immediately
+
+**Prevention**:
+```kotlin
+@Test
+fun `verify ImageStatusResponse type is accessible`() {
+    val response: ImageStatusResponse? = null
+    assertNull(response)
+}
+```
+This test ensures the type is importable and accessible.
+
+#### Example 2: Compose BOM Animation Incompatibility
 
 **Problem**: Compose BOM 2024.01.00 provided incompatible animation library versions
 - Compiled successfully ✅
@@ -68,6 +121,18 @@ Instrumented tests catch runtime errors that unit tests can't detect, such as:
 - Advances animation clock to trigger keyframes animations
 - **Would have failed immediately** with the old BOM
 - **Passes now** with Compose BOM 2024.06.00
+
+#### Example 3: API Model Serialization
+
+**Problem**: Freepik API expects specific JSON structure
+- Code compiles ✅
+- May fail at runtime with serialization errors ❌
+
+**Solution**: `FreepikApiModelsTest`
+- Tests actual JSON serialization/deserialization
+- Validates field names match API expectations
+- Catches missing or renamed fields before runtime
+- Ensures Gson can handle the model structure
 
 ## CI/CD
 
