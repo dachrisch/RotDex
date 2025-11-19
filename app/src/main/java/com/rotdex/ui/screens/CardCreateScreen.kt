@@ -218,17 +218,15 @@ fun CardCreateScreen(
                             )
 
                             // Display the generated card image
-                            state.card.imageUrl?.let { imagePath ->
-                                AsyncImage(
-                                    model = File(imagePath),
-                                    contentDescription = "Generated card: ${state.card.prompt}",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(300.dp)
-                                        .clip(RoundedCornerShape(12.dp)),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
+                            AsyncImage(
+                                model = File(state.card.imageUrl),
+                                contentDescription = "Generated card: ${state.card.prompt}",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(300.dp)
+                                    .clip(RoundedCornerShape(12.dp)),
+                                contentScale = ContentScale.Crop
+                            )
 
                             Text(
                                 text = "Rarity: ${state.card.rarity.name}",
