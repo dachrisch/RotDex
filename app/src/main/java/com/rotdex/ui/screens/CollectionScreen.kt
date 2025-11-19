@@ -71,7 +71,7 @@ fun CollectionScreen(
                                 showFilterMenu = false
                             }
                         )
-                        CardRarity.values().forEach { rarity ->
+                        CardRarity.entries.forEach { rarity ->
                             DropdownMenuItem(
                                 text = { Text(rarity.displayName) },
                                 onClick = {
@@ -90,7 +90,7 @@ fun CollectionScreen(
                         expanded = showSortMenu,
                         onDismissRequest = { showSortMenu = false }
                     ) {
-                        SortOrder.values().forEach { order ->
+                        SortOrder.entries.forEach { order ->
                             DropdownMenuItem(
                                 text = { Text(order.displayName) },
                                 onClick = {
@@ -314,7 +314,7 @@ fun CardGridItem(card: Card) {
  * Get color for rarity badge
  */
 @Composable
-fun getRarityColor(rarity: CardRarity): androidx.compose.ui.graphics.Color {
+private fun getRarityColor(rarity: CardRarity): androidx.compose.ui.graphics.Color {
     return when (rarity) {
         CardRarity.COMMON -> MaterialTheme.colorScheme.tertiary
         CardRarity.RARE -> MaterialTheme.colorScheme.primary

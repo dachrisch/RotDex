@@ -301,7 +301,7 @@ class CardRepository(
         val random = Random.nextFloat()
         var cumulative = 0f
 
-        CardRarity.values().forEach { rarity ->
+        CardRarity.entries.forEach { rarity ->
             cumulative += rarity.dropRate
             if (random <= cumulative) {
                 return rarity

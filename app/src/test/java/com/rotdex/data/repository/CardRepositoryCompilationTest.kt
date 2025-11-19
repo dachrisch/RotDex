@@ -83,7 +83,7 @@ class CardRepositoryCompilationTest {
         assertEquals(ImageJobStatus.FAILED, ImageJobStatus.valueOf("FAILED"))
 
         // Verify enum has exactly 3 values
-        assertEquals(3, ImageJobStatus.values().size)
+        assertEquals(3, ImageJobStatus.entries.size)
     }
 
     @Test
