@@ -50,12 +50,8 @@ class FreepikApiModelsTest {
                 "data": {
                     "task_id": "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
                     "status": "COMPLETED",
-                    "generated": [
-                        {
-                            "url": "https://example.com/image.png",
-                            "base64": null
-                        }
-                    ]
+                    "generated": ["https://example.com/image.png"],
+                    "has_nsfw": [false]
                 }
             }
         """.trimIndent()
@@ -66,7 +62,8 @@ class FreepikApiModelsTest {
         assertEquals("046b6c7f-0b8a-43b9-b35d-6489e6daee91", response.data.task_id)
         assertEquals("COMPLETED", response.data.status)
         assertEquals(1, response.data.generated.size)
-        assertEquals("https://example.com/image.png", response.data.generated.first().url)
+        assertEquals("https://example.com/image.png", response.data.generated.first())
+        assertEquals(false, response.data.has_nsfw?.first())
     }
 
     @Test

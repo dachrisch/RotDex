@@ -57,12 +57,8 @@ data class ImageGenerationResponse(
 data class ImageJobData(
     val task_id: String,
     val status: String,  // "IN_PROGRESS", "COMPLETED", "FAILED"
-    val generated: List<GeneratedImage>
-)
-
-data class GeneratedImage(
-    val url: String,
-    val base64: String? = null
+    val generated: List<String>,  // Array of image URLs
+    val has_nsfw: List<Boolean>? = null  // Optional NSFW detection results
 )
 
 /**

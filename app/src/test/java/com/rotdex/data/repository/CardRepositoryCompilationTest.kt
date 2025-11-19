@@ -43,29 +43,37 @@ class CardRepositoryCompilationTest {
     }
 
     @Test
-    fun `verify GeneratedImage type is accessible`() {
-        // This test will fail to compile if GeneratedImage is not properly defined
-        val generatedImage = GeneratedImage(
-            url = "https://example.com/image.png",
-            base64 = null
-        )
-        assertEquals("https://example.com/image.png", generatedImage.url)
-        assertNull(generatedImage.base64)
-    }
-
-    @Test
     fun `verify ImageJobData with generated images is accessible`() {
         // This test will fail to compile if the structure is not properly defined
         val jobData = ImageJobData(
             task_id = "test-task-id",
             status = "COMPLETED",
-            generated = listOf(
-                GeneratedImage(url = "https://example.com/image.png")
-            )
+            generated = listOf("https://example.com/image.png")
         )
         assertEquals("COMPLETED", jobData.status)
         assertEquals(1, jobData.generated.size)
-        assertEquals("https://example.com/image.png", jobData.generated.first().url)
+        assertEquals("https://example.com/image.png", jobData.generated.first())
+    }
+
+    @Test
+    fun `verify ImageJobData handles optional has_nsfw field`() {
+        // Test with has_nsfw field
+        val jobDataWithNsfw = ImageJobData(
+            task_id = "test-task-id",
+            status = "COMPLETED",
+            generated = listOf("https://example.com/image.png"),
+            has_nsfw = listOf(false)
+        )
+        assertNotNull(jobDataWithNsfw.has_nsfw)
+        assertEquals(false, jobDataWithNsfw.has_nsfw?.first())
+
+        // Test without has_nsfw field (null)
+        val jobDataWithoutNsfw = ImageJobData(
+            task_id = "test-task-id2",
+            status = "IN_PROGRESS",
+            generated = emptyList()
+        )
+        assertNull(jobDataWithoutNsfw.has_nsfw)
     }
 
     @Test
@@ -89,15 +97,11 @@ class CardRepositoryCompilationTest {
     @Test
     fun `verify all Freepik API response types have proper structure`() {
         // Create a full response chain to verify all types work together
-        val generatedImage = GeneratedImage(
-            url = "https://example.com/image.png",
-            base64 = null
-        )
-
         val jobData = ImageJobData(
             task_id = "task-123",
             status = "COMPLETED",
-            generated = listOf(generatedImage)
+            generated = listOf("https://example.com/image.png"),
+            has_nsfw = listOf(false)
         )
 
         val generationResponse = ImageGenerationResponse(
@@ -111,7 +115,8 @@ class CardRepositoryCompilationTest {
         assertEquals("task-123", generationResponse.data.task_id)
         assertEquals("COMPLETED", generationResponse.data.status)
         assertEquals(1, generationResponse.data.generated.size)
-        assertEquals("https://example.com/image.png", generationResponse.data.generated.first().url)
+        assertEquals("https://example.com/image.png", generationResponse.data.generated.first())
+        assertEquals(false, generationResponse.data.has_nsfw?.first())
 
         // Verify typealias works
         assertEquals("task-123", statusResponse.data.task_id)

@@ -121,8 +121,8 @@ class CardRepository(
 
                         when (result.status) {
                             "COMPLETED" -> {
-                                // Get the first generated image URL
-                                imageUrl = result.generated.firstOrNull()?.url
+                                // Get the first generated image URL (generated is a list of URL strings)
+                                imageUrl = result.generated.firstOrNull()
                                 Log.i(TAG, "Image generation completed! URL: $imageUrl")
                                 break
                             }
