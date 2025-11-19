@@ -87,10 +87,20 @@ class CardRepository(
             Log.d(TAG, "Calling Freepik API to start image generation")
             val response = aiApiService.generateImage(request)
 
+            Log.d(TAG, "API Response - Code: ${response.code()}, Success: ${response.isSuccessful}, Body: ${response.body()}")
+
             if (response.isSuccessful && response.body() != null) {
-                val jobId = response.body()!!.data.id
-                val status = response.body()!!.data.status
-                Log.i(TAG, "Image generation job created - ID: $jobId, Status: $status")
+                val responseData = response.body()!!.data
+                val jobId = responseData.id
+                val status = responseData.status
+                Log.i(TAG, "Image generation job created - ID: $jobId, Status: $status, Created at: ${responseData.created_at}")
+
+                // Validate job ID
+                if (jobId == null || jobId.isEmpty()) {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e(TAG, "Received null or empty job ID from Freepik API. Response body: ${response.body()}, Error body: $errorBody")
+                    return Result.failure(Exception("API returned null job ID. Unable to track image generation."))
+                }
 
                 // Poll for completion (max 30 seconds, check every 2 seconds)
                 var attempts = 0

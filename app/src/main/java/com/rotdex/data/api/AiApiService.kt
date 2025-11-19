@@ -54,9 +54,9 @@ data class ImageGenerationResponse(
 )
 
 data class ImageJobData(
-    val id: String,
+    val id: String?,
     val status: String,  // "processing", "completed", "failed"
-    val created_at: String
+    val created_at: String?
 )
 
 /**

@@ -39,6 +39,14 @@ class CardRepositoryCompilationTest {
         )
         assertEquals("test-id", jobData.id)
         assertEquals("processing", jobData.status)
+
+        // Test nullable id
+        val jobDataNullId = ImageJobData(
+            id = null,
+            status = "failed",
+            created_at = null
+        )
+        assertNull(jobDataNullId.id)
     }
 
     @Test
