@@ -9,10 +9,12 @@ import com.rotdex.data.database.FusionHistoryDao
 import com.rotdex.data.manager.FusionManager
 import com.rotdex.data.manager.FusionStats
 import com.rotdex.data.models.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.io.File
 import java.io.FileOutputStream
+import java.net.URL
 import kotlin.random.Random
 
 /**
@@ -66,22 +68,46 @@ class CardRepository(
                 ))
             }
 
-            // Call AI API to generate image
+            // Call Freepik API to start image generation
             val request = ImageGenerationRequest.fromPrompt(enhancePrompt(prompt))
-
             val response = aiApiService.generateImage(request)
 
             if (response.isSuccessful && response.body() != null) {
-                // Extract image from Gemini response
-                val candidate = response.body()!!.candidates?.firstOrNull()
-                    ?: return Result.failure(Exception("No response from Gemini"))
+                val jobId = response.body()!!.data.id
 
-                val imagePart = candidate.content.parts.firstOrNull { it.inlineData != null }
-                    ?: return Result.failure(Exception("No image generated"))
+                // Poll for completion (max 30 seconds, check every 2 seconds)
+                var attempts = 0
+                val maxAttempts = 15
+                var imageUrl: String? = null
 
-                // Decode base64 image and save to file
-                val imageFile = saveBase64Image(imagePart.inlineData!!.data)
-                    ?: return Result.failure(Exception("Failed to save image"))
+                while (attempts < maxAttempts) {
+                    delay(2000) // Wait 2 seconds between checks
+
+                    val statusResponse = aiApiService.checkImageStatus(jobId)
+                    if (statusResponse.isSuccessful && statusResponse.body() != null) {
+                        val result = statusResponse.body()!!.data
+
+                        when (result.status) {
+                            "completed" -> {
+                                imageUrl = result.image?.url
+                                break
+                            }
+                            "failed" -> {
+                                return Result.failure(Exception("Image generation failed"))
+                            }
+                            // "processing" - continue polling
+                        }
+                    }
+                    attempts++
+                }
+
+                if (imageUrl == null) {
+                    return Result.failure(Exception("Image generation timed out"))
+                }
+
+                // Download and save image from URL
+                val imageFile = downloadAndSaveImage(imageUrl)
+                    ?: return Result.failure(Exception("Failed to download image"))
 
                 // Determine random rarity
                 val rarity = determineRarity()
@@ -140,7 +166,45 @@ class CardRepository(
     }
 
     /**
-     * Saves base64-encoded image to a file
+     * Downloads image from URL and saves to local storage
+     * @param imageUrl URL of the image to download
+     * @return File object or null if download/save failed
+     */
+    private fun downloadAndSaveImage(imageUrl: String): File? {
+        return try {
+            // Download image from URL
+            val url = URL(imageUrl)
+            val connection = url.openConnection()
+            connection.connect()
+            val inputStream = connection.getInputStream()
+            val imageBytes = inputStream.readBytes()
+            inputStream.close()
+
+            // Create unique filename
+            val timestamp = System.currentTimeMillis()
+            val filename = "card_${timestamp}.png"
+
+            // Get app's private storage directory
+            val imagesDir = File(context.filesDir, "card_images")
+            if (!imagesDir.exists()) {
+                imagesDir.mkdirs()
+            }
+
+            // Save to file
+            val imageFile = File(imagesDir, filename)
+            FileOutputStream(imageFile).use { outputStream ->
+                outputStream.write(imageBytes)
+            }
+
+            imageFile
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    /**
+     * Saves base64-encoded image to a file (legacy method, kept for compatibility)
      * @param base64String Base64-encoded image data
      * @return File object or null if save failed
      */

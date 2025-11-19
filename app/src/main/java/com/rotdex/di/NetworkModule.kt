@@ -26,14 +26,10 @@ object NetworkModule {
             level = HttpLoggingInterceptor.Level.BODY
         }
 
-        // Add API key header for Google Gemini API
+        // Add API key header for Freepik API
         val authInterceptor = okhttp3.Interceptor { chain ->
-            val originalRequest = chain.request()
-            val urlWithKey = originalRequest.url.newBuilder()
-                .addQueryParameter("key", "AIzaSyBhqjdxnhUs8_xjBGoXcXInFr__TWFWGlk")
-                .build()
-            val request = originalRequest.newBuilder()
-                .url(urlWithKey)
+            val request = chain.request().newBuilder()
+                .addHeader("x-freepik-api-key", "FPSXffcc4eacf8e5d7348b79d256b5c8968b")
                 .build()
             chain.proceed(request)
         }
@@ -50,8 +46,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
-        // Google Gemini API base URL for image generation
-        val baseUrl = "https://generativelanguage.googleapis.com/v1beta/"
+        // Freepik API base URL for image generation
+        val baseUrl = "https://api.freepik.com/"
 
         return Retrofit.Builder()
             .baseUrl(baseUrl)

@@ -2,72 +2,79 @@ package com.rotdex.data.api
 
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.Headers
 import retrofit2.http.POST
+import retrofit2.http.Path
 
 /**
- * API service for AI image generation using Google Gemini native image generation
- * Uses Gemini 2.5 Flash Image model
+ * API service for AI image generation using Freepik Mystic API
+ * Uses Freepik's Mystic model for image generation
  */
 interface AiApiService {
 
     @Headers("Content-Type: application/json")
-    @POST("models/gemini-2.5-flash-image:generateContent")
+    @POST("v1/ai/mystic")
     suspend fun generateImage(
         @Body request: ImageGenerationRequest
     ): Response<ImageGenerationResponse>
+
+    @GET("v1/ai/mystic/{id}")
+    suspend fun checkImageStatus(
+        @Path("id") id: String
+    ): Response<ImageStatusResponse>
 }
 
 /**
- * Request model for Gemini generateContent API
+ * Request model for Freepik Mystic API
  */
 data class ImageGenerationRequest(
-    val contents: List<ContentRequest>
+    val prompt: String,
+    val aspect_ratio: String = "square_1_1",
+    val model: String = "realism",
+    val filter_nsfw: Boolean = true
 ) {
     companion object {
         fun fromPrompt(prompt: String): ImageGenerationRequest {
             return ImageGenerationRequest(
-                contents = listOf(
-                    ContentRequest(
-                        parts = listOf(PartRequest(text = prompt))
-                    )
-                )
+                prompt = prompt,
+                aspect_ratio = "square_1_1",
+                model = "realism",
+                filter_nsfw = true
             )
         }
     }
 }
 
-data class ContentRequest(
-    val parts: List<PartRequest>
+/**
+ * Response model from Freepik Mystic API (initial generation request)
+ */
+data class ImageGenerationResponse(
+    val data: ImageJobData
 )
 
-data class PartRequest(
-    val text: String
+data class ImageJobData(
+    val id: String,
+    val status: String,  // "processing", "completed", "failed"
+    val created_at: String
 )
 
 /**
- * Response model from Gemini generateContent API
+ * Response model for checking image generation status
  */
-data class ImageGenerationResponse(
-    val candidates: List<Candidate>? = null
+data class ImageStatusResponse(
+    val data: ImageJobResult
 )
 
-data class Candidate(
-    val content: Content
+data class ImageJobResult(
+    val id: String,
+    val status: String,  // "processing", "completed", "failed"
+    val image: ImageResult?
 )
 
-data class Content(
-    val parts: List<Part>
-)
-
-data class Part(
-    val text: String? = null,
-    val inlineData: InlineData? = null
-)
-
-data class InlineData(
-    val mimeType: String,
-    val data: String  // Base64-encoded image
+data class ImageResult(
+    val url: String,
+    val base64: String? = null
 )
 
 /**
