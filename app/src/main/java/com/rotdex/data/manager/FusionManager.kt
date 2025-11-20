@@ -11,6 +11,7 @@ import kotlin.random.Random
 class FusionManager(
     private val cardDao: CardDao,
     private val fusionHistoryDao: FusionHistoryDao,
+    private val achievementManager: AchievementManager,
     private val generateFusionCard: suspend (String) -> Result<Pair<String, Int>>,  // (imageUrl, rarity) from AI generation
     private val generateRpgAttributes: (String, CardRarity, Long) -> Triple<String, Int, Int>,  // (name, health, attack)
     private val generateBiography: (String, String, CardRarity) -> String  // (prompt, name, rarity) -> biography
@@ -87,6 +88,11 @@ class FusionManager(
             val previouslyDiscovered = fusionHistoryDao.isRecipeDiscovered(matchingRecipe.id) > 1 // >1 because we just inserted
             if (!previouslyDiscovered) matchingRecipe else null
         } else null
+
+        // Check achievements after successful fusion
+        achievementManager.checkFusionAchievements(isFirstRecipe = recipeDiscovered != null)
+        achievementManager.checkCollectionAchievements()
+        achievementManager.checkRarityAchievements(savedResultCard)
 
         return FusionResult(
             success = true,

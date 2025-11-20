@@ -32,12 +32,14 @@ class CardRepository(
     private val cardDao: CardDao,
     private val fusionHistoryDao: FusionHistoryDao,
     private val aiApiService: AiApiService,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val achievementManager: com.rotdex.data.manager.AchievementManager
 ) {
 
     private val fusionManager = FusionManager(
         cardDao = cardDao,
         fusionHistoryDao = fusionHistoryDao,
+        achievementManager = achievementManager,
         generateFusionCard = { fusionPrompt ->
             // Generate fusion card using AI without charging energy/coins
             generateFusionCardInternal(fusionPrompt)
@@ -224,6 +226,12 @@ class CardRepository(
 
                 if (savedCard != null) {
                     Log.i(TAG, "Card generation completed successfully! Card ID: $cardId, Rarity: ${rarity.name}")
+
+                    // Check achievements after successful card generation
+                    achievementManager.checkCollectionAchievements()
+                    achievementManager.checkRarityAchievements(savedCard)
+                    achievementManager.checkGenerationAchievements()
+
                     Result.success(savedCard)
                 } else {
                     Log.e(TAG, "Failed to retrieve saved card from database (ID: $cardId)")

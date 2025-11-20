@@ -6,6 +6,7 @@ import com.rotdex.data.database.CardDao
 import com.rotdex.data.database.FusionHistoryDao
 import com.rotdex.data.database.SpinHistoryDao
 import com.rotdex.data.database.UserProfileDao
+import com.rotdex.data.manager.AchievementManager
 import com.rotdex.data.repository.CardRepository
 import com.rotdex.data.repository.UserRepository
 import dagger.Module
@@ -29,9 +30,10 @@ object RepositoryModule {
         cardDao: CardDao,
         fusionHistoryDao: FusionHistoryDao,
         aiApiService: AiApiService,
-        userRepository: UserRepository
+        userRepository: UserRepository,
+        achievementManager: AchievementManager
     ): CardRepository {
-        return CardRepository(context, cardDao, fusionHistoryDao, aiApiService, userRepository)
+        return CardRepository(context, cardDao, fusionHistoryDao, aiApiService, userRepository, achievementManager)
     }
 
     @Provides
