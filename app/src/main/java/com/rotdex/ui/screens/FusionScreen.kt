@@ -37,6 +37,7 @@ import coil.compose.AsyncImage
 import com.rotdex.data.models.*
 import com.rotdex.ui.components.CardDisplayMode
 import com.rotdex.ui.components.StyledCardView
+import com.rotdex.ui.theme.getColor
 import com.rotdex.ui.viewmodel.FusionState
 import com.rotdex.ui.viewmodel.FusionViewModel
 import java.io.File
@@ -312,7 +313,7 @@ private fun FusionCardSlot(
             .clip(RoundedCornerShape(8.dp))
             .background(
                 color = if (card != null) {
-                    getRarityColor(card.rarity).copy(alpha = 0.2f)
+                    card.rarity.getColor().copy(alpha = 0.2f)
                 } else {
                     MaterialTheme.colorScheme.surfaceVariant
                 },
@@ -321,7 +322,7 @@ private fun FusionCardSlot(
             .border(
                 width = 2.dp,
                 color = if (card != null) {
-                    getRarityColor(card.rarity)
+                    card.rarity.getColor()
                 } else {
                     MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                 },
@@ -386,7 +387,7 @@ private fun RecipeCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
-        border = BorderStroke(1.dp, getRarityColor(recipe.guaranteedRarity))
+        border = BorderStroke(1.dp, recipe.guaranteedRarity.getColor())
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
@@ -406,7 +407,7 @@ private fun RecipeCard(
             Text(
                 text = "→ ${recipe.guaranteedRarity.displayName}",
                 style = MaterialTheme.typography.labelSmall,
-                color = getRarityColor(recipe.guaranteedRarity),
+                color = recipe.guaranteedRarity.getColor(),
                 fontWeight = FontWeight.Bold
             )
         }
@@ -468,12 +469,12 @@ private fun SelectableCardItem(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(getRarityColor(card.rarity).copy(alpha = 0.3f))
+                    .background(card.rarity.getColor().copy(alpha = 0.3f))
             )
             Icon(
                 imageVector = Icons.Default.CheckCircle,
                 contentDescription = "Selected",
-                tint = getRarityColor(card.rarity),
+                tint = card.rarity.getColor(),
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(4.dp)
@@ -519,18 +520,6 @@ private fun EmptyCardMessage() {
     }
 }
 
-/**
- * Get color for card rarity - matches CollectionScreen styling
- */
-@Composable
-private fun getRarityColor(rarity: CardRarity): Color {
-    return when (rarity) {
-        CardRarity.COMMON -> MaterialTheme.colorScheme.tertiary
-        CardRarity.RARE -> MaterialTheme.colorScheme.primary
-        CardRarity.EPIC -> MaterialTheme.colorScheme.secondary
-        CardRarity.LEGENDARY -> Color(0xFFFFD700) // Gold
-    }
-}
 
 /**
  * Fusion animation screen

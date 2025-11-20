@@ -34,7 +34,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,8 +49,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.rotdex.R
 import com.rotdex.data.models.Card
 import com.rotdex.data.models.CardRarity
+import com.rotdex.ui.theme.getColor
 import java.io.File
 
 /**
@@ -76,7 +86,7 @@ fun StyledCardView(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
-    val rarityColor = getRarityColor(card.rarity)
+    val rarityColor = card.rarity.getColor()
     val borderWidth = if (displayMode == CardDisplayMode.FULL) 4.dp else 2.dp
 
     Card(
@@ -106,12 +116,17 @@ fun StyledCardView(
         ) {
             // Card image
             AsyncImage(
-                model = File(card.imageUrl),
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(File(card.imageUrl))
+                    .crossfade(true)
+                    .build(),
                 contentDescription = card.name.ifEmpty { card.prompt },
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(16.dp)),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
+                placeholder = painterResource(R.drawable.card_placeholder),
+                error = painterResource(R.drawable.card_error)
             )
 
             // Gradient overlay at top and bottom for better text visibility
@@ -153,6 +168,17 @@ fun StyledCardView(
 }
 
 /**
+ * Format stat values for display, abbreviating large numbers
+ */
+private fun formatStatValue(value: Int): String {
+    return when {
+        value >= 1000000 -> "${value / 1000000}M"
+        value >= 1000 -> "${value / 1000}K"
+        else -> value.toString()
+    }
+}
+
+/**
  * HP and Attack stat indicators displayed as badges
  */
 @Composable
@@ -175,10 +201,11 @@ private fun BoxScope.StatIndicators(
         // HP (Health) indicator - top left
         StatBadge(
             icon = Icons.Default.Favorite,
-            value = card.health.toString(),
+            value = formatStatValue(card.health),
             backgroundColor = Color(0xFFE74C3C).copy(alpha = 0.9f),
             iconSize = iconSize,
-            fontSize = fontSize
+            fontSize = fontSize,
+            accessibilityLabel = "Health: ${card.health}"
         )
 
         Spacer(modifier = Modifier.weight(1f))
@@ -186,11 +213,12 @@ private fun BoxScope.StatIndicators(
         // Attack indicator - top right
         StatBadge(
             icon = null,  // Using text symbol for sword
-            value = card.attack.toString(),
+            value = formatStatValue(card.attack),
             backgroundColor = Color(0xFFF39C12).copy(alpha = 0.9f),
             iconSize = iconSize,
             fontSize = fontSize,
-            prefix = "⚔"
+            prefix = "⚔",
+            accessibilityLabel = "Attack: ${card.attack}"
         )
     }
 }
@@ -205,12 +233,23 @@ private fun StatBadge(
     backgroundColor: Color,
     iconSize: androidx.compose.ui.unit.Dp,
     fontSize: androidx.compose.ui.unit.TextUnit,
-    prefix: String? = null
+    prefix: String? = null,
+    accessibilityLabel: String? = null
 ) {
     Surface(
         color = backgroundColor,
         shape = RoundedCornerShape(12.dp),
-        shadowElevation = 4.dp
+        shadowElevation = 4.dp,
+        modifier = Modifier.then(
+            if (accessibilityLabel != null) {
+                Modifier.semantics {
+                    contentDescription = accessibilityLabel
+                    role = Role.Image
+                }
+            } else {
+                Modifier
+            }
+        )
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -350,7 +389,8 @@ private fun BiographySection(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = rarityColor,
-                letterSpacing = 1.sp
+                letterSpacing = 1.sp,
+                modifier = Modifier.semantics { heading() }
             )
         }
 
@@ -359,23 +399,13 @@ private fun BiographySection(
             text = biography,
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-            lineHeight = 20.sp
+            lineHeight = 20.sp,
+            maxLines = 10,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
 
-/**
- * Get color for card rarity
- */
-@Composable
-private fun getRarityColor(rarity: CardRarity): Color {
-    return when (rarity) {
-        CardRarity.COMMON -> Color(0xFF9E9E9E)      // Gray
-        CardRarity.RARE -> Color(0xFF4A90E2)        // Blue
-        CardRarity.EPIC -> Color(0xFF9B59B6)        // Purple
-        CardRarity.LEGENDARY -> Color(0xFFFFD700)   // Gold
-    }
-}
 
 /**
  * Preview for thumbnail mode
@@ -423,6 +453,157 @@ private fun StyledCardViewFullPreview() {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(500.dp)
+        )
+    }
+}
+
+/**
+ * Preview for COMMON rarity
+ */
+@Preview(showBackground = true, widthDp = 180, heightDp = 250)
+@Composable
+private fun StyledCardViewCommonPreview() {
+    MaterialTheme {
+        StyledCardView(
+            card = Card(
+                id = 3,
+                prompt = "A simple warrior",
+                imageUrl = "",
+                rarity = CardRarity.COMMON,
+                name = "Town Guard",
+                health = 50,
+                attack = 30,
+                biography = "A regular guard protecting the town"
+            ),
+            displayMode = CardDisplayMode.THUMBNAIL,
+            modifier = Modifier.size(width = 180.dp, height = 250.dp)
+        )
+    }
+}
+
+/**
+ * Preview for RARE rarity
+ */
+@Preview(showBackground = true, widthDp = 180, heightDp = 250)
+@Composable
+private fun StyledCardViewRarePreview() {
+    MaterialTheme {
+        StyledCardView(
+            card = Card(
+                id = 4,
+                prompt = "A skilled knight",
+                imageUrl = "",
+                rarity = CardRarity.RARE,
+                name = "Royal Knight",
+                health = 80,
+                attack = 60,
+                biography = "An elite knight serving the royal family"
+            ),
+            displayMode = CardDisplayMode.THUMBNAIL,
+            modifier = Modifier.size(width = 180.dp, height = 250.dp)
+        )
+    }
+}
+
+/**
+ * Preview for long name edge case
+ */
+@Preview(showBackground = true, widthDp = 180, heightDp = 250)
+@Composable
+private fun StyledCardViewLongNamePreview() {
+    MaterialTheme {
+        StyledCardView(
+            card = Card(
+                id = 5,
+                prompt = "A character with a very long name",
+                imageUrl = "",
+                rarity = CardRarity.LEGENDARY,
+                name = "Supreme Grand Master of the Ancient Order of Mystic Warriors",
+                health = 200,
+                attack = 150,
+                biography = "A legendary hero with an incredibly long title"
+            ),
+            displayMode = CardDisplayMode.THUMBNAIL,
+            modifier = Modifier.size(width = 180.dp, height = 250.dp)
+        )
+    }
+}
+
+/**
+ * Preview for empty biography
+ */
+@Preview(showBackground = true, widthDp = 320, heightDp = 500)
+@Composable
+private fun StyledCardViewEmptyBiographyPreview() {
+    MaterialTheme {
+        StyledCardView(
+            card = Card(
+                id = 6,
+                prompt = "A mysterious character",
+                imageUrl = "",
+                rarity = CardRarity.EPIC,
+                name = "Shadow Assassin",
+                health = 90,
+                attack = 110,
+                biography = ""
+            ),
+            displayMode = CardDisplayMode.FULL,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(500.dp)
+        )
+    }
+}
+
+/**
+ * Preview for high stat values (>999)
+ */
+@Preview(showBackground = true, widthDp = 180, heightDp = 250)
+@Composable
+private fun StyledCardViewHighStatsPreview() {
+    MaterialTheme {
+        StyledCardView(
+            card = Card(
+                id = 7,
+                prompt = "An overpowered character",
+                imageUrl = "",
+                rarity = CardRarity.LEGENDARY,
+                name = "Ultimate Champion",
+                health = 1500,
+                attack = 2000,
+                biography = "A champion with incredible power"
+            ),
+            displayMode = CardDisplayMode.THUMBNAIL,
+            modifier = Modifier.size(width = 180.dp, height = 250.dp)
+        )
+    }
+}
+
+/**
+ * Preview for dark mode
+ */
+@Preview(
+    showBackground = true,
+    widthDp = 180,
+    heightDp = 250,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES
+)
+@Composable
+private fun StyledCardViewDarkModePreview() {
+    MaterialTheme {
+        StyledCardView(
+            card = Card(
+                id = 8,
+                prompt = "A dark knight",
+                imageUrl = "",
+                rarity = CardRarity.EPIC,
+                name = "Dark Knight",
+                health = 120,
+                attack = 95,
+                biography = "A knight who fights in the shadows"
+            ),
+            displayMode = CardDisplayMode.THUMBNAIL,
+            modifier = Modifier.size(width = 180.dp, height = 250.dp)
         )
     }
 }
