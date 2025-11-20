@@ -7,9 +7,12 @@ import com.rotdex.data.models.CardRarity
 import com.rotdex.data.repository.CardRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
 /**
@@ -20,40 +23,50 @@ class CollectionViewModel @Inject constructor(
     private val cardRepository: CardRepository
 ) : ViewModel() {
 
-    private val _cards = MutableStateFlow<List<Card>>(emptyList())
-    val cards: StateFlow<List<Card>> = _cards.asStateFlow()
-
     private val _selectedRarity = MutableStateFlow<CardRarity?>(null)
     val selectedRarity: StateFlow<CardRarity?> = _selectedRarity.asStateFlow()
 
     private val _sortOrder = MutableStateFlow(SortOrder.NEWEST_FIRST)
     val sortOrder: StateFlow<SortOrder> = _sortOrder.asStateFlow()
 
-    init {
-        loadCards()
-    }
+    /**
+     * Reactive cards flow that automatically updates when repository, filter, or sort changes
+     * Uses combine() to avoid multiple Flow collectors
+     */
+    val cards: StateFlow<List<Card>> = combine(
+        cardRepository.getAllCards(),
+        _selectedRarity,
+        _sortOrder
+    ) { allCards, rarity, order ->
+        filterAndSortCards(allCards, rarity, order)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     /**
-     * Load all cards from the repository
+     * Reactive collection statistics that automatically updates when cards change
      */
-    private fun loadCards() {
-        viewModelScope.launch {
-            cardRepository.getAllCards().collect { allCards ->
-                _cards.value = filterAndSortCards(allCards)
-            }
-        }
-    }
+    val stats: StateFlow<CollectionStats> = cards.map { cardList ->
+        CollectionStats(
+            totalCards = cardList.size,
+            commonCount = cardList.count { it.rarity == CardRarity.COMMON },
+            rareCount = cardList.count { it.rarity == CardRarity.RARE },
+            epicCount = cardList.count { it.rarity == CardRarity.EPIC },
+            legendaryCount = cardList.count { it.rarity == CardRarity.LEGENDARY }
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = CollectionStats(0, 0, 0, 0, 0)
+    )
 
     /**
      * Filter cards by rarity
      */
     fun filterByRarity(rarity: CardRarity?) {
         _selectedRarity.value = rarity
-        viewModelScope.launch {
-            cardRepository.getAllCards().collect { allCards ->
-                _cards.value = filterAndSortCards(allCards)
-            }
-        }
     }
 
     /**
@@ -61,26 +74,25 @@ class CollectionViewModel @Inject constructor(
      */
     fun setSortOrder(order: SortOrder) {
         _sortOrder.value = order
-        viewModelScope.launch {
-            cardRepository.getAllCards().collect { allCards ->
-                _cards.value = filterAndSortCards(allCards)
-            }
-        }
     }
 
     /**
      * Apply filters and sorting to cards
      */
-    private fun filterAndSortCards(allCards: List<Card>): List<Card> {
+    private fun filterAndSortCards(
+        allCards: List<Card>,
+        rarity: CardRarity?,
+        order: SortOrder
+    ): List<Card> {
         var result = allCards
 
         // Filter by rarity if selected
-        _selectedRarity.value?.let { rarity ->
-            result = result.filter { it.rarity == rarity }
+        rarity?.let {
+            result = result.filter { card -> card.rarity == rarity }
         }
 
         // Sort
-        result = when (_sortOrder.value) {
+        result = when (order) {
             SortOrder.NEWEST_FIRST -> result.sortedByDescending { it.createdAt }
             SortOrder.OLDEST_FIRST -> result.sortedBy { it.createdAt }
             SortOrder.RARITY_HIGH_TO_LOW -> result.sortedByDescending { it.rarity.ordinal }
@@ -88,20 +100,6 @@ class CollectionViewModel @Inject constructor(
         }
 
         return result
-    }
-
-    /**
-     * Get collection statistics
-     */
-    fun getCollectionStats(): CollectionStats {
-        val allCards = _cards.value
-        return CollectionStats(
-            totalCards = allCards.size,
-            commonCount = allCards.count { it.rarity == CardRarity.COMMON },
-            rareCount = allCards.count { it.rarity == CardRarity.RARE },
-            epicCount = allCards.count { it.rarity == CardRarity.EPIC },
-            legendaryCount = allCards.count { it.rarity == CardRarity.LEGENDARY }
-        )
     }
 }
 
