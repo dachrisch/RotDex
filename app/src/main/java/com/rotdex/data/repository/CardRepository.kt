@@ -35,7 +35,14 @@ class CardRepository(
     private val userRepository: UserRepository
 ) {
 
-    private val fusionManager = FusionManager(cardDao, fusionHistoryDao)
+    private val fusionManager = FusionManager(
+        cardDao = cardDao,
+        fusionHistoryDao = fusionHistoryDao,
+        generateFusionCard = { fusionPrompt ->
+            // Generate fusion card using AI without charging energy/coins
+            generateFusionCardInternal(fusionPrompt)
+        }
+    )
 
     companion object {
         private const val TAG = "CardRepository"
@@ -237,6 +244,82 @@ class CardRepository(
     }
 
     // MARK: - Helper Functions
+
+    /**
+     * Generate a fusion card using AI (internal method for FusionManager)
+     * Does NOT charge energy or coins - fusion already has its own cost
+     * @param fusionPrompt Combined prompt describing the fusion character
+     * @return Result with Pair of (imageUrl, rarity ordinal)
+     */
+    private suspend fun generateFusionCardInternal(fusionPrompt: String): Result<Pair<String, Int>> {
+        return try {
+            Log.d(TAG, "Generating fusion card for prompt: $fusionPrompt")
+
+            // Call Freepik API to start image generation
+            val enhancedPrompt = enhancePrompt(fusionPrompt)
+            val request = ImageGenerationRequest.fromPrompt(enhancedPrompt)
+            val response = aiApiService.generateImage(request)
+
+            if (response.isSuccessful && response.body() != null) {
+                val responseData = response.body()!!.data
+                val taskId = responseData.task_id
+
+                if (taskId.isEmpty()) {
+                    return Result.failure(Exception("API returned empty task ID"))
+                }
+
+                // Poll for completion
+                var attempts = 0
+                val maxAttempts = 15
+                var imageUrl: String? = null
+
+                while (attempts < maxAttempts) {
+                    delay(2000)
+                    attempts++
+
+                    val statusResponse = aiApiService.checkImageStatus(taskId)
+
+                    if (statusResponse.isSuccessful && statusResponse.body() != null) {
+                        val result = statusResponse.body()!!.data
+
+                        when (result.status) {
+                            ImageJobStatus.COMPLETED -> {
+                                imageUrl = result.generated.firstOrNull()
+                                Log.i(TAG, "Fusion card image generated! URL: $imageUrl")
+                                break
+                            }
+                            ImageJobStatus.FAILED -> {
+                                return Result.failure(Exception("Fusion image generation failed"))
+                            }
+                            ImageJobStatus.IN_PROGRESS -> {
+                                // Continue polling
+                            }
+                        }
+                    }
+                }
+
+                if (imageUrl == null) {
+                    return Result.failure(Exception("Fusion image generation timed out"))
+                }
+
+                // Download and save image
+                val imageFile = downloadAndSaveImage(imageUrl)
+                if (imageFile == null) {
+                    return Result.failure(Exception("Failed to download fusion image"))
+                }
+
+                // Return image path and rarity (rarity is determined by FusionManager)
+                val rarity = determineRarity()
+                Result.success(imageFile.absolutePath to rarity.ordinal)
+            } else {
+                val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                Result.failure(Exception("Fusion API error ${response.code()}: $errorBody"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception during fusion card generation: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
 
     /**
      * Enhances user prompt for better AI generation with Gen Z brainrot aesthetic
