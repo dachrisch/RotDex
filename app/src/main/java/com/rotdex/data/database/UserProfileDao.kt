@@ -36,6 +36,9 @@ interface UserProfileDao {
     @Query("UPDATE user_profile SET gems = gems + :amount WHERE userId = :userId")
     suspend fun addGems(amount: Int, userId: String = "default_user")
 
+    @Query("UPDATE user_profile SET currentEnergy = currentEnergy + :amount WHERE userId = :userId")
+    suspend fun addEnergy(amount: Int, userId: String = "default_user")
+
     @Query("UPDATE user_profile SET brainrotCoins = :amount WHERE userId = :userId")
     suspend fun setCoins(amount: Int, userId: String = "default_user")
 
