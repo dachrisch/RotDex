@@ -72,7 +72,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.7.6")
 
     // Room Database for card collection
-    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-runtime:2.8.4")
     implementation("androidx.room:room-ktx:2.6.1")
 
     // Retrofit for AI API calls
