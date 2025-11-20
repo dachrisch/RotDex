@@ -31,8 +31,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.rotdex.data.models.Card
 import com.rotdex.data.models.CardRarity
+import com.rotdex.ui.theme.getColor
 import com.rotdex.ui.viewmodel.CollectionViewModel
 import com.rotdex.ui.viewmodel.SortOrder
+import com.rotdex.utils.DateUtils
 import java.io.File
 
 /**
@@ -46,7 +48,7 @@ fun CollectionScreen(
 ) {
     val cards by viewModel.cards.collectAsState()
     val selectedRarity by viewModel.selectedRarity.collectAsState()
-    val stats = viewModel.getCollectionStats()
+    val stats by viewModel.stats.collectAsState()
 
     var showFilterMenu by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
@@ -304,7 +306,7 @@ fun CardGridItem(
             ) {
                 // Rarity badge
                 Surface(
-                    color = getRarityColor(card.rarity),
+                    color = card.rarity.getColor(),
                     shape = RoundedCornerShape(4.dp)
                 ) {
                     Text(
@@ -327,19 +329,6 @@ fun CardGridItem(
                 )
             }
         }
-    }
-}
-
-/**
- * Get color for rarity badge
- */
-@Composable
-private fun getRarityColor(rarity: CardRarity): androidx.compose.ui.graphics.Color {
-    return when (rarity) {
-        CardRarity.COMMON -> MaterialTheme.colorScheme.tertiary
-        CardRarity.RARE -> MaterialTheme.colorScheme.primary
-        CardRarity.EPIC -> MaterialTheme.colorScheme.secondary
-        CardRarity.LEGENDARY -> androidx.compose.ui.graphics.Color(0xFFFFD700) // Gold
     }
 }
 
@@ -413,7 +402,7 @@ fun FullscreenCardView(
                     ) {
                         // Rarity badge
                         Surface(
-                            color = getRarityColor(card.rarity),
+                            color = card.rarity.getColor(),
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
@@ -436,7 +425,7 @@ fun FullscreenCardView(
 
                         // Created date
                         Text(
-                            text = "Created ${formatTimestamp(card.createdAt)}",
+                            text = "Created ${DateUtils.formatTimestamp(card.createdAt)}",
                             fontSize = 14.sp,
                             color = Color.White.copy(alpha = 0.7f)
                         )
@@ -444,25 +433,5 @@ fun FullscreenCardView(
                 }
             }
         }
-    }
-}
-
-/**
- * Format timestamp to readable date
- */
-private fun formatTimestamp(timestamp: Long): String {
-    val now = System.currentTimeMillis()
-    val diff = now - timestamp
-
-    val seconds = diff / 1000
-    val minutes = seconds / 60
-    val hours = minutes / 60
-    val days = hours / 24
-
-    return when {
-        days > 0 -> "$days day${if (days > 1) "s" else ""} ago"
-        hours > 0 -> "$hours hour${if (hours > 1) "s" else ""} ago"
-        minutes > 0 -> "$minutes minute${if (minutes > 1) "s" else ""} ago"
-        else -> "Just now"
     }
 }
