@@ -12,6 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -163,34 +164,136 @@ fun CardCreateScreen(
                     textAlign = TextAlign.Center
                 )
 
+                // Calculate extra coin cost
+                val charCount = promptText.length
+                val freeCharLimit = 20
+                val extraChars = (charCount - freeCharLimit).coerceAtLeast(0)
+                val coinCost = (extraChars + 9) / 10 // Ceiling division: 1 coin per 10 chars
+
                 OutlinedTextField(
                     value = promptText,
                     onValueChange = { promptText = it },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Card prompt") },
-                    placeholder = { Text("e.g., A cat with laser eyes playing guitar") },
+                    placeholder = { Text("e.g., cool wizard") },
                     minLines = 3,
                     maxLines = 5,
-                    enabled = generationState !is CardGenerationState.Generating
+                    enabled = generationState !is CardGenerationState.Generating,
+                    supportingText = {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "$charCount chars",
+                                color = if (charCount > freeCharLimit) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+
+                            if (charCount > freeCharLimit) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.MonetizationOn,
+                                        contentDescription = "Coins",
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = "+$coinCost",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
                 )
+
+                // Visual coin cost card (when over limit)
+                if (coinCost > 0) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Extra characters",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                )
+                                Text(
+                                    text = "$extraChars chars over limit ($freeCharLimit free)",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.MonetizationOn,
+                                    contentDescription = "Coin cost",
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "$coinCost",
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
 
                 // Generate Button
                 Button(
                     onClick = {
-                        viewModel.generateCard(promptText)
+                        viewModel.generateCard(promptText, coinCost)
                     },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = viewModel.hasEnoughEnergy() &&
                              promptText.isNotBlank() &&
-                             generationState !is CardGenerationState.Generating
+                             generationState !is CardGenerationState.Generating &&
+                             (coinCost == 0 || (userProfile?.brainrotCoins ?: 0) >= coinCost)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Bolt,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Generate Card (-${GameConfig.CARD_GENERATION_ENERGY_COST} Energy)")
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Bolt,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text("Generate Card (-${GameConfig.CARD_GENERATION_ENERGY_COST} Energy)")
+                        if (coinCost > 0) {
+                            Icon(
+                                imageVector = Icons.Default.MonetizationOn,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text("-$coinCost")
+                        }
+                    }
                 }
 
                 // State Messages

@@ -35,8 +35,9 @@ class CardCreateViewModel @Inject constructor(
     /**
      * Generate a new card with the given prompt
      * Checks and spends energy before generating
+     * Extra characters beyond 20 cost coins (1 coin per 10 chars)
      */
-    fun generateCard(prompt: String) {
+    fun generateCard(prompt: String, coinCost: Int = 0) {
         if (prompt.isBlank()) {
             _cardGenerationState.value = CardGenerationState.Error("Please enter a prompt")
             return
@@ -46,7 +47,7 @@ class CardCreateViewModel @Inject constructor(
             try {
                 _cardGenerationState.value = CardGenerationState.Generating
 
-                val result = cardRepository.generateCard(prompt)
+                val result = cardRepository.generateCard(prompt, coinCost)
 
                 result.fold(
                     onSuccess = { card ->

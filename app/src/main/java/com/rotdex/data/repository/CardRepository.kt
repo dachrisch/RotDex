@@ -65,12 +65,14 @@ class CardRepository(
     /**
      * Generates a new brainrot card using AI
      * Costs energy to generate - checks and spends energy before generating
+     * Extra characters beyond 20 cost coins (1 coin per 10 chars)
      * @param prompt User's input describing the card
+     * @param coinCost Optional coin cost for extra characters (default 0)
      * @return Result with the generated Card or an error
      */
-    suspend fun generateCard(prompt: String): Result<Card> {
+    suspend fun generateCard(prompt: String, coinCost: Int = 0): Result<Card> {
         return try {
-            Log.d(TAG, "Starting card generation for prompt: $prompt")
+            Log.d(TAG, "Starting card generation for prompt: $prompt (coin cost: $coinCost)")
 
             // Check and spend energy before generating
             Log.d(TAG, "Checking energy availability (need ${GameConfig.CARD_GENERATION_ENERGY_COST})")
@@ -82,6 +84,21 @@ class CardRepository(
                 ))
             }
             Log.d(TAG, "Energy spent successfully")
+
+            // Spend coins for extra characters if needed
+            if (coinCost > 0) {
+                Log.d(TAG, "Checking coin availability (need $coinCost for extra characters)")
+                val coinsSpent = userRepository.spendCoins(coinCost)
+                if (!coinsSpent) {
+                    // Refund energy since coins weren't spent
+                    userRepository.addEnergy(GameConfig.CARD_GENERATION_ENERGY_COST)
+                    Log.w(TAG, "Insufficient coins for extra characters")
+                    return Result.failure(Exception(
+                        "Not enough coins for extra characters. Need $coinCost coins."
+                    ))
+                }
+                Log.d(TAG, "Coins spent successfully for extra characters")
+            }
 
             // Call Freepik API to start image generation
             val enhancedPrompt = enhancePrompt(prompt)
@@ -222,14 +239,18 @@ class CardRepository(
     // MARK: - Helper Functions
 
     /**
-     * Enhances user prompt for better AI generation
+     * Enhances user prompt for better AI generation with Gen Z brainrot aesthetic
+     * Ensures generation of actual characters/figures rather than abstract art
      */
     private fun enhancePrompt(userPrompt: String): String {
         return """
-            Create a vibrant trading card style image featuring: $userPrompt
-            Art style: digital art, colorful, meme culture aesthetic, internet culture
-            Format: portrait orientation, clear focal point, suitable for a collectible card
-            Quality: high detail, eye-catching
+            Create a vibrant trading card style character portrait featuring: $userPrompt
+            IMPORTANT: Generate an actual character, person, or figure - NOT abstract art or patterns
+            Art style: Gen Z aesthetic, brainrot energy, maximalist, over-saturated colors, digital art, meme culture
+            Character design: Full body or portrait of a recognizable figure based on the prompt
+            Visual style: Chaotic energy, glitchy effects, neon colors, internet culture vibes
+            Format: Portrait orientation, clear character as focal point, suitable for collectible card
+            Quality: High detail, eye-catching, unhinged maximalist composition
         """.trimIndent()
     }
 
