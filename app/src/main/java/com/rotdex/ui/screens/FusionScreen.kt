@@ -30,12 +30,17 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import com.rotdex.R
 import com.rotdex.data.models.*
 import com.rotdex.ui.components.CardDisplayMode
 import com.rotdex.ui.components.StyledCardView
@@ -336,10 +341,15 @@ private fun FusionCardSlot(
     ) {
         if (card != null) {
             AsyncImage(
-                model = File(card.imageUrl),
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(File(card.imageUrl))
+                    .crossfade(true)
+                    .build(),
                 contentDescription = card.prompt,
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
+                placeholder = painterResource(R.drawable.card_placeholder),
+                error = painterResource(R.drawable.card_error)
             )
         } else {
             Text(
