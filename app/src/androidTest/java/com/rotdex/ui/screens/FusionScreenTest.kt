@@ -22,7 +22,8 @@ class FusionScreenTest {
         composeTestRule.setContent {
             RotDexTheme {
                 FusionScreen(
-                    onNavigateBack = {}
+                    onNavigateBack = {},
+                    onNavigateToCollection = {}
                 )
             }
         }
@@ -36,7 +37,8 @@ class FusionScreenTest {
         composeTestRule.setContent {
             RotDexTheme {
                 FusionScreen(
-                    onNavigateBack = {}
+                    onNavigateBack = {},
+                    onNavigateToCollection = {}
                 )
             }
         }
@@ -58,7 +60,8 @@ class FusionScreenTest {
         composeTestRule.setContent {
             RotDexTheme {
                 FusionScreen(
-                    onNavigateBack = { backPressed = true }
+                    onNavigateBack = { backPressed = true },
+                    onNavigateToCollection = {}
                 )
             }
         }

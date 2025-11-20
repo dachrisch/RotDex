@@ -69,7 +69,10 @@ class ComposeRuntimeErrorTest {
         testScreenRendersWithoutErrors(
             screenName = "FusionScreen"
         ) {
-            FusionScreen(onNavigateBack = {})
+            FusionScreen(
+                onNavigateBack = {},
+                onNavigateToCollection = {}
+            )
         }
     }
 
