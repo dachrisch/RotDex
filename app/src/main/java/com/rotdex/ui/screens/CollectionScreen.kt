@@ -56,6 +56,13 @@ fun CollectionScreen(
     var showSortMenu by remember { mutableStateOf(false) }
     var selectedCard by remember { mutableStateOf<Card?>(null) }
 
+    // Clear selected card when leaving the screen
+    DisposableEffect(Unit) {
+        onDispose {
+            selectedCard = null
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
