@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.rotdex.data.manager.FusionStats
 import com.rotdex.data.models.*
 import com.rotdex.data.repository.CardRepository
+import com.rotdex.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -16,7 +17,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class FusionViewModel @Inject constructor(
-    private val cardRepository: CardRepository
+    private val cardRepository: CardRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     // All available cards for fusion
@@ -136,24 +138,42 @@ class FusionViewModel @Inject constructor(
                     return@launch
                 }
 
+                // Spend coins before starting
+                val coinSpent = userRepository.spendCoins(GameConfig.FUSION_COIN_COST)
+                if (!coinSpent) {
+                    _fusionState.value = FusionState.Error("Not enough coins for fusion")
+                    return@launch
+                }
+
                 // Start fusion animation
                 _fusionState.value = FusionState.Fusing
 
-                // Simulate fusion animation duration
+                // Simulate fusion animation duration (initial delay)
                 delay(2500)
 
-                // Perform actual fusion
+                // Perform actual fusion (checks success internally)
                 val result = cardRepository.performFusion(cards)
 
-                // Update state with result
-                _fusionState.value = FusionState.Result(result)
+                if (result != null) {
+                    // Fusion succeeded - show result
+                    _fusionState.value = FusionState.Result(result)
 
-                // Clear selection
-                clearSelection()
+                    // Clear selection
+                    clearSelection()
 
-                // Reload stats and recipes
-                loadFusionStats()
-                loadDiscoveredRecipes()
+                    // Reload stats and recipes
+                    loadFusionStats()
+                    loadDiscoveredRecipes()
+                } else {
+                    // Fusion failed - add random delay (10-30s) then show failure
+                    val randomDelay = (10000..30000).random().toLong()
+                    delay(randomDelay)
+
+                    _fusionState.value = FusionState.Failed
+
+                    // Don't clear selection - cards weren't consumed
+                    // Don't reload stats - nothing changed
+                }
 
             } catch (e: Exception) {
                 _fusionState.value = FusionState.Error(e.message ?: "Fusion failed")
@@ -238,5 +258,6 @@ sealed class FusionState {
     object Idle : FusionState()
     object Fusing : FusionState()
     data class Result(val fusionResult: FusionResult) : FusionState()
+    object Failed : FusionState() // Fusion failed due to chance, cards not consumed
     data class Error(val message: String) : FusionState()
 }

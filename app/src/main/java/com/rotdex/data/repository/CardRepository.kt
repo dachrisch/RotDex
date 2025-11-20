@@ -543,8 +543,9 @@ class CardRepository(
 
     /**
      * Perform card fusion
+     * @return FusionResult if successful, null if fusion failed
      */
-    suspend fun performFusion(cards: List<Card>): FusionResult {
+    suspend fun performFusion(cards: List<Card>): FusionResult? {
         return fusionManager.performFusion(cards)
     }
 

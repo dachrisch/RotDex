@@ -25,10 +25,10 @@ class FusionManager(
 
     /**
      * Perform card fusion
-     * @param inputCards Cards to fuse (will be deleted)
-     * @return FusionResult with the result card and details
+     * @param inputCards Cards to fuse (will be deleted if successful)
+     * @return FusionResult with the result card and details, or null if fusion failed
      */
-    suspend fun performFusion(inputCards: List<Card>): FusionResult {
+    suspend fun performFusion(inputCards: List<Card>): FusionResult? {
         // Validate fusion
         val validation = validateFusion(inputCards)
         if (validation is FusionValidation.Error) {
@@ -43,12 +43,17 @@ class FusionManager(
         val recipeBonus = if (matchingRecipe != null) 0.2f else 0f // +20% for recipe match
         val finalSuccessRate = minOf(1f, baseSuccessRate + recipeBonus)
 
-        // Determine if fusion succeeded
+        // Determine if fusion succeeded BEFORE generating AI card (to save API tokens)
         val randomValue = Random.nextFloat()
         val wasSuccessful = randomValue < finalSuccessRate
 
-        // Generate result card
-        val resultCard = generateResultCard(inputCards, matchingRecipe, wasSuccessful)
+        // If fusion failed, return null without creating card or consuming inputs
+        if (!wasSuccessful) {
+            return null
+        }
+
+        // Fusion succeeded - generate result card with AI
+        val resultCard = generateResultCard(inputCards, matchingRecipe)
 
         // Save result card to database
         val resultCardId = cardDao.insertCard(resultCard)
@@ -67,12 +72,12 @@ class FusionManager(
             resultCardId = resultCardId,
             resultRarity = savedResultCard.rarity,
             fusionType = fusionType,
-            wasSuccessful = wasSuccessful,
+            wasSuccessful = true, // Always true here since we only reach this if successful
             recipeUsed = matchingRecipe?.id
         )
         fusionHistoryDao.insertFusion(fusionHistory)
 
-        // Delete input cards
+        // Delete input cards (only on success)
         inputCards.forEach { card ->
             cardDao.deleteCard(card)
         }
@@ -84,7 +89,7 @@ class FusionManager(
         } else null
 
         return FusionResult(
-            success = wasSuccessful,
+            success = true,
             resultCard = savedResultCard,
             rarityUpgraded = savedResultCard.rarity != inputCards.first().rarity,
             bonusApplied = matchingRecipe?.name,
@@ -95,26 +100,21 @@ class FusionManager(
     /**
      * Generate the result card from fusion
      * Creates a new AI-generated character that combines traits from parent cards
+     * Only called when fusion is successful
      */
     private suspend fun generateResultCard(
         inputCards: List<Card>,
-        recipe: FusionRecipe?,
-        wasSuccessful: Boolean
+        recipe: FusionRecipe?
     ): Card {
         val inputRarity = inputCards.first().rarity
 
-        // Determine result rarity
+        // Determine result rarity (always upgraded since fusion succeeded)
         val resultRarity = when {
             recipe != null -> {
-                // Recipe with guaranteed rarity, but can upgrade further on success
-                if (wasSuccessful) {
-                    FusionRules.getNextRarity(recipe.guaranteedRarity)
-                } else {
-                    recipe.guaranteedRarity
-                }
+                // Recipe with guaranteed rarity, upgrade it further on success
+                FusionRules.getNextRarity(recipe.guaranteedRarity)
             }
-            wasSuccessful -> FusionRules.getNextRarity(inputRarity)
-            else -> inputRarity
+            else -> FusionRules.getNextRarity(inputRarity)
         }
 
         // Create fusion prompt that combines parent characters

@@ -114,6 +114,12 @@ fun FusionScreen(
                     )
                 }
 
+                is FusionState.Failed -> {
+                    FusionFailedScreen(
+                        onTryAgain = { viewModel.resetFusionState() }
+                    )
+                }
+
                 is FusionState.Error -> {
                     ErrorScreen(
                         message = (fusionState as FusionState.Error).message,
@@ -629,24 +635,14 @@ private fun FusionResultScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Success/Failure message
+            // Success message
             Text(
-                text = if (result.success) "✨ Fusion Successful! ✨" else "⚠️ Fusion Complete - No Upgrade",
+                text = "✨ Fusion Successful! ✨",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                 textAlign = TextAlign.Center
             )
-
-            // Explanation text
-            if (!result.success) {
-                Text(
-                    text = "The fusion created a new character, but rarity stayed the same",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                    textAlign = TextAlign.Center
-                )
-            }
 
             // Recipe discovery (if any)
             result.recipeDiscovered?.let {
@@ -717,6 +713,73 @@ private fun FusionResultScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+/**
+ * Fusion failed screen - shown when fusion attempt failed due to chance
+ */
+@Composable
+private fun FusionFailedScreen(
+    onTryAgain: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.errorContainer,
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    )
+                )
+            )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            // Failed message
+            Text(
+                text = "❌ Fusion Failed!",
+                fontSize = 48.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "The fusion attempt was unsuccessful.\nYour cards were not consumed, but coins were spent.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                textAlign = TextAlign.Center,
+                lineHeight = 24.sp
+            )
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            // Try again button
+            Button(
+                onClick = onTryAgain,
+                modifier = Modifier
+                    .fillMaxWidth(0.7f)
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text(
+                    text = "Try Again",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
