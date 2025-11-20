@@ -1,7 +1,6 @@
 package com.rotdex.ui.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -58,14 +57,14 @@ fun NavGraph(
 
         composable(Screen.Collection.route) { backStackEntry ->
             val viewModel: CollectionViewModel = hiltViewModel()
-            // Use backStackEntry lifecycle to ensure fresh state on each navigation
-            DisposableEffect(backStackEntry) {
-                onDispose { }
+            // Force fresh state by keying on the backStackEntry instance
+            // When navigating away and back, a new backStackEntry is created
+            androidx.compose.runtime.key(backStackEntry) {
+                CollectionScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
-            CollectionScreen(
-                viewModel = viewModel,
-                onNavigateBack = { navController.popBackStack() }
-            )
         }
 
         composable(Screen.CardCreate.route) {

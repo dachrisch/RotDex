@@ -54,15 +54,7 @@ fun CollectionScreen(
 
     var showFilterMenu by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
-
-    // Use mutableStateOf without remember to ensure it's always null on recomposition
-    // This prevents state from being saved/restored across navigation
-    val selectedCard = remember(cards.size) { mutableStateOf<Card?>(null) }
-
-    // Reset selected card whenever we return to this screen
-    LaunchedEffect(Unit) {
-        selectedCard.value = null
-    }
+    var selectedCard by remember { mutableStateOf<Card?>(null) }
 
     Scaffold(
         topBar = {
@@ -203,7 +195,7 @@ fun CollectionScreen(
                         StyledCardView(
                             card = card,
                             displayMode = CardDisplayMode.THUMBNAIL,
-                            onClick = { selectedCard.value = card }
+                            onClick = { selectedCard = card }
                         )
                     }
                 }
@@ -212,10 +204,10 @@ fun CollectionScreen(
     }
 
     // Fullscreen card viewer
-    selectedCard.value?.let { card ->
+    selectedCard?.let { card ->
         FullscreenCardView(
             card = card,
-            onDismiss = { selectedCard.value = null }
+            onDismiss = { selectedCard = null }
         )
     }
 }
