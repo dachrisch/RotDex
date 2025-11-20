@@ -69,7 +69,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
 
     // Navigation
-    implementation("androidx.navigation:navigation-compose:2.7.6")
+    implementation("androidx.navigation:navigation-compose:2.9.6")
 
     // Room Database for card collection
     implementation("androidx.room:room-runtime:2.6.1")
