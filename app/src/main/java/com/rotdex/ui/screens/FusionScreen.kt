@@ -12,8 +12,10 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -49,7 +51,8 @@ import java.io.File
 @Composable
 fun FusionScreen(
     viewModel: FusionViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToCollection: () -> Unit
 ) {
     val allCards by viewModel.allCards.collectAsState()
     val selectedCards by viewModel.selectedCards.collectAsState()
@@ -101,7 +104,8 @@ fun FusionScreen(
                 is FusionState.Result -> {
                     FusionResultScreen(
                         result = (fusionState as FusionState.Result).fusionResult,
-                        onDismiss = { viewModel.resetFusionState() }
+                        onFuseAgain = { viewModel.resetFusionState() },
+                        onViewCollection = onNavigateToCollection
                     )
                 }
 
@@ -580,11 +584,6 @@ private fun FusionAnimation() {
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
-
-            CircularProgressIndicator(
-                modifier = Modifier.size(48.dp),
-                color = MaterialTheme.colorScheme.primary
-            )
         }
     }
 }
@@ -595,97 +594,109 @@ private fun FusionAnimation() {
 @Composable
 private fun FusionResultScreen(
     result: FusionResult,
-    onDismiss: () -> Unit
+    onFuseAgain: () -> Unit,
+    onViewCollection: () -> Unit
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Success/Failure indicator
-                Icon(
-                    imageVector = if (result.success) Icons.Default.CheckCircle else Icons.Default.Cancel,
-                    contentDescription = if (result.success) "Success" else "Failed",
-                    modifier = Modifier.size(80.dp),
-                    tint = if (result.success) Color(0xFF4CAF50) else Color(0xFFF44336)
-                )
-
-                Text(
-                    text = if (result.success) "Fusion Successful!" else "Fusion Failed",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (result.success) Color(0xFF4CAF50) else Color(0xFFF44336)
-                )
-
-                // Result card display
-                StyledCardView(
-                    card = result.resultCard,
-                    displayMode = CardDisplayMode.FULL,
-                    onClick = { },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(0.7f)
-                )
-
-                // Bonus info
-                result.bonusApplied?.let {
-                    Text(
-                        text = "✨ Recipe Bonus: $it",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFFFD700)
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primaryContainer,
+                        MaterialTheme.colorScheme.tertiaryContainer
                     )
-                }
+                )
+            )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Spacer(modifier = Modifier.height(16.dp))
 
-                // Recipe discovery
-                result.recipeDiscovered?.let {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFFFFD700).copy(alpha = 0.2f)
-                        )
+            // Success/Failure message
+            Text(
+                text = if (result.success) "✨ Fusion Successful! ✨" else "❌ Fusion Failed",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                textAlign = TextAlign.Center
+            )
+
+            // Recipe discovery (if any)
+            result.recipeDiscovered?.let {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFFFD700).copy(alpha = 0.3f)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "🎉 New Recipe Discovered!",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = it.name,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
+                        Text(
+                            text = "🎉 New Recipe Discovered!",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = it.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(8.dp))
+            // Result card display
+            StyledCardView(
+                card = result.resultCard,
+                displayMode = CardDisplayMode.FULL,
+                onClick = { },
+                modifier = Modifier.fillMaxWidth(0.9f)
+            )
 
-                Button(
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth()
+            // Bonus info
+            result.bonusApplied?.let {
+                Text(
+                    text = "✨ Recipe Bonus: $it",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFFFFD700),
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Action buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onFuseAgain,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                 ) {
-                    Text("Continue")
+                    Text("Fuse Again", fontSize = 16.sp)
+                }
+                Button(
+                    onClick = onViewCollection,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("View Collection", fontSize = 16.sp)
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

@@ -468,16 +468,6 @@ fun FullScreenGeneratingAnimation() {
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        LinearProgressIndicator(
-            modifier = Modifier
-                .fillMaxWidth(0.7f)
-                .height(6.dp)
-                .clip(RoundedCornerShape(3.dp)),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.primaryContainer
-        )
     }
 }
 
@@ -725,10 +715,13 @@ fun FullScreenCardReveal(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(24.dp),
+                    .padding(24.dp)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                Spacer(modifier = Modifier.height(16.dp))
+
                 // Success message
                 Text(
                     text = "✨ Card Created! ✨",
@@ -738,8 +731,6 @@ fun FullScreenCardReveal(
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(32.dp))
-
                 // Card display using StyledCardView
                 StyledCardView(
                     card = card,
@@ -748,7 +739,7 @@ fun FullScreenCardReveal(
                     modifier = Modifier.fillMaxWidth(0.9f)
                 )
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Action buttons
                 Row(
@@ -771,6 +762,8 @@ fun FullScreenCardReveal(
                         Text("View Collection", fontSize = 16.sp)
                     }
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }

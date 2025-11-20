@@ -88,7 +88,16 @@ fun NavGraph(
             val viewModel: FusionViewModel = hiltViewModel()
             FusionScreen(
                 viewModel = viewModel,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToCollection = {
+                    navController.navigate(Screen.Collection.route) {
+                        // Pop Fusion from back stack so back from Collection goes to Home
+                        popUpTo(Screen.Home.route) {
+                            inclusive = false
+                        }
+                        launchSingleTop = true
+                    }
+                }
             )
         }
     }

@@ -355,6 +355,24 @@ private fun BoxScope.Nameplate(
                 )
             }
         }
+
+        // Rarity tag at bottom-left corner (THUMBNAIL mode only)
+        if (displayMode == CardDisplayMode.THUMBNAIL) {
+            Surface(
+                color = Color.White.copy(alpha = 0.95f),
+                shape = RoundedCornerShape(topEnd = 8.dp),
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+            ) {
+                Text(
+                    text = card.rarity.displayName.first().toString(),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = rarityColor,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+        }
     }
 }
 
