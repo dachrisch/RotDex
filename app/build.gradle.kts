@@ -73,7 +73,7 @@ dependencies {
 
     // Room Database for card collection
     implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
+    implementation("androidx.room:room-ktx:2.8.4")
 
     // Retrofit for AI API calls
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
