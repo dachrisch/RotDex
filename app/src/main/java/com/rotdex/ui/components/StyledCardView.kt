@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -80,6 +81,14 @@ fun StyledCardView(
 
     Card(
         modifier = modifier
+            .then(
+                // In thumbnail mode, maintain aspect ratio to prevent stretching
+                if (displayMode == CardDisplayMode.THUMBNAIL) {
+                    Modifier.aspectRatio(0.75f) // Portrait card ratio (3:4)
+                } else {
+                    Modifier
+                }
+            )
             .shadow(
                 elevation = if (displayMode == CardDisplayMode.FULL) 16.dp else 8.dp,
                 shape = RoundedCornerShape(16.dp),
