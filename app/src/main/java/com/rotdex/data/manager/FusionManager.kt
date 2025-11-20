@@ -154,23 +154,47 @@ class FusionManager(
 
     /**
      * Creates a fusion prompt that describes a hybrid character combining traits from parent cards
+     * Uses brainrot Gen Z language for maximum chaos
      */
     private fun createFusionPrompt(inputCards: List<Card>, recipe: FusionRecipe?): String {
         val parentPrompts = inputCards.map { it.prompt }
 
+        // Brainrot fusion descriptors
+        val fusionTerms = listOf(
+            "absolutely unhinged baby of",
+            "cursed offspring spawned from",
+            "chaotic love child between",
+            "reality-breaking fusion of",
+            "no cap literal fusion baby of",
+            "sus hybrid created when",
+            "demonic mashup of",
+            "big yikes combination of"
+        ).random()
+
+        val actionTerms = listOf(
+            "had a baby",
+            "got freaky in the multiverse",
+            "collided at max aura",
+            "merged in the shadow realm",
+            "fused in the backrooms",
+            "combined their sigma energy",
+            "clashed in Ohio",
+            "united their gyatt powers"
+        ).random()
+
         return when {
             recipe != null -> {
-                // Recipe fusion: create themed combination
-                "A ${recipe.name} fusion combining: ${parentPrompts.take(2).joinToString(" and ")}"
+                // Recipe fusion: themed but still brainrot
+                "Absolutely unhinged ${recipe.name} fusion - what if ${parentPrompts.take(2).joinToString(" and ")} $actionTerms fr fr"
             }
             parentPrompts.size >= 2 -> {
-                // Two-card fusion: create hybrid/baby character
-                "A hybrid character that is a fusion of (${parentPrompts[0]}) and (${parentPrompts[1]}), " +
-                "combining their traits and abilities into a new mutated being"
+                // Two-card fusion: peak brainrot
+                "The $fusionTerms (${parentPrompts[0]}) and (${parentPrompts[1]}) - " +
+                "literally what happens when they $actionTerms, pure brainrot energy, mutated chaos character"
             }
             else -> {
-                // Single card or multiple: general fusion
-                "A mutated fusion character evolved from: ${parentPrompts.joinToString(", ")}"
+                // Multiple cards: maximum chaos
+                "Cursed fusion entity that spawned when ${parentPrompts.joinToString(", ")} all $actionTerms at the same time"
             }
         }
     }
