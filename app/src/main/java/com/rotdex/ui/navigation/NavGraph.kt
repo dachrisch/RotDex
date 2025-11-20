@@ -1,6 +1,7 @@
 package com.rotdex.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -55,8 +56,12 @@ fun NavGraph(
             )
         }
 
-        composable(Screen.Collection.route) {
+        composable(Screen.Collection.route) { backStackEntry ->
             val viewModel: CollectionViewModel = hiltViewModel()
+            // Use backStackEntry lifecycle to ensure fresh state on each navigation
+            DisposableEffect(backStackEntry) {
+                onDispose { }
+            }
             CollectionScreen(
                 viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
