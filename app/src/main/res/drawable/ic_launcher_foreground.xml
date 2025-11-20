@@ -4,69 +4,120 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Circular base -->
+    <!-- Chaotic background burst -->
     <path
-        android:fillColor="#E8DEF8"
-        android:fillAlpha="0.15"
-        android:pathData="M54,54m-32,0a32,32 0,1,1 64,0a32,32 0,1,1 -64,0"/>
+        android:fillColor="#FF1493"
+        android:fillAlpha="0.3"
+        android:pathData="M54,54 L64,34 L74,44 L84,24 L94,44 L74,54 L94,64 L74,64 L84,84 L64,74 L54,94 L44,74 L24,84 L34,64 L14,64 L34,54 L14,44 L34,34 L44,34 Z"/>
 
-    <!-- Central star - larger for round icon -->
+    <!-- Rotating card shape (background) -->
+    <path
+        android:fillColor="#6200EE"
+        android:fillAlpha="0.6"
+        android:pathData="M44,34 L68,38 L72,62 L48,58 Z"/>
+
+    <!-- Rotating card shape (foreground) - glitchy offset -->
+    <path
+        android:fillColor="#03DAC6"
+        android:fillAlpha="0.7"
+        android:pathData="M40,36 L64,40 L68,64 L44,60 Z"/>
+
+    <!-- Central crazy eye -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,54m-14,0a14,14 0,1,1 28,0a14,14 0,1,1 -28,0"/>
+
+    <!-- Iris - rainbow gradient effect with multiple circles -->
+    <path
+        android:fillColor="#FF0000"
+        android:pathData="M54,54m-10,0a10,10 0,1,1 20,0a10,10 0,1,1 -20,0"/>
+    <path
+        android:fillColor="#FF6B00"
+        android:pathData="M54,54m-7,0a7,7 0,1,1 14,0a7,7 0,1,1 -14,0"/>
+    <path
+        android:fillColor="#FFFF00"
+        android:pathData="M54,54m-5,0a5,5 0,1,1 10,0a5,5 0,1,1 -10,0"/>
+
+    <!-- Pupil -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M54,54m-3,0a3,3 0,1,1 6,0a3,3 0,1,1 -6,0"/>
+
+    <!-- Glitchy highlight -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M56,52m-1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+
+    <!-- Crazy rotating stars around -->
     <path
         android:fillColor="#FFD700"
-        android:pathData="M54,36 L58.18,48.82 L71.24,48.82 L60.53,56.68 L64.71,69.5 L54,61.64 L43.29,69.5 L47.47,56.68 L36.76,48.82 L49.82,48.82 Z"/>
+        android:pathData="M30,30 L32,36 L38,36 L33,40 L35,46 L30,42 L25,46 L27,40 L22,36 L28,36 Z"/>
 
-    <!-- Top sparkle -->
     <path
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.95"
-        android:pathData="M54,22 L56,27.5 L61.5,27.5 L57.25,30.5 L59.25,36 L54,32.5 L48.75,36 L50.75,30.5 L46.5,27.5 L52,27.5 Z"/>
+        android:fillColor="#FF1493"
+        android:pathData="M78,30 L80,36 L86,36 L81,40 L83,46 L78,42 L73,46 L75,40 L70,36 L76,36 Z"/>
 
-    <!-- Top-right sparkle -->
     <path
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.95"
-        android:pathData="M70,35 L71.5,38.5 L75,38.5 L72.25,40.5 L73.75,44 L70,41.5 L66.25,44 L67.75,40.5 L65,38.5 L68.5,38.5 Z"/>
+        android:fillColor="#00FF00"
+        android:pathData="M78,78 L80,72 L86,72 L81,68 L83,62 L78,66 L73,62 L75,68 L70,72 L76,72 Z"/>
 
-    <!-- Right sparkle -->
     <path
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.95"
-        android:pathData="M76,54 L77.5,57.5 L81,57.5 L78.25,59.5 L79.75,63 L76,60.5 L72.25,63 L73.75,59.5 L71,57.5 L74.5,57.5 Z"/>
+        android:fillColor="#FF6B00"
+        android:pathData="M30,78 L32,72 L38,72 L33,68 L35,62 L30,66 L25,62 L27,68 L22,72 L28,72 Z"/>
 
-    <!-- Bottom-right sparkle -->
+    <!-- Chaotic spiral effect top-right -->
     <path
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.95"
-        android:pathData="M70,73 L71.5,76.5 L75,76.5 L72.25,78.5 L73.75,82 L70,79.5 L66.25,82 L67.75,78.5 L65,76.5 L68.5,76.5 Z"/>
+        android:strokeColor="#FF00FF"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M75,25 Q80,20 85,25 Q90,30 85,35 Q80,40 75,35 Q70,30 75,25"/>
 
-    <!-- Bottom sparkle -->
+    <!-- Chaotic spiral effect bottom-left -->
     <path
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.95"
-        android:pathData="M54,86 L56,80.5 L61.5,80.5 L57.25,77.5 L59.25,72 L54,75.5 L48.75,72 L50.75,77.5 L46.5,80.5 L52,80.5 Z"/>
+        android:strokeColor="#00FFFF"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M33,83 Q28,88 23,83 Q18,78 23,73 Q28,68 33,73 Q38,78 33,83"/>
 
-    <!-- Bottom-left sparkle -->
+    <!-- Lightning bolt top -->
     <path
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.95"
-        android:pathData="M38,73 L39.5,76.5 L43,76.5 L40.25,78.5 L41.75,82 L38,79.5 L34.25,82 L35.75,78.5 L33,76.5 L36.5,76.5 Z"/>
+        android:fillColor="#FFFF00"
+        android:pathData="M54,18 L52,30 L56,30 L54,42 L60,32 L56,32 L58,22 Z"/>
 
-    <!-- Left sparkle -->
+    <!-- Lightning bolt bottom -->
     <path
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.95"
-        android:pathData="M32,54 L33.5,57.5 L37,57.5 L34.25,59.5 L35.75,63 L32,60.5 L28.25,63 L29.75,59.5 L27,57.5 L30.5,57.5 Z"/>
+        android:fillColor="#FF00FF"
+        android:pathData="M54,90 L52,78 L56,78 L54,66 L60,76 L56,76 L58,86 Z"/>
 
-    <!-- Top-left sparkle -->
+    <!-- Glitch bars -->
     <path
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.95"
-        android:pathData="M38,35 L39.5,38.5 L43,38.5 L40.25,40.5 L41.75,44 L38,41.5 L34.25,44 L35.75,40.5 L33,38.5 L36.5,38.5 Z"/>
+        android:fillColor="#00FFFF"
+        android:fillAlpha="0.5"
+        android:pathData="M20,48 L88,48 L88,52 L20,52 Z"/>
 
-    <!-- Circular border/ring -->
+    <path
+        android:fillColor="#FF00FF"
+        android:fillAlpha="0.5"
+        android:pathData="M20,56 L88,56 L88,60 L20,60 Z"/>
+
+    <!-- Crazy outer ring -->
     <path
         android:strokeColor="#FFD700"
-        android:strokeWidth="2.5"
+        android:strokeWidth="3"
         android:fillColor="#00000000"
-        android:pathData="M54,54m-36,0a36,36 0,1,1 72,0a36,36 0,1,1 -72,0"/>
+        android:pathData="M54,54m-38,0a38,38 0,1,1 76,0a38,38 0,1,1 -76,0"/>
+
+    <!-- Additional crazy segments on ring -->
+    <path
+        android:strokeColor="#FF00FF"
+        android:strokeWidth="4"
+        android:fillColor="#00000000"
+        android:pathData="M54,16 A38,38 0 0,1 85,28"/>
+
+    <path
+        android:strokeColor="#00FFFF"
+        android:strokeWidth="4"
+        android:fillColor="#00000000"
+        android:pathData="M23,28 A38,38 0 0,1 16,54"/>
+
 </vector>
