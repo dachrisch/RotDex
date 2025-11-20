@@ -334,17 +334,21 @@ class CardRepository(
 
     /**
      * Enhances user prompt for better AI generation with Gen Z brainrot aesthetic
-     * Ensures generation of actual characters/figures rather than abstract art
+     * Ensures generation of silly but realistic characters in natural urban environments
      */
     private fun enhancePrompt(userPrompt: String): String {
         return """
             Create a vibrant trading card style character portrait featuring: $userPrompt
-            IMPORTANT: Generate an actual character, person, or figure - NOT abstract art or patterns
+            IMPORTANT: Generate an actual character, person, or creature - NOT abstract art or patterns
+            Character must be silly, goofy, or absurd looking but still appear like they could realistically exist
+            Setting: Place character in a natural urban environment (street, cafe, house, park, beach, mall, subway, etc)
+            The background should be a real recognizable location with proper perspective and lighting
             Art style: Gen Z aesthetic, brainrot energy, maximalist, over-saturated colors, digital art, meme culture
-            Character design: Full body or portrait of a recognizable figure based on the prompt
-            Visual style: Chaotic energy, glitchy effects, neon colors, internet culture vibes
-            Format: Portrait orientation, clear character as focal point, suitable for collectible card
-            Quality: High detail, eye-catching, unhinged maximalist composition
+            Character design: Silly/goofy appearance but anatomically plausible, full body or portrait
+            Visual style: Chaotic energy, glitchy effects, neon colors, internet culture vibes, but grounded in reality
+            Format: Portrait orientation, clear character as focal point in believable environment, suitable for collectible card
+            Quality: High detail, eye-catching, unhinged maximalist composition with realistic urban backdrop
+            Think: "what if this ridiculous character was spotted in real life on the street"
         """.trimIndent()
     }
 
