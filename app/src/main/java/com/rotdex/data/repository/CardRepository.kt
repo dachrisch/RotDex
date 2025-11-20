@@ -41,6 +41,17 @@ class CardRepository(
         generateFusionCard = { fusionPrompt ->
             // Generate fusion card using AI without charging energy/coins
             generateFusionCardInternal(fusionPrompt)
+        },
+        generateRpgAttributes = { prompt, rarity, timestamp ->
+            // Generate RPG stats for fusion character
+            val name = generateCharacterName(prompt)
+            val health = generateHealth(rarity, timestamp)
+            val attack = generateAttack(rarity, timestamp)
+            Triple(name, health, attack)
+        },
+        generateBiography = { prompt, name, rarity ->
+            // Generate biography for fusion character
+            generateBiography(prompt, name, rarity)
         }
     )
 

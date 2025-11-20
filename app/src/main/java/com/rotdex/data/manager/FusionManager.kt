@@ -11,7 +11,9 @@ import kotlin.random.Random
 class FusionManager(
     private val cardDao: CardDao,
     private val fusionHistoryDao: FusionHistoryDao,
-    private val generateFusionCard: suspend (String) -> Result<Pair<String, Int>>  // (imageUrl, rarity) from AI generation
+    private val generateFusionCard: suspend (String) -> Result<Pair<String, Int>>,  // (imageUrl, rarity) from AI generation
+    private val generateRpgAttributes: (String, CardRarity, Long) -> Triple<String, Int, Int>,  // (name, health, attack)
+    private val generateBiography: (String, String, CardRarity) -> String  // (prompt, name, rarity) -> biography
 ) {
 
     /**
@@ -132,12 +134,21 @@ class FusionManager(
             allTags.addAll(recipe.guaranteedTags)
         }
 
+        // Generate RPG attributes for fusion character
+        val timestamp = System.currentTimeMillis()
+        val (characterName, health, attack) = generateRpgAttributes(fusionPrompt, resultRarity, timestamp)
+        val biography = generateBiography(fusionPrompt, characterName, resultRarity)
+
         return Card(
             prompt = fusionPrompt,
             imageUrl = imageUrl,
             rarity = resultRarity,
             tags = allTags.distinct(),
-            createdAt = System.currentTimeMillis()
+            createdAt = timestamp,
+            name = characterName,
+            health = health,
+            attack = attack,
+            biography = biography
         )
     }
 
