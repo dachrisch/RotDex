@@ -3,6 +3,7 @@ package com.rotdex.ui.screens
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,18 +22,24 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.rotdex.data.models.*
+import com.rotdex.ui.components.CardDisplayMode
+import com.rotdex.ui.components.StyledCardView
 import com.rotdex.ui.viewmodel.FusionState
 import com.rotdex.ui.viewmodel.FusionViewModel
+import java.io.File
 
 /**
  * Main fusion screen for combining cards
@@ -301,23 +308,33 @@ private fun FusionCardSlot(
 ) {
     Box(
         modifier = Modifier
-            .size(60.dp)
+            .size(80.dp)
+            .clip(RoundedCornerShape(8.dp))
             .background(
                 color = if (card != null) {
-                    getRarityColor(card.rarity).copy(alpha = 0.3f)
+                    getRarityColor(card.rarity).copy(alpha = 0.2f)
                 } else {
                     MaterialTheme.colorScheme.surfaceVariant
+                },
+                shape = RoundedCornerShape(8.dp)
+            )
+            .border(
+                width = 2.dp,
+                color = if (card != null) {
+                    getRarityColor(card.rarity)
+                } else {
+                    MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                 },
                 shape = RoundedCornerShape(8.dp)
             ),
         contentAlignment = Alignment.Center
     ) {
         if (card != null) {
-            Text(
-                text = card.rarity.displayName.first().toString(),
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = getRarityColor(card.rarity)
+            AsyncImage(
+                model = File(card.imageUrl),
+                contentDescription = card.prompt,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
             )
         } else {
             Text(
@@ -430,82 +447,39 @@ private fun SelectableCardItem(
     onClick: () -> Unit
 ) {
     val scale by animateFloatAsState(
-        targetValue = if (isSelected) 0.9f else 1f,
+        targetValue = if (isSelected) 0.95f else 1f,
         label = "scale"
     )
 
-    Card(
+    Box(
         modifier = Modifier
             .aspectRatio(0.7f)
             .scale(scale)
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) {
-                getRarityColor(card.rarity).copy(alpha = 0.3f)
-            } else {
-                MaterialTheme.colorScheme.surface
-            }
-        ),
-        border = BorderStroke(
-            width = if (isSelected) 3.dp else 1.dp,
-            color = if (isSelected) {
-                getRarityColor(card.rarity)
-            } else {
-                MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-            }
-        )
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(8.dp)
-            ) {
-                // Rarity indicator
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(
-                            color = getRarityColor(card.rarity),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = card.rarity.displayName.first().toString(),
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
-                    )
-                }
+        StyledCardView(
+            card = card,
+            displayMode = CardDisplayMode.THUMBNAIL,
+            onClick = onClick,
+            modifier = Modifier.fillMaxSize()
+        )
 
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Card prompt (truncated)
-                Text(
-                    text = card.prompt.take(30),
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    fontSize = 10.sp
-                )
-            }
-
-            // Selection checkmark
-            if (isSelected) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "Selected",
-                    tint = getRarityColor(card.rarity),
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                        .size(24.dp)
-                )
-            }
+        // Selection overlay and checkmark
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(getRarityColor(card.rarity).copy(alpha = 0.3f))
+            )
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = "Selected",
+                tint = getRarityColor(card.rarity),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .size(28.dp)
+                    .background(Color.White, CircleShape)
+            )
         }
     }
 }
@@ -546,14 +520,15 @@ private fun EmptyCardMessage() {
 }
 
 /**
- * Get color for card rarity
+ * Get color for card rarity - matches CollectionScreen styling
  */
+@Composable
 private fun getRarityColor(rarity: CardRarity): Color {
     return when (rarity) {
-        CardRarity.COMMON -> Color(0xFF9E9E9E)      // Gray
-        CardRarity.RARE -> Color(0xFF2196F3)        // Blue
-        CardRarity.EPIC -> Color(0xFF9C27B0)        // Purple
-        CardRarity.LEGENDARY -> Color(0xFFFFD700)   // Gold
+        CardRarity.COMMON -> MaterialTheme.colorScheme.tertiary
+        CardRarity.RARE -> MaterialTheme.colorScheme.primary
+        CardRarity.EPIC -> MaterialTheme.colorScheme.secondary
+        CardRarity.LEGENDARY -> Color(0xFFFFD700) // Gold
     }
 }
 
@@ -670,33 +645,15 @@ private fun FusionResultScreen(
                     color = if (result.success) Color(0xFF4CAF50) else Color(0xFFF44336)
                 )
 
-                // Result card info
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = getRarityColor(result.resultCard.rarity).copy(alpha = 0.2f)
-                    ),
-                    border = BorderStroke(2.dp, getRarityColor(result.resultCard.rarity))
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = result.resultCard.rarity.displayName,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = getRarityColor(result.resultCard.rarity)
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = result.resultCard.prompt,
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
+                // Result card display
+                StyledCardView(
+                    card = result.resultCard,
+                    displayMode = CardDisplayMode.FULL,
+                    onClick = { },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(0.7f)
+                )
 
                 // Bonus info
                 result.bonusApplied?.let {

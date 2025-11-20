@@ -4,44 +4,69 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Card background -->
-    <path
-        android:fillColor="#6750A4"
-        android:pathData="M32,24 L76,24 C78.21,24 80,25.79 80,28 L80,80 C80,82.21 78.21,84 76,84 L32,84 C29.79,84 28,82.21 28,80 L28,28 C28,25.79 29.79,24 32,24 Z"/>
-
-    <!-- Card inner glow -->
+    <!-- Circular base -->
     <path
         android:fillColor="#E8DEF8"
-        android:fillAlpha="0.2"
-        android:pathData="M34,28 L74,28 C75.1,28 76,28.9 76,30 L76,78 C76,79.1 75.1,80 74,80 L34,80 C32.9,80 32,79.1 32,78 L32,30 C32,28.9 32.9,28 34,28 Z"/>
+        android:fillAlpha="0.15"
+        android:pathData="M54,54m-32,0a32,32 0,1,1 64,0a32,32 0,1,1 -64,0"/>
 
-    <!-- Central star -->
+    <!-- Central star - larger for round icon -->
     <path
         android:fillColor="#FFD700"
-        android:pathData="M54,40 L57.09,49.51 L67.12,49.51 L59.02,55.49 L62.11,65 L54,59.02 L45.89,65 L48.98,55.49 L40.88,49.51 L50.91,49.51 Z"/>
+        android:pathData="M54,36 L58.18,48.82 L71.24,48.82 L60.53,56.68 L64.71,69.5 L54,61.64 L43.29,69.5 L47.47,56.68 L36.76,48.82 L49.82,48.82 Z"/>
 
-    <!-- Top-left sparkle -->
+    <!-- Top sparkle -->
     <path
         android:fillColor="#FFFFFF"
-        android:fillAlpha="0.9"
-        android:pathData="M40,34 L41.5,37.5 L45,37.5 L42.25,39.5 L43.75,43 L40,40.5 L36.25,43 L37.75,39.5 L35,37.5 L38.5,37.5 Z"/>
+        android:fillAlpha="0.95"
+        android:pathData="M54,22 L56,27.5 L61.5,27.5 L57.25,30.5 L59.25,36 L54,32.5 L48.75,36 L50.75,30.5 L46.5,27.5 L52,27.5 Z"/>
 
     <!-- Top-right sparkle -->
     <path
         android:fillColor="#FFFFFF"
-        android:fillAlpha="0.9"
-        android:pathData="M68,34 L69.5,37.5 L73,37.5 L70.25,39.5 L71.75,43 L68,40.5 L64.25,43 L65.75,39.5 L63,37.5 L66.5,37.5 Z"/>
+        android:fillAlpha="0.95"
+        android:pathData="M70,35 L71.5,38.5 L75,38.5 L72.25,40.5 L73.75,44 L70,41.5 L66.25,44 L67.75,40.5 L65,38.5 L68.5,38.5 Z"/>
+
+    <!-- Right sparkle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.95"
+        android:pathData="M76,54 L77.5,57.5 L81,57.5 L78.25,59.5 L79.75,63 L76,60.5 L72.25,63 L73.75,59.5 L71,57.5 L74.5,57.5 Z"/>
+
+    <!-- Bottom-right sparkle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.95"
+        android:pathData="M70,73 L71.5,76.5 L75,76.5 L72.25,78.5 L73.75,82 L70,79.5 L66.25,82 L67.75,78.5 L65,76.5 L68.5,76.5 Z"/>
 
     <!-- Bottom sparkle -->
     <path
         android:fillColor="#FFFFFF"
-        android:fillAlpha="0.9"
-        android:pathData="M54,70 L55.5,73.5 L59,73.5 L56.25,75.5 L57.75,79 L54,76.5 L50.25,79 L51.75,75.5 L49,73.5 L52.5,73.5 Z"/>
+        android:fillAlpha="0.95"
+        android:pathData="M54,86 L56,80.5 L61.5,80.5 L57.25,77.5 L59.25,72 L54,75.5 L48.75,72 L50.75,77.5 L46.5,80.5 L52,80.5 Z"/>
 
-    <!-- Card border -->
+    <!-- Bottom-left sparkle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.95"
+        android:pathData="M38,73 L39.5,76.5 L43,76.5 L40.25,78.5 L41.75,82 L38,79.5 L34.25,82 L35.75,78.5 L33,76.5 L36.5,76.5 Z"/>
+
+    <!-- Left sparkle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.95"
+        android:pathData="M32,54 L33.5,57.5 L37,57.5 L34.25,59.5 L35.75,63 L32,60.5 L28.25,63 L29.75,59.5 L27,57.5 L30.5,57.5 Z"/>
+
+    <!-- Top-left sparkle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.95"
+        android:pathData="M38,35 L39.5,38.5 L43,38.5 L40.25,40.5 L41.75,44 L38,41.5 L34.25,44 L35.75,40.5 L33,38.5 L36.5,38.5 Z"/>
+
+    <!-- Circular border/ring -->
     <path
         android:strokeColor="#FFD700"
-        android:strokeWidth="2"
+        android:strokeWidth="2.5"
         android:fillColor="#00000000"
-        android:pathData="M32,24 L76,24 C78.21,24 80,25.79 80,28 L80,80 C80,82.21 78.21,84 76,84 L32,84 C29.79,84 28,82.21 28,80 L28,28 C28,25.79 29.79,24 32,24 Z"/>
+        android:pathData="M54,54m-36,0a36,36 0,1,1 72,0a36,36 0,1,1 -72,0"/>
 </vector>

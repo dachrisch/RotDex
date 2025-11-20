@@ -161,12 +161,25 @@ class CardRepository(
                 val rarity = determineRarity()
                 Log.d(TAG, "Assigned rarity: ${rarity.name} (drop rate: ${rarity.dropRate})")
 
+                // Generate RPG character attributes
+                val timestamp = System.currentTimeMillis()
+                val characterName = generateCharacterName(prompt)
+                val health = generateHealth(rarity, timestamp)
+                val attack = generateAttack(rarity, timestamp)
+                val biography = generateBiography(prompt, characterName, rarity)
+
+                Log.d(TAG, "Generated RPG stats - Name: $characterName, HP: $health, ATK: $attack")
+
                 // Create and save card with file path
                 val card = Card(
                     prompt = prompt,
                     imageUrl = imageFile.absolutePath,  // Store local file path
                     rarity = rarity,
-                    createdAt = System.currentTimeMillis()
+                    createdAt = timestamp,
+                    name = characterName,
+                    health = health,
+                    attack = attack,
+                    biography = biography
                 )
                 Log.d(TAG, "Creating card in database with prompt: '$prompt', rarity: ${rarity.name}")
 
@@ -309,6 +322,95 @@ class CardRepository(
         }
 
         return CardRarity.COMMON // Fallback
+    }
+
+    /**
+     * Generates a character name based on the user's prompt
+     * Extracts or creates a fitting name from the prompt
+     */
+    private fun generateCharacterName(prompt: String): String {
+        // Clean up the prompt
+        val cleanPrompt = prompt.trim()
+
+        // Try to extract a proper name (capitalized words)
+        val words = cleanPrompt.split(Regex("\\s+"))
+        val capitalizedWords = words.filter { it.firstOrNull()?.isUpperCase() == true }
+
+        if (capitalizedWords.isNotEmpty()) {
+            // Use up to 3 capitalized words as the name
+            return capitalizedWords.take(3).joinToString(" ")
+        }
+
+        // If no capitalized words, create a name from the first 1-3 words
+        val nameWords = words.take(3)
+            .map { it.replaceFirstChar { char -> char.uppercaseChar() } }
+            .joinToString(" ")
+
+        return if (nameWords.isNotBlank()) nameWords else "Mysterious Being"
+    }
+
+    /**
+     * Generates health points based on rarity using deterministic randomness
+     * Common: 50-100, Rare: 100-150, Epic: 150-200, Legendary: 200-300
+     */
+    private fun generateHealth(rarity: CardRarity, seed: Long): Int {
+        val random = Random(seed)
+        return when (rarity) {
+            CardRarity.COMMON -> random.nextInt(50, 101)      // 50-100
+            CardRarity.RARE -> random.nextInt(100, 151)       // 100-150
+            CardRarity.EPIC -> random.nextInt(150, 201)       // 150-200
+            CardRarity.LEGENDARY -> random.nextInt(200, 301)  // 200-300
+        }
+    }
+
+    /**
+     * Generates attack power based on rarity using deterministic randomness
+     * Common: 25-50, Rare: 50-75, Epic: 75-100, Legendary: 100-150
+     */
+    private fun generateAttack(rarity: CardRarity, seed: Long): Int {
+        val random = Random(seed + 1) // Different seed offset for attack
+        return when (rarity) {
+            CardRarity.COMMON -> random.nextInt(25, 51)      // 25-50
+            CardRarity.RARE -> random.nextInt(50, 76)        // 50-75
+            CardRarity.EPIC -> random.nextInt(75, 101)       // 75-100
+            CardRarity.LEGENDARY -> random.nextInt(100, 151) // 100-150
+        }
+    }
+
+    /**
+     * Generates a short biography/backstory for the character
+     * Creates 2-3 sentences based on the prompt and rarity
+     */
+    private fun generateBiography(prompt: String, name: String, rarity: CardRarity): String {
+        val rarityDescriptor = when (rarity) {
+            CardRarity.COMMON -> "a wandering"
+            CardRarity.RARE -> "a skilled"
+            CardRarity.EPIC -> "a legendary"
+            CardRarity.LEGENDARY -> "an immortal"
+        }
+
+        val rarityPower = when (rarity) {
+            CardRarity.COMMON -> "modest abilities"
+            CardRarity.RARE -> "remarkable powers"
+            CardRarity.EPIC -> "extraordinary strength"
+            CardRarity.LEGENDARY -> "unmatched divine power"
+        }
+
+        // Extract key themes from prompt
+        val promptLower = prompt.lowercase()
+        val theme = when {
+            promptLower.contains("fire") || promptLower.contains("flame") -> "wielding flames"
+            promptLower.contains("ice") || promptLower.contains("frost") -> "commanding ice"
+            promptLower.contains("dark") || promptLower.contains("shadow") -> "mastering shadows"
+            promptLower.contains("light") || promptLower.contains("holy") -> "channeling light"
+            promptLower.contains("warrior") || promptLower.contains("knight") -> "skilled in combat"
+            promptLower.contains("mage") || promptLower.contains("wizard") -> "versed in arcane arts"
+            else -> "bearing mysterious powers"
+        }
+
+        return "$name is $rarityDescriptor adventurer $theme. " +
+               "Born from the essence of '$prompt', they possess $rarityPower. " +
+               "Their legend continues to grow with each battle."
     }
 
     // MARK: - Card Fusion Operations

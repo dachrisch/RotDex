@@ -31,6 +31,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.rotdex.data.models.Card
 import com.rotdex.data.models.CardRarity
+import com.rotdex.ui.components.CardDisplayMode
+import com.rotdex.ui.components.StyledCardView
 import com.rotdex.ui.viewmodel.CollectionViewModel
 import com.rotdex.ui.viewmodel.SortOrder
 import java.io.File
@@ -188,8 +190,9 @@ fun CollectionScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(cards) { card ->
-                        CardGridItem(
+                        StyledCardView(
                             card = card,
+                            displayMode = CardDisplayMode.THUMBNAIL,
                             onClick = { selectedCard = card }
                         )
                     }
@@ -268,82 +271,6 @@ fun StatItem(label: String, count: Int) {
 }
 
 /**
- * Individual card in the grid
- */
-@Composable
-fun CardGridItem(
-    card: Card,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(0.75f)
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column {
-            // Card image
-            AsyncImage(
-                model = File(card.imageUrl),
-                contentDescription = card.prompt,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
-                contentScale = ContentScale.Crop
-            )
-
-            // Card info
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp)
-            ) {
-                // Rarity badge
-                Surface(
-                    color = getRarityColor(card.rarity),
-                    shape = RoundedCornerShape(4.dp)
-                ) {
-                    Text(
-                        text = card.rarity.displayName,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Prompt (truncated)
-                Text(
-                    text = card.prompt,
-                    fontSize = 12.sp,
-                    maxLines = 2,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-/**
- * Get color for rarity badge
- */
-@Composable
-private fun getRarityColor(rarity: CardRarity): androidx.compose.ui.graphics.Color {
-    return when (rarity) {
-        CardRarity.COMMON -> MaterialTheme.colorScheme.tertiary
-        CardRarity.RARE -> MaterialTheme.colorScheme.primary
-        CardRarity.EPIC -> MaterialTheme.colorScheme.secondary
-        CardRarity.LEGENDARY -> androidx.compose.ui.graphics.Color(0xFFFFD700) // Gold
-    }
-}
-
-/**
  * Fullscreen card viewer
  */
 @Composable
@@ -362,14 +289,14 @@ fun FullscreenCardView(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black)
-                .clickable(onClick = onDismiss)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .statusBarsPadding()
                     .navigationBarsPadding(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
                 // Close button
                 Row(
@@ -389,59 +316,23 @@ fun FullscreenCardView(
                     }
                 }
 
-                // Card image (centered and scaled to fit)
-                AsyncImage(
-                    model = File(card.imageUrl),
-                    contentDescription = card.prompt,
+                // Styled card view in full mode
+                StyledCardView(
+                    card = card,
+                    displayMode = CardDisplayMode.FULL,
+                    onClick = { },
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    contentScale = ContentScale.Fit
+                        .fillMaxWidth(0.9f)
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 )
 
-                // Card details
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = Color.Black.copy(alpha = 0.8f)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Rarity badge
-                        Surface(
-                            color = getRarityColor(card.rarity),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                text = card.rarity.displayName.uppercase(),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                            )
-                        }
-
-                        // Prompt
-                        Text(
-                            text = card.prompt,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.White,
-                            lineHeight = 24.sp
-                        )
-
-                        // Created date
-                        Text(
-                            text = "Created ${formatTimestamp(card.createdAt)}",
-                            fontSize = 14.sp,
-                            color = Color.White.copy(alpha = 0.7f)
-                        )
-                    }
-                }
+                // Created date
+                Text(
+                    text = "Created ${formatTimestamp(card.createdAt)}",
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(top = 16.dp)
+                )
             }
         }
     }

@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.rotdex.data.models.GameConfig
+import com.rotdex.ui.components.CardDisplayMode
+import com.rotdex.ui.components.StyledCardView
 import com.rotdex.ui.viewmodel.CardCreateViewModel
 import com.rotdex.ui.viewmodel.CardGenerationState
 import java.io.File
@@ -68,237 +70,233 @@ fun CardCreateScreen(
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Energy Status Card
-            userProfile?.let { profile ->
+        // Show only generation animation when generating
+        if (generationState is CardGenerationState.Generating) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                FullScreenGeneratingAnimation()
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Energy Status Card
+                userProfile?.let { profile ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (profile.currentEnergy >= GameConfig.CARD_GENERATION_ENERGY_COST) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.errorContainer
+                            }
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Your Energy",
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Bolt,
+                                        contentDescription = "Energy",
+                                        modifier = Modifier.size(24.dp),
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "${profile.currentEnergy}/${profile.maxEnergy}",
+                                        fontSize = 24.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = "Cost per card",
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Bolt,
+                                        contentDescription = "Cost",
+                                        modifier = Modifier.size(24.dp),
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "${GameConfig.CARD_GENERATION_ENERGY_COST}",
+                                        fontSize = 24.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Prompt Input Section
+                Text(
+                    text = "What brainrot card do you want to create?",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+
+                OutlinedTextField(
+                    value = promptText,
+                    onValueChange = { promptText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Card prompt") },
+                    placeholder = { Text("e.g., A cat with laser eyes playing guitar") },
+                    minLines = 3,
+                    maxLines = 5,
+                    enabled = generationState !is CardGenerationState.Generating
+                )
+
+                // Generate Button
+                Button(
+                    onClick = {
+                        viewModel.generateCard(promptText)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = viewModel.hasEnoughEnergy() &&
+                             promptText.isNotBlank() &&
+                             generationState !is CardGenerationState.Generating
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Bolt,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Generate Card (-${GameConfig.CARD_GENERATION_ENERGY_COST} Energy)")
+                }
+
+                // State Messages
+                when (val state = generationState) {
+                    is CardGenerationState.InsufficientEnergy -> {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "⚠️ Not Enough Energy",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                Text(
+                                    text = "You need ${state.required} energy but only have ${state.current}",
+                                    fontSize = 14.sp,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+                                )
+                                Text(
+                                    text = "Energy regenerates every 4 hours",
+                                    fontSize = 12.sp,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
+
+                    is CardGenerationState.Error -> {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "❌ Error",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                Text(
+                                    text = state.message,
+                                    fontSize = 14.sp,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+                                )
+                                Button(
+                                    onClick = { viewModel.resetState() }
+                                ) {
+                                    Text("Try Again")
+                                }
+                            }
+                        }
+                    }
+
+                    else -> { /* Idle - no extra message */ }
+                }
+
+                // Info Card
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (profile.currentEnergy >= GameConfig.CARD_GENERATION_ENERGY_COST) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.errorContainer
-                        }
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Column {
-                            Text(
-                                text = "Your Energy",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.Bolt,
-                                    contentDescription = "Energy",
-                                    modifier = Modifier.size(24.dp),
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "${profile.currentEnergy}/${profile.maxEnergy}",
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = "Cost per card",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.Bolt,
-                                    contentDescription = "Cost",
-                                    modifier = Modifier.size(24.dp),
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "${GameConfig.CARD_GENERATION_ENERGY_COST}",
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Prompt Input Section
-            Text(
-                text = "What brainrot card do you want to create?",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-
-            OutlinedTextField(
-                value = promptText,
-                onValueChange = { promptText = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Card prompt") },
-                placeholder = { Text("e.g., A cat with laser eyes playing guitar") },
-                minLines = 3,
-                maxLines = 5,
-                enabled = generationState !is CardGenerationState.Generating
-            )
-
-            // Generate Button
-            Button(
-                onClick = {
-                    viewModel.generateCard(promptText)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = viewModel.hasEnoughEnergy() &&
-                         promptText.isNotBlank() &&
-                         generationState !is CardGenerationState.Generating
-            ) {
-                when (generationState) {
-                    is CardGenerationState.Generating -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colorScheme.onPrimary
+                        Text(
+                            text = "💡 Tips",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Generating...")
-                    }
-                    else -> {
-                        Icon(
-                            imageVector = Icons.Default.Bolt,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
+                        Text(
+                            text = "• Be specific and creative with your prompts",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Generate Card (-${GameConfig.CARD_GENERATION_ENERGY_COST} Energy)")
-                    }
-                }
-            }
-
-            // State Messages
-            when (val state = generationState) {
-                is CardGenerationState.Generating -> {
-                    GeneratingAnimation()
-                }
-
-                is CardGenerationState.InsufficientEnergy -> {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        Text(
+                            text = "• Energy regenerates automatically over time",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                         )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "⚠️ Not Enough Energy",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                            Text(
-                                text = "You need ${state.required} energy but only have ${state.current}",
-                                fontSize = 14.sp,
-                                textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
-                            )
-                            Text(
-                                text = "Energy regenerates every 4 hours",
-                                fontSize = 12.sp,
-                                textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.6f)
-                            )
-                        }
-                    }
-                }
-
-                is CardGenerationState.Error -> {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        Text(
+                            text = "• Higher rarity cards are more valuable",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                         )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "❌ Error",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                            Text(
-                                text = state.message,
-                                fontSize = 14.sp,
-                                textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
-                            )
-                            Button(
-                                onClick = { viewModel.resetState() }
-                            ) {
-                                Text("Try Again")
-                            }
-                        }
                     }
-                }
-
-                else -> { /* Idle - no extra message */ }
-            }
-
-            // Info Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "💡 Tips",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "• Be specific and creative with your prompts",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                    )
-                    Text(
-                        text = "• Energy regenerates automatically over time",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                    )
-                    Text(
-                        text = "• Higher rarity cards are more valuable",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                    )
                 }
             }
         }
@@ -315,6 +313,171 @@ fun CardCreateScreen(
             }
         )
     }
+    }
+}
+
+/**
+ * Full-screen animation displayed while card is being generated
+ * Takes up entire content area, centered and prominent
+ */
+@Composable
+fun FullScreenGeneratingAnimation() {
+    val infiniteTransition = rememberInfiniteTransition(label = "generating")
+
+    // Rotating animation for outer ring
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rotation"
+    )
+
+    // Pulsing animation for size
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 0.9f,
+        targetValue = 1.1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scale"
+    )
+
+    // Shimmer alpha animation
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+
+    // Animated status messages
+    var messageIndex by remember { mutableIntStateOf(0) }
+    val messages = listOf(
+        "✨ Conjuring magic...",
+        "🎨 Creating your card...",
+        "🔮 Channeling energy...",
+        "⚡ Almost there...",
+        "🎴 Finalizing..."
+    )
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(2000)
+            messageIndex = (messageIndex + 1) % messages.size
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // Animated generation visual - larger than inline version
+        Box(
+            modifier = Modifier.size(280.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            // Outer rotating ring
+            Box(
+                modifier = Modifier
+                    .size(250.dp)
+                    .rotate(rotation)
+                    .border(
+                        width = 6.dp,
+                        brush = Brush.sweepGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.secondary,
+                                MaterialTheme.colorScheme.tertiary,
+                                MaterialTheme.colorScheme.primary
+                            )
+                        ),
+                        shape = CircleShape
+                    )
+            )
+
+            // Pulsing center
+            Box(
+                modifier = Modifier
+                    .size(140.dp * scale)
+                    .alpha(alpha)
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.primaryContainer
+                            )
+                        ),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(70.dp)
+                        .rotate(-rotation),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            // Orbiting sparkles
+            for (i in 0..2) {
+                val angle = rotation + (i * 120f)
+                val offsetX = (125 * kotlin.math.cos(Math.toRadians(angle.toDouble()))).toFloat()
+                val offsetY = (125 * kotlin.math.sin(Math.toRadians(angle.toDouble()))).toFloat()
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .offset(x = offsetX.dp, y = offsetY.dp)
+                        .size(32.dp)
+                        .alpha(alpha),
+                    tint = MaterialTheme.colorScheme.secondary
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(48.dp))
+
+        // Animated status text
+        AnimatedContent(
+            targetState = messages[messageIndex],
+            transitionSpec = {
+                fadeIn(animationSpec = tween(500)) + slideInVertically { it / 2 } togetherWith
+                        fadeOut(animationSpec = tween(500)) + slideOutVertically { -it / 2 }
+            },
+            label = "message"
+        ) { message ->
+            Text(
+                text = message,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        LinearProgressIndicator(
+            modifier = Modifier
+                .fillMaxWidth(0.7f)
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp)),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.primaryContainer
+        )
     }
 }
 
@@ -577,47 +740,12 @@ fun FullScreenCardReveal(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Card image - large and centered
-                AsyncImage(
-                    model = File(card.imageUrl),
-                    contentDescription = "Generated card: ${card.prompt}",
-                    modifier = Modifier
-                        .fillMaxWidth(0.85f)
-                        .aspectRatio(1f)
-                        .clip(RoundedCornerShape(24.dp))
-                        .border(
-                            width = 4.dp,
-                            color = MaterialTheme.colorScheme.primary,
-                            shape = RoundedCornerShape(24.dp)
-                        ),
-                    contentScale = ContentScale.Crop
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Rarity badge
-                Surface(
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Text(
-                        text = card.rarity.name,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Prompt
-                Text(
-                    text = card.prompt,
-                    fontSize = 18.sp,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                // Card display using StyledCardView
+                StyledCardView(
+                    card = card,
+                    displayMode = CardDisplayMode.FULL,
+                    onClick = { },
+                    modifier = Modifier.fillMaxWidth(0.9f)
                 )
 
                 Spacer(modifier = Modifier.weight(1f))

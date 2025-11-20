@@ -68,7 +68,15 @@ fun NavGraph(
             CardCreateScreen(
                 viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToCollection = { navController.navigate(Screen.Collection.route) }
+                onNavigateToCollection = {
+                    navController.navigate(Screen.Collection.route) {
+                        // Pop CardCreate from back stack so back from Collection goes to Home
+                        popUpTo(Screen.Home.route) {
+                            inclusive = false
+                        }
+                        launchSingleTop = true
+                    }
+                }
             )
         }
 

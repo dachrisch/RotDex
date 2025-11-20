@@ -15,7 +15,7 @@ import com.rotdex.data.models.UserProfile
  */
 @Database(
     entities = [Card::class, UserProfile::class, SpinHistory::class, FusionHistory::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

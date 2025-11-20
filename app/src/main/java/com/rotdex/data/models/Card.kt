@@ -17,6 +17,12 @@ data class Card(
     val createdAt: Long = System.currentTimeMillis(),
     val isFavorite: Boolean = false,
 
+    // RPG-style card attributes
+    val name: String = "",
+    val health: Int = 100,
+    val attack: Int = 50,
+    val biography: String = "",
+
     // Optional metadata
     val tags: List<String> = emptyList(),
     val shareCount: Int = 0,
