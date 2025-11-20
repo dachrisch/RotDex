@@ -631,12 +631,22 @@ private fun FusionResultScreen(
 
             // Success/Failure message
             Text(
-                text = if (result.success) "✨ Fusion Successful! ✨" else "❌ Fusion Failed",
+                text = if (result.success) "✨ Fusion Successful! ✨" else "⚠️ Fusion Complete - No Upgrade",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                 textAlign = TextAlign.Center
             )
+
+            // Explanation text
+            if (!result.success) {
+                Text(
+                    text = "The fusion created a new character, but rarity stayed the same",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center
+                )
+            }
 
             // Recipe discovery (if any)
             result.recipeDiscovered?.let {
