@@ -8,7 +8,9 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.*
@@ -29,7 +31,7 @@ class CollectionViewModelTest {
 
     private lateinit var viewModel: CollectionViewModel
     private lateinit var cardRepository: CardRepository
-    private val testDispatcher = StandardTestDispatcher()
+    private val testDispatcher = UnconfinedTestDispatcher()
 
     @Before
     fun setup() {
@@ -47,13 +49,22 @@ class CollectionViewModelTest {
         Dispatchers.resetMain()
     }
 
+    /**
+     * Helper function to collect StateFlow values in tests
+     * Needed because WhileSubscribed sharing strategy requires active subscription
+     */
+    private suspend fun <T> kotlinx.coroutines.flow.StateFlow<T>.testValue(): T {
+        // Use first() to collect the current value, which activates the subscription
+        return this.first()
+    }
+
     @Test
     fun `initial state has empty cards list`() = runTest {
         // When
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
-        val cards = viewModel.cards.value
+        val cards = viewModel.cards.testValue()
         assertTrue(cards.isEmpty())
     }
 
@@ -80,13 +91,15 @@ class CollectionViewModelTest {
 
         // When - Create new ViewModel to trigger init
         val testViewModel = CollectionViewModel(cardRepository)
-        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Collect first emission to trigger the flow
+        val cards = testViewModel.cards.testValue()
 
         // Then
-        val cards = testViewModel.cards.value
         assertEquals(2, cards.size)
-        assertEquals(card1.id, cards[0].id)
-        assertEquals(card2.id, cards[1].id)
+        // Default sort is NEWEST_FIRST, so card2 (createdAt=2000) comes before card1 (createdAt=1000)
+        assertEquals(card2.id, cards[0].id)
+        assertEquals(card1.id, cards[1].id)
     }
 
     @Test
@@ -117,16 +130,19 @@ class CollectionViewModelTest {
         val allCards = listOf(commonCard1, rareCard, commonCard2)
         coEvery { cardRepository.getAllCards() } returns flowOf(allCards)
 
+        // Create new ViewModel with test data
+        val testViewModel = CollectionViewModel(cardRepository)
+
         // When
-        viewModel.filterByRarity(CardRarity.COMMON)
-        testDispatcher.scheduler.advanceUntilIdle()
+        testViewModel.filterByRarity(CardRarity.COMMON)
 
         // Then
-        val filteredCards = viewModel.cards.value
+        val filteredCards = testViewModel.cards.testValue()
         assertEquals(2, filteredCards.size)
         assertTrue(filteredCards.all { it.rarity == CardRarity.COMMON })
-        assertEquals(commonCard1.id, filteredCards[0].id)
-        assertEquals(commonCard2.id, filteredCards[1].id)
+        // Default sort is NEWEST_FIRST, so commonCard2 (3000) comes before commonCard1 (1000)
+        assertEquals(commonCard2.id, filteredCards[0].id)
+        assertEquals(commonCard1.id, filteredCards[1].id)
     }
 
     @Test
@@ -157,12 +173,14 @@ class CollectionViewModelTest {
         val allCards = listOf(commonCard, rareCard1, rareCard2)
         coEvery { cardRepository.getAllCards() } returns flowOf(allCards)
 
+        // Create new ViewModel with test data
+        val testViewModel = CollectionViewModel(cardRepository)
+
         // When
-        viewModel.filterByRarity(CardRarity.RARE)
-        testDispatcher.scheduler.advanceUntilIdle()
+        testViewModel.filterByRarity(CardRarity.RARE)
 
         // Then
-        val filteredCards = viewModel.cards.value
+        val filteredCards = testViewModel.cards.testValue()
         assertEquals(2, filteredCards.size)
         assertTrue(filteredCards.all { it.rarity == CardRarity.RARE })
     }
@@ -195,12 +213,14 @@ class CollectionViewModelTest {
         val allCards = listOf(commonCard, rareCard, epicCard)
         coEvery { cardRepository.getAllCards() } returns flowOf(allCards)
 
+        // Create new ViewModel with test data
+        val testViewModel = CollectionViewModel(cardRepository)
+
         // When
-        viewModel.filterByRarity(null)
-        testDispatcher.scheduler.advanceUntilIdle()
+        testViewModel.filterByRarity(null)
 
         // Then
-        val filteredCards = viewModel.cards.value
+        val filteredCards = testViewModel.cards.testValue()
         assertEquals(3, filteredCards.size)
     }
 
@@ -232,12 +252,14 @@ class CollectionViewModelTest {
         val allCards = listOf(oldCard, newestCard, newerCard)
         coEvery { cardRepository.getAllCards() } returns flowOf(allCards)
 
+        // Create new ViewModel with test data
+        val testViewModel = CollectionViewModel(cardRepository)
+
         // When
-        viewModel.setSortOrder(SortOrder.NEWEST_FIRST)
-        testDispatcher.scheduler.advanceUntilIdle()
+        testViewModel.setSortOrder(SortOrder.NEWEST_FIRST)
 
         // Then
-        val sortedCards = viewModel.cards.value
+        val sortedCards = testViewModel.cards.testValue()
         assertEquals(3, sortedCards.size)
         assertEquals(newestCard.id, sortedCards[0].id)
         assertEquals(newerCard.id, sortedCards[1].id)
@@ -272,12 +294,14 @@ class CollectionViewModelTest {
         val allCards = listOf(newestCard, oldCard, newerCard)
         coEvery { cardRepository.getAllCards() } returns flowOf(allCards)
 
+        // Create new ViewModel with test data
+        val testViewModel = CollectionViewModel(cardRepository)
+
         // When
-        viewModel.setSortOrder(SortOrder.OLDEST_FIRST)
-        testDispatcher.scheduler.advanceUntilIdle()
+        testViewModel.setSortOrder(SortOrder.OLDEST_FIRST)
 
         // Then
-        val sortedCards = viewModel.cards.value
+        val sortedCards = testViewModel.cards.testValue()
         assertEquals(3, sortedCards.size)
         assertEquals(oldCard.id, sortedCards[0].id)
         assertEquals(newerCard.id, sortedCards[1].id)
@@ -319,12 +343,14 @@ class CollectionViewModelTest {
         val allCards = listOf(commonCard, rareCard, legendaryCard, epicCard)
         coEvery { cardRepository.getAllCards() } returns flowOf(allCards)
 
+        // Create new ViewModel with test data
+        val testViewModel = CollectionViewModel(cardRepository)
+
         // When
-        viewModel.setSortOrder(SortOrder.RARITY_HIGH_TO_LOW)
-        testDispatcher.scheduler.advanceUntilIdle()
+        testViewModel.setSortOrder(SortOrder.RARITY_HIGH_TO_LOW)
 
         // Then
-        val sortedCards = viewModel.cards.value
+        val sortedCards = testViewModel.cards.testValue()
         assertEquals(4, sortedCards.size)
         assertEquals(CardRarity.LEGENDARY, sortedCards[0].rarity)
         assertEquals(CardRarity.EPIC, sortedCards[1].rarity)
@@ -367,12 +393,14 @@ class CollectionViewModelTest {
         val allCards = listOf(legendaryCard, epicCard, commonCard, rareCard)
         coEvery { cardRepository.getAllCards() } returns flowOf(allCards)
 
+        // Create new ViewModel with test data
+        val testViewModel = CollectionViewModel(cardRepository)
+
         // When
-        viewModel.setSortOrder(SortOrder.RARITY_LOW_TO_HIGH)
-        testDispatcher.scheduler.advanceUntilIdle()
+        testViewModel.setSortOrder(SortOrder.RARITY_LOW_TO_HIGH)
 
         // Then
-        val sortedCards = viewModel.cards.value
+        val sortedCards = testViewModel.cards.testValue()
         assertEquals(4, sortedCards.size)
         assertEquals(CardRarity.COMMON, sortedCards[0].rarity)
         assertEquals(CardRarity.RARE, sortedCards[1].rarity)
@@ -415,14 +443,15 @@ class CollectionViewModelTest {
         val allCards = listOf(commonCard1, commonCard2, commonCard3, rareCard)
         coEvery { cardRepository.getAllCards() } returns flowOf(allCards)
 
+        // Create new ViewModel with test data
+        val testViewModel = CollectionViewModel(cardRepository)
+
         // When - Filter by COMMON and sort by OLDEST_FIRST
-        viewModel.filterByRarity(CardRarity.COMMON)
-        testDispatcher.scheduler.advanceUntilIdle()
-        viewModel.setSortOrder(SortOrder.OLDEST_FIRST)
-        testDispatcher.scheduler.advanceUntilIdle()
+        testViewModel.filterByRarity(CardRarity.COMMON)
+        testViewModel.setSortOrder(SortOrder.OLDEST_FIRST)
 
         // Then - Should only have common cards, sorted oldest to newest
-        val result = viewModel.cards.value
+        val result = testViewModel.cards.testValue()
         assertEquals(3, result.size)
         assertTrue(result.all { it.rarity == CardRarity.COMMON })
         assertEquals(commonCard2.id, result[0].id) // Oldest (1000)
@@ -436,7 +465,7 @@ class CollectionViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When
-        val stats = viewModel.getCollectionStats()
+        val stats = viewModel.stats.testValue()
 
         // Then
         assertEquals(0, stats.totalCards)
@@ -493,7 +522,7 @@ class CollectionViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When
-        val stats = testViewModel.getCollectionStats()
+        val stats = testViewModel.stats.testValue()
 
         // Then
         assertEquals(5, stats.totalCards)
@@ -536,7 +565,7 @@ class CollectionViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When
-        val stats = testViewModel.getCollectionStats()
+        val stats = testViewModel.stats.testValue()
 
         // Then
         assertEquals(3, stats.totalCards)
