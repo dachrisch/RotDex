@@ -43,6 +43,8 @@ import coil3.request.crossfade
 import com.rotdex.R
 import com.rotdex.data.models.*
 import com.rotdex.ui.components.CardDisplayMode
+import com.rotdex.ui.components.FallingIconData
+import com.rotdex.ui.components.FallingIconsContainer
 import com.rotdex.ui.components.RotDexLogo
 import com.rotdex.ui.components.StyledCardView
 import com.rotdex.ui.theme.getColor
@@ -50,6 +52,7 @@ import com.rotdex.ui.utils.ActionVerbs
 import com.rotdex.ui.viewmodel.FusionState
 import com.rotdex.ui.viewmodel.FusionViewModel
 import java.io.File
+import java.util.UUID
 import kotlinx.coroutines.delay
 
 /**
@@ -69,7 +72,12 @@ fun FusionScreen(
     val matchingRecipe by viewModel.matchingRecipe.collectAsState()
     val publicRecipes by viewModel.publicRecipes.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
+    val fusionCost by viewModel.fusionCost.collectAsState()
 
+    // State for falling icon animations
+    var fallingIcons by remember { mutableStateOf<List<FallingIconData>>(emptyList()) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -112,8 +120,17 @@ fun FusionScreen(
                         validation = validation,
                         matchingRecipe = matchingRecipe,
                         publicRecipes = publicRecipes,
+                        fusionCost = fusionCost,
                         onCardClick = { viewModel.toggleCardSelection(it) },
-                        onFuse = { viewModel.performFusion() },
+                        onFuse = {
+                            // Trigger falling coin icon animation
+                            fallingIcons = fallingIcons + FallingIconData(
+                                id = UUID.randomUUID().toString(),
+                                icon = "🪙",
+                                startOffset = 0.dp
+                            )
+                            viewModel.performFusion()
+                        },
                         onClearSelection = { viewModel.clearSelection() },
                         onRecipeSelect = { viewModel.selectCardsForRecipe(it) }
                     )
@@ -146,6 +163,18 @@ fun FusionScreen(
             }
         }
     }
+
+    // Falling icon animations
+    FallingIconsContainer(
+        animations = fallingIcons,
+        onAnimationComplete = { id ->
+            fallingIcons = fallingIcons.filter { it.id != id }
+        },
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(end = 16.dp, top = 16.dp)
+    )
+    }
 }
 
 /**
@@ -158,6 +187,7 @@ private fun FusionMainContent(
     validation: FusionValidation?,
     matchingRecipe: FusionRecipe?,
     publicRecipes: List<FusionRecipe>,
+    fusionCost: Int,
     onCardClick: (Card) -> Unit,
     onFuse: () -> Unit,
     onClearSelection: () -> Unit,
@@ -174,6 +204,7 @@ private fun FusionMainContent(
             selectedCards = selectedCards,
             validation = validation,
             matchingRecipe = matchingRecipe,
+            fusionCost = fusionCost,
             onFuse = onFuse,
             onClear = onClearSelection
         )
@@ -213,6 +244,7 @@ private fun SelectedCardsDisplay(
     selectedCards: List<Card>,
     validation: FusionValidation?,
     matchingRecipe: FusionRecipe?,
+    fusionCost: Int,
     onFuse: () -> Unit,
     onClear: () -> Unit
 ) {
@@ -323,7 +355,7 @@ private fun SelectedCardsDisplay(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Text("⚗️ MASH 'EM UP! (-${GameConfig.FUSION_COIN_COST} 🪙)", fontWeight = FontWeight.ExtraBold)
+                    Text("⚗️ MASH 'EM UP! (-$fusionCost 🪙)", fontWeight = FontWeight.ExtraBold)
                 }
             }
         }

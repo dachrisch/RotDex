@@ -13,9 +13,22 @@ object GameConfig {
     const val CARD_GENERATION_ENERGY_COST = 1
 
     /**
-     * Fusion Costs
+     * Fusion Costs - Base cost that scales with card rarity
      */
-    const val FUSION_COIN_COST = 50
+    const val FUSION_BASE_COIN_COST = 50
+
+    /**
+     * Calculate fusion cost based on the highest rarity card in the fusion
+     */
+    fun getFusionCost(cards: List<Card>): Int {
+        val highestRarity = cards.maxOfOrNull { it.rarity } ?: CardRarity.COMMON
+        return when (highestRarity) {
+            CardRarity.COMMON -> FUSION_BASE_COIN_COST
+            CardRarity.RARE -> FUSION_BASE_COIN_COST * 2      // 100 coins
+            CardRarity.EPIC -> FUSION_BASE_COIN_COST * 4      // 200 coins
+            CardRarity.LEGENDARY -> FUSION_BASE_COIN_COST * 8 // 400 coins
+        }
+    }
 
     /**
      * Card Pack Costs (Future Implementation)

@@ -116,7 +116,11 @@ app/src/main/java/com/rotdex/
 - Managed by `FusionManager` class
 - Validation rules in `FusionRules` object
 - Recipes defined in `FusionRecipes` object (both public and secret recipes)
-- Fusion cost: 50 coins (`GameConfig.FUSION_COIN_COST`)
+- Fusion cost: Dynamic based on rarity (`GameConfig.getFusionCost(cards)`)
+  - Common cards: 50 coins
+  - Rare cards: 100 coins
+  - Epic cards: 200 coins
+  - Legendary cards: 400 coins
 - Success rate depends on card count and rarity tier
 - Matching recipe adds +20% success rate bonus
 - Input cards are deleted, result card is created

@@ -51,6 +51,10 @@ class FusionViewModel @Inject constructor(
     private val _matchingRecipe = MutableStateFlow<FusionRecipe?>(null)
     val matchingRecipe: StateFlow<FusionRecipe?> = _matchingRecipe.asStateFlow()
 
+    // Current fusion cost based on selected cards
+    private val _fusionCost = MutableStateFlow(GameConfig.FUSION_BASE_COIN_COST)
+    val fusionCost: StateFlow<Int> = _fusionCost.asStateFlow()
+
     // Public recipes (always visible)
     private val _publicRecipes = MutableStateFlow<List<FusionRecipe>>(emptyList())
     val publicRecipes: StateFlow<List<FusionRecipe>> = _publicRecipes.asStateFlow()
@@ -115,6 +119,12 @@ class FusionViewModel @Inject constructor(
         } else {
             null
         }
+        // Update fusion cost based on selected cards
+        _fusionCost.value = if (cards.isNotEmpty()) {
+            GameConfig.getFusionCost(cards)
+        } else {
+            GameConfig.FUSION_BASE_COIN_COST
+        }
     }
 
     /**
@@ -144,10 +154,11 @@ class FusionViewModel @Inject constructor(
                     return@launch
                 }
 
-                // Spend coins before starting
-                val coinSpent = userRepository.spendCoins(GameConfig.FUSION_COIN_COST)
+                // Spend coins before starting (based on card rarity)
+                val cost = GameConfig.getFusionCost(cards)
+                val coinSpent = userRepository.spendCoins(cost)
                 if (!coinSpent) {
-                    _fusionState.value = FusionState.Error("Not enough coins for fusion")
+                    _fusionState.value = FusionState.Error("Not enough coins for fusion (need $cost 🪙)")
                     return@launch
                 }
 

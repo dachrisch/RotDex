@@ -33,12 +33,15 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.rotdex.data.models.GameConfig
 import com.rotdex.ui.components.CardDisplayMode
+import com.rotdex.ui.components.FallingIconData
+import com.rotdex.ui.components.FallingIconsContainer
 import com.rotdex.ui.components.RotDexLogo
 import com.rotdex.ui.components.StyledCardView
 import com.rotdex.ui.utils.ActionVerbs
 import com.rotdex.ui.viewmodel.CardCreateViewModel
 import com.rotdex.ui.viewmodel.CardGenerationState
 import java.io.File
+import java.util.UUID
 import kotlinx.coroutines.delay
 
 /**
@@ -55,6 +58,9 @@ fun CardCreateScreen(
     val userProfile by viewModel.userProfile.collectAsState()
     val generationState by viewModel.cardGenerationState.collectAsState()
     var promptText by remember { mutableStateOf("") }
+
+    // State for falling icon animations
+    var fallingIcons by remember { mutableStateOf<List<FallingIconData>>(emptyList()) }
 
     Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
@@ -272,6 +278,12 @@ fun CardCreateScreen(
                 // Generate Button
                 Button(
                     onClick = {
+                        // Trigger falling energy icon animation
+                        fallingIcons = fallingIcons + FallingIconData(
+                            id = UUID.randomUUID().toString(),
+                            icon = "⚡",
+                            startOffset = 0.dp
+                        )
                         viewModel.generateCard(promptText, coinCost)
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -410,6 +422,17 @@ fun CardCreateScreen(
             }
         )
     }
+
+    // Falling icon animations
+    FallingIconsContainer(
+        animations = fallingIcons,
+        onAnimationComplete = { id ->
+            fallingIcons = fallingIcons.filter { it.id != id }
+        },
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(end = 16.dp, top = 16.dp)
+    )
     }
 }
 
