@@ -177,7 +177,7 @@ fun ConnectionTestScreen(
                 }
             }
 
-            Divider()
+            HorizontalDivider()
 
             // Host section
             Text(
@@ -195,7 +195,7 @@ fun ConnectionTestScreen(
                 Text("🔥 START HOSTING", fontWeight = FontWeight.Bold)
             }
 
-            Divider()
+            HorizontalDivider()
 
             // Client section
             Text(
@@ -251,7 +251,7 @@ fun ConnectionTestScreen(
                 }
             }
 
-            Divider()
+            HorizontalDivider()
 
             // Message testing (only when connected)
             if (connectionState is ConnectionState.Connected) {
@@ -289,7 +289,7 @@ fun ConnectionTestScreen(
                 }
             }
 
-            Divider()
+            HorizontalDivider()
 
             // Message log
             if (messages.isNotEmpty()) {

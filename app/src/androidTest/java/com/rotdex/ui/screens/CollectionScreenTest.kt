@@ -5,7 +5,9 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rotdex.data.models.Card
 import com.rotdex.data.models.CardRarity
+import com.rotdex.data.models.UserProfile
 import com.rotdex.data.repository.CardRepository
+import com.rotdex.data.repository.UserRepository
 import com.rotdex.ui.theme.RotDexTheme
 import com.rotdex.ui.viewmodel.CollectionStats
 import com.rotdex.ui.viewmodel.CollectionViewModel
@@ -30,9 +32,23 @@ class CollectionScreenTest {
      * Helper function to create a mock ViewModel with test data
      */
     private fun createMockViewModel(cards: List<Card> = emptyList()): CollectionViewModel {
-        val mockRepository = mockk<CardRepository>(relaxed = true)
-        coEvery { mockRepository.getAllCards() } returns flowOf(cards)
-        return CollectionViewModel(mockRepository)
+        val mockCardRepository = mockk<CardRepository>(relaxed = true)
+        val mockUserRepository = mockk<UserRepository>(relaxed = true)
+
+        coEvery { mockCardRepository.getAllCards() } returns flowOf(cards)
+
+        // Mock user profile
+        val mockUserProfile = UserProfile(
+            userId = "test_user",
+            currentEnergy = 5,
+            maxEnergy = 10,
+            lastEnergyRefresh = System.currentTimeMillis(),
+            brainrotCoins = 100,
+            gems = 10
+        )
+        coEvery { mockUserRepository.userProfile } returns flowOf(mockUserProfile)
+
+        return CollectionViewModel(mockCardRepository, mockUserRepository)
     }
 
     @Test
@@ -372,7 +388,11 @@ class CollectionScreenTest {
 
         composeTestRule.setContent {
             RotDexTheme {
-                CollectionStatsCard(stats = stats)
+                CollectionStatsCard(
+                    stats = stats,
+                    selectedRarity = null,
+                    onRarityClick = {}
+                )
             }
         }
 

@@ -39,7 +39,7 @@ abstract class CardDatabase : RoomDatabase() {
                     CardDatabase::class.java,
                     "rotdex_database"
                 )
-                    .fallbackToDestructiveMigration()
+                    .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                 INSTANCE = instance
                 instance

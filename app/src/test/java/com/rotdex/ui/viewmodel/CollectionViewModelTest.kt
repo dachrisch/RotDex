@@ -3,7 +3,9 @@ package com.rotdex.ui.viewmodel
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.rotdex.data.models.Card
 import com.rotdex.data.models.CardRarity
+import com.rotdex.data.models.UserProfile
 import com.rotdex.data.repository.CardRepository
+import com.rotdex.data.repository.UserRepository
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -31,17 +33,30 @@ class CollectionViewModelTest {
 
     private lateinit var viewModel: CollectionViewModel
     private lateinit var cardRepository: CardRepository
+    private lateinit var userRepository: UserRepository
     private val testDispatcher = UnconfinedTestDispatcher()
 
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         cardRepository = mockk()
+        userRepository = mockk()
 
         // Default: empty list of cards
         coEvery { cardRepository.getAllCards() } returns flowOf(emptyList())
 
-        viewModel = CollectionViewModel(cardRepository)
+        // Default: mock user profile with default values
+        val defaultUserProfile = UserProfile(
+            userId = "test_user",
+            currentEnergy = 5,
+            maxEnergy = 10,
+            lastEnergyRefresh = System.currentTimeMillis(),
+            brainrotCoins = 100,
+            gems = 10
+        )
+        coEvery { userRepository.userProfile } returns flowOf(defaultUserProfile)
+
+        viewModel = CollectionViewModel(cardRepository, userRepository)
     }
 
     @After
@@ -90,7 +105,7 @@ class CollectionViewModelTest {
         coEvery { cardRepository.getAllCards() } returns flowOf(testCards)
 
         // When - Create new ViewModel to trigger init
-        val testViewModel = CollectionViewModel(cardRepository)
+        val testViewModel = CollectionViewModel(cardRepository, userRepository)
 
         // Collect first emission to trigger the flow
         val cards = testViewModel.cards.testValue()
@@ -131,7 +146,7 @@ class CollectionViewModelTest {
         coEvery { cardRepository.getAllCards() } returns flowOf(allCards)
 
         // Create new ViewModel with test data
-        val testViewModel = CollectionViewModel(cardRepository)
+        val testViewModel = CollectionViewModel(cardRepository, userRepository)
 
         // When
         testViewModel.filterByRarity(CardRarity.COMMON)
@@ -174,7 +189,7 @@ class CollectionViewModelTest {
         coEvery { cardRepository.getAllCards() } returns flowOf(allCards)
 
         // Create new ViewModel with test data
-        val testViewModel = CollectionViewModel(cardRepository)
+        val testViewModel = CollectionViewModel(cardRepository, userRepository)
 
         // When
         testViewModel.filterByRarity(CardRarity.RARE)
@@ -214,7 +229,7 @@ class CollectionViewModelTest {
         coEvery { cardRepository.getAllCards() } returns flowOf(allCards)
 
         // Create new ViewModel with test data
-        val testViewModel = CollectionViewModel(cardRepository)
+        val testViewModel = CollectionViewModel(cardRepository, userRepository)
 
         // When
         testViewModel.filterByRarity(null)
@@ -253,7 +268,7 @@ class CollectionViewModelTest {
         coEvery { cardRepository.getAllCards() } returns flowOf(allCards)
 
         // Create new ViewModel with test data
-        val testViewModel = CollectionViewModel(cardRepository)
+        val testViewModel = CollectionViewModel(cardRepository, userRepository)
 
         // When
         testViewModel.setSortOrder(SortOrder.NEWEST_FIRST)
@@ -295,7 +310,7 @@ class CollectionViewModelTest {
         coEvery { cardRepository.getAllCards() } returns flowOf(allCards)
 
         // Create new ViewModel with test data
-        val testViewModel = CollectionViewModel(cardRepository)
+        val testViewModel = CollectionViewModel(cardRepository, userRepository)
 
         // When
         testViewModel.setSortOrder(SortOrder.OLDEST_FIRST)
@@ -344,7 +359,7 @@ class CollectionViewModelTest {
         coEvery { cardRepository.getAllCards() } returns flowOf(allCards)
 
         // Create new ViewModel with test data
-        val testViewModel = CollectionViewModel(cardRepository)
+        val testViewModel = CollectionViewModel(cardRepository, userRepository)
 
         // When
         testViewModel.setSortOrder(SortOrder.RARITY_HIGH_TO_LOW)
@@ -394,7 +409,7 @@ class CollectionViewModelTest {
         coEvery { cardRepository.getAllCards() } returns flowOf(allCards)
 
         // Create new ViewModel with test data
-        val testViewModel = CollectionViewModel(cardRepository)
+        val testViewModel = CollectionViewModel(cardRepository, userRepository)
 
         // When
         testViewModel.setSortOrder(SortOrder.RARITY_LOW_TO_HIGH)
@@ -444,7 +459,7 @@ class CollectionViewModelTest {
         coEvery { cardRepository.getAllCards() } returns flowOf(allCards)
 
         // Create new ViewModel with test data
-        val testViewModel = CollectionViewModel(cardRepository)
+        val testViewModel = CollectionViewModel(cardRepository, userRepository)
 
         // When - Filter by COMMON and sort by OLDEST_FIRST
         testViewModel.filterByRarity(CardRarity.COMMON)
@@ -518,7 +533,7 @@ class CollectionViewModelTest {
         coEvery { cardRepository.getAllCards() } returns flowOf(allCards)
 
         // Create new ViewModel with test cards
-        val testViewModel = CollectionViewModel(cardRepository)
+        val testViewModel = CollectionViewModel(cardRepository, userRepository)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When
@@ -561,7 +576,7 @@ class CollectionViewModelTest {
         coEvery { cardRepository.getAllCards() } returns flowOf(allCards)
 
         // Create new ViewModel with test cards
-        val testViewModel = CollectionViewModel(cardRepository)
+        val testViewModel = CollectionViewModel(cardRepository, userRepository)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // When
