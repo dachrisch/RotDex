@@ -69,48 +69,12 @@ fun DailyRewardsScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // User stats
-            userProfile?.let { profile ->
-                UserStatsCard(profile)
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // Streak display
-            StreakCard(
-                streakState = streakState,
-                currentStreak = userProfile?.currentStreak ?: 0,
-                longestStreak = userProfile?.longestStreak ?: 0,
-                nextMilestone = nextMilestone,
-                onUseProtection = { viewModel.useStreakProtection() },
-                onDeclineProtection = { viewModel.declineProtection() }
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
             // Spin wheel
             SpinWheelCard(
                 spinState = spinState,
                 canSpin = userProfile?.let { !it.hasUsedSpinToday } ?: false,
                 onSpin = { viewModel.performSpin() },
                 onDismissResult = { viewModel.resetSpinState() }
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Upcoming milestones
-            if (nextMilestone != null) {
-                NextMilestoneCard(milestone = nextMilestone!!)
-            }
-        }
-    }
-
-    // Milestone reward dialog
-    if (streakState is StreakState.StreakIncreased) {
-        val state = streakState as StreakState.StreakIncreased
-        if (state.milestone != null) {
-            MilestoneRewardDialog(
-                milestone = state.milestone,
-                onDismiss = { /* Keep showing until user navigates away */ }
             )
         }
     }
@@ -418,9 +382,10 @@ fun SpinWheelDisplay() {
         modifier = Modifier.size(250.dp),
         contentAlignment = Alignment.Center
     ) {
+        val rewards = RewardConfig.SPIN_REWARDS
+        val segmentAngle = 360f / rewards.size
+
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val rewards = RewardConfig.SPIN_REWARDS
-            val segmentAngle = 360f / rewards.size
             val radius = size.minDimension / 2
 
             rewards.forEachIndexed { index, reward ->
@@ -451,6 +416,24 @@ fun SpinWheelDisplay() {
                         (size.height - radius * 2) / 2
                     ),
                     style = Stroke(width = 2f)
+                )
+            }
+        }
+
+        // Place emoji icons on each segment
+        rewards.forEachIndexed { index, reward ->
+            val angle = index * segmentAngle + segmentAngle / 2 - 90
+            val radiusOffset = 80f
+            val offsetX = (radiusOffset * cos(Math.toRadians(angle.toDouble()))).toFloat()
+            val offsetY = (radiusOffset * sin(Math.toRadians(angle.toDouble()))).toFloat()
+
+            Box(
+                modifier = Modifier
+                    .offset(x = offsetX.dp, y = offsetY.dp)
+            ) {
+                Text(
+                    text = getEmojiForRewardType(reward.type),
+                    fontSize = 24.sp
                 )
             }
         }

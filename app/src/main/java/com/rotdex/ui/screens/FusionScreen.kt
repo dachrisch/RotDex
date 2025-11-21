@@ -311,9 +311,7 @@ private fun SelectedCardsDisplay(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Icon(Icons.Default.AutoFixHigh, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("MASH 'EM UP! ⚗️", fontWeight = FontWeight.ExtraBold, letterSpacing = 0.5.sp)
+                    Text("⚗️ MASH 'EM UP! (-${GameConfig.FUSION_COIN_COST} 🪙)", fontWeight = FontWeight.ExtraBold)
                 }
             }
         }

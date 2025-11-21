@@ -36,6 +36,19 @@ fun HomeScreen(
         topBar = {
             TopAppBar(
                 title = { RotDexLogo() },
+                actions = {
+                    userProfile?.let { profile ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            CompactStatItem(icon = "⚡", value = "${profile.currentEnergy}")
+                            CompactStatItem(icon = "🪙", value = "${profile.brainrotCoins}")
+                            CompactStatItem(icon = "💎", value = "${profile.gems}")
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface
@@ -63,37 +76,7 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // User Stats Card
-            userProfile?.let { profile ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            StatItem(icon = "⚡", label = "Energy", value = "${profile.currentEnergy}/${profile.maxEnergy}")
-                            StatItem(icon = "🪙", label = "Coins", value = "${profile.brainrotCoins}")
-                            StatItem(icon = "💎", label = "Gems", value = "${profile.gems}")
-                        }
-                        HorizontalDivider()
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            StatItem(icon = "🔥", label = "Streak", value = "${profile.currentStreak}")
-                            StatItem(icon = "🛡️", label = "Protections", value = "${profile.streakProtections}")
-                        }
-                    }
-                }
-            }
+            // Stats moved to app bar - removed card
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -102,7 +85,6 @@ fun HomeScreen(
                 icon = Icons.Default.CardGiftcard,
                 emoji = "🎁",
                 title = "FREE STUFF TIME",
-                subtitle = "Spin & keep that streak alive 🔥",
                 onClick = onNavigateToDailyRewards
             )
 
@@ -110,7 +92,6 @@ fun HomeScreen(
                 icon = Icons.Default.Collections,
                 emoji = "📚",
                 title = "YOUR DECK",
-                subtitle = "Check out your collection of chaos",
                 onClick = onNavigateToCollection
             )
 
@@ -118,7 +99,6 @@ fun HomeScreen(
                 icon = Icons.Default.Create,
                 emoji = "✨",
                 title = "COOK UP SOME HEAT",
-                subtitle = "Generate new brainrot cards fr fr",
                 onClick = onNavigateToCardCreate
             )
 
@@ -126,7 +106,6 @@ fun HomeScreen(
                 icon = Icons.Default.AutoFixHigh,
                 emoji = "⚗️",
                 title = "THE BLENDER",
-                subtitle = "Mash cards together and see what happens",
                 onClick = onNavigateToFusion
             )
 
@@ -134,7 +113,6 @@ fun HomeScreen(
                 icon = Icons.Default.EmojiEvents,
                 emoji = "🏆",
                 title = "ACHIEVEMENTS",
-                subtitle = "Flex your progress and get rewards",
                 onClick = onNavigateToAchievements
             )
         }
@@ -142,23 +120,19 @@ fun HomeScreen(
 }
 
 @Composable
-private fun StatItem(icon: String, label: String, value: String) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+private fun CompactStatItem(icon: String, value: String) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = icon,
-            fontSize = 24.sp
+            fontSize = 16.sp
         )
         Text(
             text = value,
-            fontSize = 18.sp,
+            fontSize = 14.sp,
             fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
         )
     }
 }
@@ -169,7 +143,6 @@ private fun NavigationButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     emoji: String,
     title: String,
-    subtitle: String,
     onClick: () -> Unit
 ) {
     Card(
@@ -183,29 +156,22 @@ private fun NavigationButton(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Emoji icon
             Text(
                 text = emoji,
-                fontSize = 48.sp
+                fontSize = 40.sp
             )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 0.5.sp
-                )
-                Text(
-                    text = subtitle,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
-            }
+            Text(
+                text = title,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.5.sp,
+                modifier = Modifier.weight(1f)
+            )
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = "Navigate",

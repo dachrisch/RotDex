@@ -216,7 +216,7 @@ fun CollectionScreen(
 }
 
 /**
- * Collection statistics card
+ * Collection statistics card with rarity-colored icons
  */
 @Composable
 fun CollectionStatsCard(stats: com.rotdex.ui.viewmodel.CollectionStats) {
@@ -228,49 +228,39 @@ fun CollectionStatsCard(stats: com.rotdex.ui.viewmodel.CollectionStats) {
             containerColor = MaterialTheme.colorScheme.tertiaryContainer
         )
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            Text(
-                text = "Collection Stats",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onTertiaryContainer
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                StatItem(label = "Total", count = stats.totalCards)
-                StatItem(label = "Common", count = stats.commonCount)
-                StatItem(label = "Rare", count = stats.rareCount)
-                StatItem(label = "Epic", count = stats.epicCount)
-                StatItem(label = "Legendary", count = stats.legendaryCount)
-            }
+            RarityStatBadge(rarity = CardRarity.COMMON, count = stats.commonCount)
+            RarityStatBadge(rarity = CardRarity.RARE, count = stats.rareCount)
+            RarityStatBadge(rarity = CardRarity.EPIC, count = stats.epicCount)
+            RarityStatBadge(rarity = CardRarity.LEGENDARY, count = stats.legendaryCount)
         }
     }
 }
 
 /**
- * Individual stat item
+ * Rarity badge with colored circle and count
  */
 @Composable
-fun StatItem(label: String, count: Int) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+fun RarityStatBadge(rarity: CardRarity, count: Int) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(56.dp)
+            .background(
+                color = rarity.getColor(),
+                shape = RoundedCornerShape(28.dp)
+            )
     ) {
         Text(
             text = count.toString(),
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onTertiaryContainer
-        )
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+            fontSize = 20.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color.White
         )
     }
 }
