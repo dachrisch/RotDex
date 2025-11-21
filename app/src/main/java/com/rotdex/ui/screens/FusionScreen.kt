@@ -291,21 +291,19 @@ private fun SelectedCardsDisplay(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Clear button
+                // Clear button - icon only
                 OutlinedButton(
                     onClick = onClear,
-                    modifier = Modifier.weight(1f),
-                    enabled = selectedCards.isNotEmpty()
+                    enabled = selectedCards.isNotEmpty(),
+                    contentPadding = PaddingValues(16.dp)
                 ) {
-                    Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("CLEAR", fontWeight = FontWeight.Bold)
+                    Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(24.dp))
                 }
 
                 // Fuse button
                 Button(
                     onClick = onFuse,
-                    modifier = Modifier.weight(2f),
+                    modifier = Modifier.weight(1f),
                     enabled = validation is FusionValidation.Valid,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
