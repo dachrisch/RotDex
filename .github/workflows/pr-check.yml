@@ -90,14 +90,14 @@ jobs:
       continue-on-error: true
 
     - name: Upload Lint Results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: lint-results
         path: app/build/reports/lint-results-debug.html
 
     - name: Upload Test Results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: test-results
@@ -145,7 +145,7 @@ jobs:
       continue-on-error: ${{ matrix.variant == 'release' }}
 
     - name: Upload ${{ matrix.variant }} APK
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       if: success()
       with:
         name: ${{ matrix.variant }}-apk
@@ -216,7 +216,7 @@ jobs:
       continue-on-error: true
 
     - name: Upload detekt report
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: detekt-report

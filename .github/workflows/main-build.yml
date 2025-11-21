@@ -85,14 +85,14 @@ jobs:
       run: ./gradlew testDebugUnitTest
 
     - name: Upload Lint Results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: lint-results-main
         path: app/build/reports/lint-results-debug.html
 
     - name: Upload Test Results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: test-results-main
@@ -140,7 +140,7 @@ jobs:
       continue-on-error: ${{ matrix.variant == 'release' }}
 
     - name: Upload ${{ matrix.variant }} APK
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       if: success()
       with:
         name: app-${{ matrix.variant }}
@@ -185,7 +185,7 @@ jobs:
       continue-on-error: true
 
     - name: Upload dependency report
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: dependency-updates
