@@ -1,0 +1,589 @@
+{
+  "project": "RotDex",
+  "current_branch": "claude/plan-gameplay-mechanics-01HFsPEa4d1hcogid8Pvk6cb",
+  "last_updated": "2025-11-19",
+  "version": "1.0.0",
+
+  "workflow": {
+    "current_phase": "sprint_001_economy_completion",
+    "status": "sprint_planning",
+    "progress": 0,
+    "sprint": {
+      "number": 1,
+      "name": "Economy System Completion",
+      "start_date": "2025-11-21",
+      "duration_days": 7,
+      "goal": "Complete economy and progression system",
+      "priorities": [
+        "Daily rewards enhancement with streak milestones",
+        "Spin wheel rebalancing with weighted distribution",
+        "Economy balance testing and validation",
+        "Achievement notification integration"
+      ]
+    }
+  },
+
+  "features": {
+    "card_generation": {
+      "status": "completed",
+      "completion_date": "2025-11-19",
+      "priority": "high",
+      "description": "AI-powered card generation using Freepik Mystic API",
+      "implementation": {
+        "api_integration": "completed",
+        "energy_system": "completed",
+        "image_download": "completed",
+        "ui_display": "completed",
+        "error_handling": "completed",
+        "testing": "completed",
+        "logging": "completed"
+      },
+      "commits": [
+        "acf11c8",
+        "d4e107b",
+        "9225be4",
+        "db8eedc",
+        "eef2f94",
+        "e5d0651",
+        "fc16942",
+        "48e2e0b",
+        "b682df2",
+        "2794891",
+        "2929be9",
+        "ef094d0"
+      ],
+      "key_files": [
+        "app/src/main/java/com/rotdex/data/api/AiApiService.kt",
+        "app/src/main/java/com/rotdex/data/repository/CardRepository.kt",
+        "app/src/main/java/com/rotdex/ui/screens/CardCreateScreen.kt",
+        "app/src/main/java/com/rotdex/ui/viewmodel/CardCreateViewModel.kt",
+        "app/src/main/java/com/rotdex/di/NetworkModule.kt"
+      ],
+      "tests": [
+        "app/src/test/java/com/rotdex/data/api/FreepikApiModelsTest.kt",
+        "app/src/test/java/com/rotdex/data/repository/CardRepositoryCompilationTest.kt",
+        "app/src/androidTest/java/com/rotdex/data/api/FreepikApiIntegrationTest.kt"
+      ],
+      "dependencies_added": [
+        "Retrofit 2.9.0",
+        "OkHttp 4.12.0",
+        "Gson Converter",
+        "Logging Interceptor",
+        "Coil 2.5.0"
+      ],
+      "verified": true,
+      "user_confirmed": "now it runs without error"
+    },
+
+    "collection_screen": {
+      "status": "not_started",
+      "priority": "high",
+      "description": "Display user's card collection with grid layout",
+      "requirements": [
+        "Fetch all cards from Room database",
+        "Display cards in grid layout using LazyVerticalGrid",
+        "Show card images using AsyncImage from Coil",
+        "Display card rarity, prompt, and metadata",
+        "Add filtering by rarity",
+        "Add sorting options (date created, rarity, etc.)",
+        "Implement card detail view on tap",
+        "Show collection statistics (total cards, by rarity, etc.)"
+      ],
+      "related_files": [
+        "app/src/main/java/com/rotdex/ui/screens/CollectionScreen.kt (to create)",
+        "app/src/main/java/com/rotdex/ui/viewmodel/CollectionViewModel.kt (to create)",
+        "app/src/main/java/com/rotdex/ui/navigation/NavGraph.kt (update)"
+      ],
+      "blocked_by": null
+    },
+
+    "daily_rewards": {
+      "status": "completed",
+      "completion_date": "2025-11-17",
+      "priority": "high",
+      "description": "Daily login rewards with streak tracking",
+      "verified": true
+    },
+
+    "fusion_system": {
+      "status": "completed",
+      "completion_date": "2025-11-17",
+      "priority": "high",
+      "description": "Card fusion with recipes and success rates",
+      "verified": true
+    },
+
+    "energy_regeneration": {
+      "status": "completed",
+      "completion_date": "2025-11-17",
+      "priority": "high",
+      "description": "Background energy regeneration using WorkManager",
+      "verified": true
+    },
+
+    "achievements_system": {
+      "status": "completed",
+      "completion_date": "2025-11-21",
+      "priority": "high",
+      "description": "Achievement tracking system with rewards and UI",
+      "implementation": {
+        "data_layer": "completed",
+        "business_logic": "completed",
+        "ui_viewmodel": "completed",
+        "navigation": "completed",
+        "testing": "completed"
+      },
+      "key_files": [
+        "app/src/main/java/com/rotdex/data/models/Achievement.kt",
+        "app/src/main/java/com/rotdex/data/database/AchievementDao.kt",
+        "app/src/main/java/com/rotdex/data/manager/AchievementManager.kt",
+        "app/src/main/java/com/rotdex/ui/viewmodel/AchievementsViewModel.kt",
+        "app/src/main/java/com/rotdex/ui/screens/AchievementsScreen.kt",
+        "app/src/main/java/com/rotdex/ui/components/AchievementNotification.kt"
+      ],
+      "database_changes": {
+        "version": 5,
+        "new_entities": ["AchievementProgress"],
+        "new_daos": ["AchievementDao"]
+      },
+      "features": {
+        "achievement_types": 5,
+        "total_achievements": 18,
+        "categories": ["Collection", "Rarity", "Fusion", "Generation", "Streak"],
+        "rewards": ["Coins", "Gems", "Energy"],
+        "ui_features": [
+          "Progress tracking screen with stats",
+          "Achievement unlock notifications",
+          "Filter by achievement type",
+          "Progress bars for incomplete achievements",
+          "Reward badges display"
+        ]
+      },
+      "integration_points": [
+        "CardRepository.generateCard() - triggers collection/rarity/generation achievements",
+        "FusionManager.performFusion() - triggers fusion achievements",
+        "RotDexApplication.onCreate() - initializes achievement tracking"
+      ],
+      "verified": true,
+      "build_status": "successful"
+    }
+  },
+
+  "next_priorities": [
+    {
+      "feature": "daily_rewards_enhancement",
+      "priority": 1,
+      "reason": "Add streak bonuses (Day 7, 14, 21, 30) from economy plan",
+      "estimated_effort": "small"
+    },
+    {
+      "feature": "spin_wheel_rebalancing",
+      "priority": 2,
+      "reason": "Update spin wheel rewards to match economy plan (0.5% jackpot, weighted distribution)",
+      "estimated_effort": "small"
+    },
+    {
+      "feature": "collection_screen",
+      "priority": 3,
+      "reason": "Required for 'View in Collection' button functionality",
+      "estimated_effort": "medium"
+    },
+    {
+      "feature": "card_detail_view",
+      "priority": 4,
+      "reason": "Allows users to view individual card details from collection",
+      "estimated_effort": "small"
+    },
+    {
+      "feature": "card_trading",
+      "priority": 5,
+      "reason": "Social feature for card exchange",
+      "estimated_effort": "large"
+    }
+  ],
+
+  "technical_debt": [
+    {
+      "item": "Collection screen placeholder",
+      "severity": "medium",
+      "file": "app/src/main/java/com/rotdex/ui/navigation/NavGraph.kt:58-62",
+      "resolution": "Implement CollectionScreen composable"
+    },
+    {
+      "item": "Image generation timeout handling",
+      "severity": "low",
+      "file": "app/src/main/java/com/rotdex/data/repository/CardRepository.kt",
+      "resolution": "Add configurable timeout and retry logic"
+    },
+    {
+      "item": "API key in source code",
+      "severity": "high",
+      "file": "app/src/main/java/com/rotdex/di/NetworkModule.kt:32",
+      "resolution": "Move to BuildConfig or secure storage"
+    },
+    {
+      "item": "No retry logic for failed downloads",
+      "severity": "medium",
+      "file": "app/src/main/java/com/rotdex/data/repository/CardRepository.kt",
+      "resolution": "Add exponential backoff retry mechanism"
+    }
+  ],
+
+  "testing": {
+    "unit_tests": {
+      "status": "good",
+      "coverage": "API models, repository compilation",
+      "files": [
+        "FreepikApiModelsTest.kt",
+        "CardRepositoryCompilationTest.kt"
+      ]
+    },
+    "integration_tests": {
+      "status": "good",
+      "coverage": "DI, API model instantiation",
+      "files": [
+        "FreepikApiIntegrationTest.kt"
+      ]
+    },
+    "ui_tests": {
+      "status": "partial",
+      "coverage": "HomeScreen, DailyRewardsScreen, FusionScreen",
+      "missing": "CardCreateScreen end-to-end test with mock API"
+    }
+  },
+
+  "environment": {
+    "build_tool": "Gradle 9.0-milestone-1",
+    "kotlin_version": "1.9.21",
+    "compose_bom": "2024.06.00",
+    "min_sdk": 24,
+    "target_sdk": 34,
+    "compile_sdk": 34
+  },
+
+  "api_integrations": {
+    "freepik_mystic": {
+      "status": "active",
+      "base_url": "https://api.freepik.com/",
+      "version": "v1",
+      "endpoints": {
+        "generate_image": "POST /v1/ai/mystic",
+        "check_status": "GET /v1/ai/mystic/{id}"
+      },
+      "authentication": "x-freepik-api-key header",
+      "rate_limits": "unknown",
+      "documentation": "https://docs.freepik.com/api-reference/mystic/post-mystic"
+    }
+  },
+
+  "coordination": {
+    "active_agents": [
+      {
+        "id": "claude_main",
+        "role": "primary_developer",
+        "current_task": "achievements_system_complete",
+        "status": "idle"
+      }
+    ],
+    "task_queue": [
+      {
+        "task": "enhance_daily_rewards_with_streak_bonuses",
+        "assigned_to": null,
+        "priority": "high",
+        "dependencies": []
+      },
+      {
+        "task": "rebalance_spin_wheel_rewards",
+        "assigned_to": null,
+        "priority": "high",
+        "dependencies": []
+      },
+      {
+        "task": "implement_collection_screen",
+        "assigned_to": null,
+        "priority": "medium",
+        "dependencies": []
+      },
+      {
+        "task": "move_api_key_to_buildconfig",
+        "assigned_to": null,
+        "priority": "high",
+        "dependencies": []
+      },
+      {
+        "task": "add_card_detail_view",
+        "assigned_to": null,
+        "priority": "medium",
+        "dependencies": ["implement_collection_screen"]
+      }
+    ],
+    "blocked_tasks": [],
+    "handoff_notes": [
+      "Achievement system fully implemented with 18 achievements across 5 categories",
+      "Database upgraded to version 5 with AchievementProgress entity",
+      "Achievement UI complete with notifications, progress screen, and filtering",
+      "Achievements integrated into card generation and fusion flows",
+      "Build successful, no compilation errors",
+      "Next priorities: Complete economy system (daily rewards enhancement, spin wheel rebalancing)",
+      "Collection screen is currently a placeholder - needs implementation",
+      "API key should be moved to BuildConfig for security"
+    ]
+  },
+
+  "known_issues": [
+    {
+      "id": "ISSUE-001",
+      "title": "API key exposed in source code",
+      "severity": "high",
+      "status": "open",
+      "file": "app/src/main/java/com/rotdex/di/NetworkModule.kt:32",
+      "resolution": "Move to BuildConfig or secrets.properties"
+    },
+    {
+      "id": "ISSUE-002",
+      "title": "Collection screen is placeholder",
+      "severity": "medium",
+      "status": "open",
+      "file": "app/src/main/java/com/rotdex/ui/navigation/NavGraph.kt:58-62",
+      "resolution": "Implement CollectionScreen"
+    }
+  ],
+
+  "agent_definitions": {
+    "overview": "Specialized agents for feature development phases",
+    "agents": {
+      "planning": {
+        "type": "Plan",
+        "phase": 1,
+        "purpose": "Analyze requirements and create implementation plan",
+        "responsibilities": [
+          "Break down features into tasks",
+          "Identify affected components (Database, API, Repository, ViewModel, UI)",
+          "Create dependency graph",
+          "Assess risks and complexity"
+        ],
+        "outputs": [
+          "feature-dev/[feature-name]-plan.md",
+          "Updates to workflow.json and STATUS.md"
+        ],
+        "when_to_use": [
+          "Starting a new feature",
+          "Need to understand scope and complexity"
+        ]
+      },
+      "exploration": {
+        "type": "Explore",
+        "phase": 2,
+        "purpose": "Find existing patterns and reusable components",
+        "responsibilities": [
+          "Find similar existing features",
+          "Identify reusable patterns and components",
+          "Locate relevant code to reference",
+          "Document architectural patterns"
+        ],
+        "outputs": [
+          "feature-dev/[feature-name]-exploration.md",
+          "List of files and patterns to follow"
+        ],
+        "when_to_use": [
+          "After planning, before implementation",
+          "When unsure how to implement something",
+          "To ensure consistency with existing code"
+        ]
+      },
+      "data-layer": {
+        "type": "general-purpose",
+        "phase": "3a",
+        "purpose": "Implement Room entities, DAOs, and migrations",
+        "responsibilities": [
+          "Create Room entities and DAOs",
+          "Add database migrations",
+          "Update DatabaseModule",
+          "Write database tests"
+        ],
+        "outputs": [
+          "data/models/ - Entity classes",
+          "data/database/ - DAO interfaces",
+          "Unit tests"
+        ],
+        "when_to_use": [
+          "Feature needs new database tables",
+          "Adding queries to existing DAOs"
+        ]
+      },
+      "api-integration": {
+        "type": "general-purpose",
+        "phase": "3b",
+        "purpose": "Implement API services and network integration",
+        "responsibilities": [
+          "Define Retrofit API services",
+          "Create request/response models",
+          "Update NetworkModule",
+          "Write API tests"
+        ],
+        "outputs": [
+          "data/api/ - Service interfaces and models",
+          "Integration tests"
+        ],
+        "when_to_use": [
+          "Feature needs external API calls",
+          "Adding new API endpoints"
+        ]
+      },
+      "business-logic": {
+        "type": "general-purpose",
+        "phase": "3c",
+        "purpose": "Implement repositories and manager classes",
+        "responsibilities": [
+          "Create repository classes",
+          "Implement manager classes",
+          "Add validation rules",
+          "Handle errors"
+        ],
+        "outputs": [
+          "data/repository/ - Repository classes",
+          "data/manager/ - Manager classes",
+          "Unit tests"
+        ],
+        "when_to_use": [
+          "Coordinating between database and API",
+          "Complex business rules",
+          "Data transformation logic"
+        ]
+      },
+      "ui-viewmodel": {
+        "type": "general-purpose",
+        "phase": "3d",
+        "purpose": "Implement Compose screens and ViewModels",
+        "responsibilities": [
+          "Create Compose screens",
+          "Implement ViewModels with state management",
+          "Handle user interactions",
+          "Write UI tests"
+        ],
+        "outputs": [
+          "ui/screens/ - Composable screens",
+          "ui/viewmodel/ - ViewModels",
+          "UI tests"
+        ],
+        "when_to_use": [
+          "Building new screens",
+          "Adding UI interactions",
+          "State management"
+        ]
+      },
+      "navigation": {
+        "type": "general-purpose",
+        "phase": "3e",
+        "purpose": "Integrate navigation routes and flows",
+        "responsibilities": [
+          "Add routes to navigation graph",
+          "Integrate screens into app flow",
+          "Implement navigation callbacks"
+        ],
+        "outputs": [
+          "Updated ui/navigation/NavGraph.kt"
+        ],
+        "when_to_use": [
+          "After screens are created",
+          "Adding new navigation flows"
+        ]
+      },
+      "testing": {
+        "type": "general-purpose",
+        "phase": 4,
+        "purpose": "Write unit and instrumented tests",
+        "responsibilities": [
+          "Write unit tests for business logic",
+          "Write instrumented tests for UI",
+          "Write integration tests",
+          "Verify error handling"
+        ],
+        "outputs": [
+          "test/ - Unit tests",
+          "androidTest/ - Instrumented tests"
+        ],
+        "when_to_use": [
+          "After implementation completes",
+          "Adding test coverage",
+          "Verifying edge cases"
+        ]
+      },
+      "review": {
+        "type": "general-purpose",
+        "phase": 5,
+        "purpose": "Code review and quality assurance",
+        "responsibilities": [
+          "Review for security vulnerabilities",
+          "Check error handling",
+          "Verify performance",
+          "Validate architecture adherence"
+        ],
+        "outputs": [
+          "feature-dev/[feature-name]-review.md",
+          "List of issues and recommendations"
+        ],
+        "when_to_use": [
+          "Before merging feature",
+          "Quality gate before release",
+          "Security audit"
+        ]
+      }
+    },
+    "workflow_phases": {
+      "phase_1_planning": "Analyze requirements, create task breakdown",
+      "phase_2_exploration": "Find existing patterns to follow",
+      "phase_3_parallel_implementation": "Data Layer, API, Business Logic, UI/ViewModel, Navigation (run in parallel)",
+      "phase_4_testing": "Unit + Instrumented tests",
+      "phase_5_review": "Quality and security review"
+    },
+    "best_practices": {
+      "before_starting": [
+        "Read feature-dev/agent-workflow.md for full workflow",
+        "Check feature-dev/workflow.json for current state",
+        "Review CLAUDE.md for architecture patterns"
+      ],
+      "during_execution": [
+        "Run planning → exploration → parallel implementation → testing → review",
+        "Launch implementation agents in parallel when possible",
+        "Update workflow.json after each phase",
+        "Document decisions in feature docs"
+      ],
+      "after_completion": [
+        "Review all outputs",
+        "Run tests: ./gradlew test connectedAndroidTest",
+        "Run linter: ./gradlew detekt",
+        "Update documentation",
+        "Mark complete in STATUS.md"
+      ]
+    }
+  },
+
+  "documentation": {
+    "main": "CLAUDE.md",
+    "testing": "TESTING.md",
+    "implementation": "feature-dev/card-generation-implementation.md",
+    "workflow": "feature-dev/workflow.json",
+    "agent_workflow": "feature-dev/agent-workflow.md",
+    "agents": ".claude/agents/"
+  },
+
+  "build_commands": {
+    "debug": "./gradlew assembleDebug",
+    "release": "./gradlew assembleRelease",
+    "test": "./gradlew testDebugUnitTest",
+    "instrumented_test": "./gradlew connectedDebugAndroidTest",
+    "clean": "./gradlew clean",
+    "detekt": "./gradlew detekt"
+  },
+
+  "notes": [
+    "Achievement system implementation complete (2025-11-21)",
+    "18 achievements tracking collection, rarity, fusion, generation, and streaks",
+    "Full UI with notifications, progress screen, and filtering",
+    "Economy plan documented in docs/economy-progression-plan.md",
+    "Next steps: Complete economy system (daily rewards, spin wheel)",
+    "Consider security improvements (API key management)",
+    "All changes are on branch: claude/plan-gameplay-mechanics-01HFsPEa4d1hcogid8Pvk6cb"
+  ]
+}

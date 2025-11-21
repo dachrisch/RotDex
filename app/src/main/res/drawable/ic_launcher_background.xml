@@ -1,0 +1,81 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Base dark background with gradient -->
+    <path
+        android:fillColor="#0D0D0D"
+        android:pathData="M0,0 L108,0 L108,108 L0,108 Z"/>
+
+    <!-- Psychedelic gradient rings -->
+    <path
+        android:fillColor="#6200EE"
+        android:fillAlpha="0.3"
+        android:pathData="M54,54m-52,0a52,52 0,1,1 104,0a52,52 0,1,1 -104,0"/>
+
+    <path
+        android:fillColor="#FF1493"
+        android:fillAlpha="0.25"
+        android:pathData="M54,54m-44,0a44,44 0,1,1 88,0a44,44 0,1,1 -88,0"/>
+
+    <path
+        android:fillColor="#03DAC6"
+        android:fillAlpha="0.2"
+        android:pathData="M54,54m-36,0a36,36 0,1,1 72,0a36,36 0,1,1 -72,0"/>
+
+    <path
+        android:fillColor="#FFD700"
+        android:fillAlpha="0.15"
+        android:pathData="M54,54m-28,0a28,28 0,1,1 56,0a28,28 0,1,1 -56,0"/>
+
+    <!-- Diagonal glitch stripes -->
+    <path
+        android:fillColor="#FF00FF"
+        android:fillAlpha="0.1"
+        android:pathData="M0,0 L30,0 L40,108 L10,108 Z"/>
+
+    <path
+        android:fillColor="#00FFFF"
+        android:fillAlpha="0.1"
+        android:pathData="M68,0 L98,0 L108,108 L78,108 Z"/>
+
+    <!-- Random noise dots for texture -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.15"
+        android:pathData="M15,25m-2,0a2,2 0,1,1 4,0a2,2 0,1,1 -4,0"/>
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.1"
+        android:pathData="M85,15m-1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.2"
+        android:pathData="M93,75m-1,0a1,1 0,1,1 2,0a1,1 0,1,1 -2,0"/>
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.12"
+        android:pathData="M20,90m-1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.18"
+        android:pathData="M70,95m-1,0a1,1 0,1,1 2,0a1,1 0,1,1 -2,0"/>
+
+    <!-- Small stars scattered -->
+    <path
+        android:fillColor="#FFD700"
+        android:fillAlpha="0.3"
+        android:pathData="M25,50 L26,52 L28,52 L26.5,53.5 L27,55 L25,54 L23,55 L23.5,53.5 L22,52 L24,52 Z"/>
+
+    <path
+        android:fillColor="#FF1493"
+        android:fillAlpha="0.25"
+        android:pathData="M82,88 L83,90 L85,90 L83.5,91.5 L84,93 L82,92 L80,93 L80.5,91.5 L79,90 L81,90 Z"/>
+
+</vector>

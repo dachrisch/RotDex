@@ -1,13 +1,26 @@
 package com.rotdex.data.repository
 
+import android.content.Context
+import android.util.Base64
+import android.util.Log
 import com.rotdex.data.api.AiApiService
 import com.rotdex.data.api.ImageGenerationRequest
+import com.rotdex.data.api.ImageGenerationResponse
+import com.rotdex.data.api.ImageJobStatus
+import com.rotdex.data.api.ImageStatusResponse
 import com.rotdex.data.database.CardDao
-import com.rotdex.data.models.Card
-import com.rotdex.data.models.CardRarity
-import com.rotdex.data.models.CollectionStats
+import com.rotdex.data.database.FusionHistoryDao
+import com.rotdex.data.manager.FusionManager
+import com.rotdex.data.manager.FusionStats
+import com.rotdex.data.models.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
+import java.net.URL
 import kotlin.random.Random
 
 /**
@@ -15,9 +28,38 @@ import kotlin.random.Random
  * Coordinates between local database and remote AI API
  */
 class CardRepository(
+    private val context: Context,
     private val cardDao: CardDao,
-    private val aiApiService: AiApiService
+    private val fusionHistoryDao: FusionHistoryDao,
+    private val aiApiService: AiApiService,
+    private val userRepository: UserRepository,
+    private val achievementManager: com.rotdex.data.manager.AchievementManager
 ) {
+
+    private val fusionManager = FusionManager(
+        cardDao = cardDao,
+        fusionHistoryDao = fusionHistoryDao,
+        achievementManager = achievementManager,
+        generateFusionCard = { fusionPrompt ->
+            // Generate fusion card using AI without charging energy/coins
+            generateFusionCardInternal(fusionPrompt)
+        },
+        generateRpgAttributes = { prompt, rarity, timestamp ->
+            // Generate RPG stats for fusion character
+            val name = generateCharacterName(prompt)
+            val health = generateHealth(rarity, timestamp)
+            val attack = generateAttack(rarity, timestamp)
+            Triple(name, health, attack)
+        },
+        generateBiography = { prompt, name, rarity ->
+            // Generate biography for fusion character
+            generateBiography(prompt, name, rarity)
+        }
+    )
+
+    companion object {
+        private const val TAG = "CardRepository"
+    }
 
     // MARK: - Card Collection Operations
 
@@ -42,47 +84,166 @@ class CardRepository(
 
     /**
      * Generates a new brainrot card using AI
+     * Costs energy to generate - checks and spends energy before generating
+     * Extra characters beyond 20 cost coins (1 coin per 10 chars)
      * @param prompt User's input describing the card
+     * @param coinCost Optional coin cost for extra characters (default 0)
      * @return Result with the generated Card or an error
      */
-    suspend fun generateCard(prompt: String): Result<Card> {
+    suspend fun generateCard(prompt: String, coinCost: Int = 0): Result<Card> {
         return try {
-            // Call AI API to generate image
-            val request = ImageGenerationRequest(
-                prompt = enhancePrompt(prompt),
-                size = "1024x1024",
-                quality = "standard"
-            )
+            Log.d(TAG, "Starting card generation for prompt: $prompt (coin cost: $coinCost)")
 
+            // Check and spend energy before generating
+            Log.d(TAG, "Checking energy availability (need ${GameConfig.CARD_GENERATION_ENERGY_COST})")
+            val energySpent = userRepository.spendEnergy(GameConfig.CARD_GENERATION_ENERGY_COST)
+            if (!energySpent) {
+                Log.w(TAG, "Insufficient energy for card generation")
+                return Result.failure(InsufficientEnergyException(
+                    "Not enough energy to generate card. Need ${GameConfig.CARD_GENERATION_ENERGY_COST} energy."
+                ))
+            }
+            Log.d(TAG, "Energy spent successfully")
+
+            // Spend coins for extra characters if needed
+            if (coinCost > 0) {
+                Log.d(TAG, "Checking coin availability (need $coinCost for extra characters)")
+                val coinsSpent = userRepository.spendCoins(coinCost)
+                if (!coinsSpent) {
+                    // Refund energy since coins weren't spent
+                    userRepository.addEnergy(GameConfig.CARD_GENERATION_ENERGY_COST)
+                    Log.w(TAG, "Insufficient coins for extra characters")
+                    return Result.failure(Exception(
+                        "Not enough coins for extra characters. Need $coinCost coins."
+                    ))
+                }
+                Log.d(TAG, "Coins spent successfully for extra characters")
+            }
+
+            // Call Freepik API to start image generation
+            val enhancedPrompt = enhancePrompt(prompt)
+            Log.d(TAG, "Enhanced prompt: $enhancedPrompt")
+            val request = ImageGenerationRequest.fromPrompt(enhancedPrompt)
+            Log.d(TAG, "Calling Freepik API to start image generation")
             val response = aiApiService.generateImage(request)
 
+            Log.d(TAG, "API Response - Code: ${response.code()}, Success: ${response.isSuccessful}, Body: ${response.body()}")
+
             if (response.isSuccessful && response.body() != null) {
-                val imageUrl = response.body()!!.data.firstOrNull()?.url
-                    ?: return Result.failure(Exception("No image generated"))
+                val responseData = response.body()!!.data
+                val taskId = responseData.task_id
+                val status = responseData.status
+                Log.i(TAG, "Image generation job created - Task ID: $taskId, Status: $status")
+
+                // Validate task ID
+                if (taskId.isEmpty()) {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e(TAG, "Received empty task ID from Freepik API. Response body: ${response.body()}, Error body: $errorBody")
+                    return Result.failure(Exception("API returned empty task ID. Unable to track image generation."))
+                }
+
+                // Poll for completion (max 30 seconds, check every 2 seconds)
+                var attempts = 0
+                val maxAttempts = 15
+                var imageUrl: String? = null
+
+                Log.d(TAG, "Starting polling loop (max $maxAttempts attempts)")
+                while (attempts < maxAttempts) {
+                    delay(2000) // Wait 2 seconds between checks
+                    attempts++
+
+                    Log.d(TAG, "Polling attempt $attempts/$maxAttempts - Checking status for task $taskId")
+                    val statusResponse = aiApiService.checkImageStatus(taskId)
+
+                    if (statusResponse.isSuccessful && statusResponse.body() != null) {
+                        val result = statusResponse.body()!!.data
+                        Log.d(TAG, "Task $taskId status: ${result.status}, Generated images: ${result.generated.size}")
+
+                        when (result.status) {
+                            ImageJobStatus.COMPLETED -> {
+                                // Get the first generated image URL (generated is a list of URL strings)
+                                imageUrl = result.generated.firstOrNull()
+                                Log.i(TAG, "Image generation completed! URL: $imageUrl")
+                                break
+                            }
+                            ImageJobStatus.FAILED -> {
+                                Log.e(TAG, "Image generation failed for task $taskId")
+                                return Result.failure(Exception("Image generation failed"))
+                            }
+                            ImageJobStatus.IN_PROGRESS -> {
+                                Log.d(TAG, "Task $taskId still in progress... (attempt $attempts/$maxAttempts)")
+                            }
+                        }
+                    } else {
+                        val errorBody = statusResponse.errorBody()?.string()
+                        Log.e(TAG, "Failed to check status for task $taskId - Code: ${statusResponse.code()}, Error: $errorBody")
+                    }
+                }
+
+                if (imageUrl == null) {
+                    Log.e(TAG, "Image generation timed out after $attempts attempts (${attempts * 2}s)")
+                    return Result.failure(Exception("Image generation timed out"))
+                }
+
+                // Download and save image from URL
+                Log.d(TAG, "Downloading image from: $imageUrl")
+                val imageFile = downloadAndSaveImage(imageUrl)
+                if (imageFile == null) {
+                    Log.e(TAG, "Failed to download image from $imageUrl")
+                    return Result.failure(Exception("Failed to download image"))
+                }
+                Log.i(TAG, "Image downloaded and saved to: ${imageFile.absolutePath}")
 
                 // Determine random rarity
                 val rarity = determineRarity()
+                Log.d(TAG, "Assigned rarity: ${rarity.name} (drop rate: ${rarity.dropRate})")
 
-                // Create and save card
+                // Generate RPG character attributes
+                val timestamp = System.currentTimeMillis()
+                val characterName = generateCharacterName(prompt)
+                val health = generateHealth(rarity, timestamp)
+                val attack = generateAttack(rarity, timestamp)
+                val biography = generateBiography(prompt, characterName, rarity)
+
+                Log.d(TAG, "Generated RPG stats - Name: $characterName, HP: $health, ATK: $attack")
+
+                // Create and save card with file path
                 val card = Card(
                     prompt = prompt,
-                    imageUrl = imageUrl,
+                    imageUrl = imageFile.absolutePath,  // Store local file path
                     rarity = rarity,
-                    createdAt = System.currentTimeMillis()
+                    createdAt = timestamp,
+                    name = characterName,
+                    health = health,
+                    attack = attack,
+                    biography = biography
                 )
+                Log.d(TAG, "Creating card in database with prompt: '$prompt', rarity: ${rarity.name}")
 
                 val cardId = cardDao.insertCard(card)
+                Log.d(TAG, "Card inserted with ID: $cardId")
                 val savedCard = cardDao.getCardById(cardId)
 
                 if (savedCard != null) {
+                    Log.i(TAG, "Card generation completed successfully! Card ID: $cardId, Rarity: ${rarity.name}")
+
+                    // Check achievements after successful card generation
+                    achievementManager.checkCollectionAchievements()
+                    achievementManager.checkRarityAchievements(savedCard)
+                    achievementManager.checkGenerationAchievements()
+
                     Result.success(savedCard)
                 } else {
+                    Log.e(TAG, "Failed to retrieve saved card from database (ID: $cardId)")
                     Result.failure(Exception("Failed to save card"))
                 }
             } else {
-                Result.failure(Exception("API error: ${response.code()}"))
+                val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                Log.e(TAG, "Freepik API error - Code: ${response.code()}, Message: $errorBody")
+                Result.failure(Exception("API error ${response.code()}: $errorBody"))
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Exception during card generation: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -104,15 +265,173 @@ class CardRepository(
     // MARK: - Helper Functions
 
     /**
-     * Enhances user prompt for better AI generation
+     * Generate a fusion card using AI (internal method for FusionManager)
+     * Does NOT charge energy or coins - fusion already has its own cost
+     * @param fusionPrompt Combined prompt describing the fusion character
+     * @return Result with Pair of (imageUrl, rarity ordinal)
+     */
+    private suspend fun generateFusionCardInternal(fusionPrompt: String): Result<Pair<String, Int>> {
+        return try {
+            Log.d(TAG, "Generating fusion card for prompt: $fusionPrompt")
+
+            // Call Freepik API to start image generation
+            val enhancedPrompt = enhancePrompt(fusionPrompt)
+            val request = ImageGenerationRequest.fromPrompt(enhancedPrompt)
+            val response = aiApiService.generateImage(request)
+
+            if (response.isSuccessful && response.body() != null) {
+                val responseData = response.body()!!.data
+                val taskId = responseData.task_id
+
+                if (taskId.isEmpty()) {
+                    return Result.failure(Exception("API returned empty task ID"))
+                }
+
+                // Poll for completion
+                var attempts = 0
+                val maxAttempts = 15
+                var imageUrl: String? = null
+
+                while (attempts < maxAttempts) {
+                    delay(2000)
+                    attempts++
+
+                    val statusResponse = aiApiService.checkImageStatus(taskId)
+
+                    if (statusResponse.isSuccessful && statusResponse.body() != null) {
+                        val result = statusResponse.body()!!.data
+
+                        when (result.status) {
+                            ImageJobStatus.COMPLETED -> {
+                                imageUrl = result.generated.firstOrNull()
+                                Log.i(TAG, "Fusion card image generated! URL: $imageUrl")
+                                break
+                            }
+                            ImageJobStatus.FAILED -> {
+                                return Result.failure(Exception("Fusion image generation failed"))
+                            }
+                            ImageJobStatus.IN_PROGRESS -> {
+                                // Continue polling
+                            }
+                        }
+                    }
+                }
+
+                if (imageUrl == null) {
+                    return Result.failure(Exception("Fusion image generation timed out"))
+                }
+
+                // Download and save image
+                val imageFile = downloadAndSaveImage(imageUrl)
+                if (imageFile == null) {
+                    return Result.failure(Exception("Failed to download fusion image"))
+                }
+
+                // Return image path and rarity (rarity is determined by FusionManager)
+                val rarity = determineRarity()
+                Result.success(imageFile.absolutePath to rarity.ordinal)
+            } else {
+                val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                Result.failure(Exception("Fusion API error ${response.code()}: $errorBody"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception during fusion card generation: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Enhances user prompt for better AI generation with Gen Z brainrot aesthetic
+     * Ensures generation of silly but realistic characters in natural urban environments
      */
     private fun enhancePrompt(userPrompt: String): String {
         return """
-            Create a vibrant trading card style image featuring: $userPrompt
-            Art style: digital art, colorful, meme culture aesthetic, internet culture
-            Format: portrait orientation, clear focal point, suitable for a collectible card
-            Quality: high detail, eye-catching
+            Create a vibrant trading card style character portrait featuring: $userPrompt
+            IMPORTANT: Generate an actual character, person, or creature - NOT abstract art or patterns
+            Character must be silly, goofy, or absurd looking but still appear like they could realistically exist
+            Setting: Place character in a natural urban environment (street, cafe, house, park, beach, mall, subway, etc)
+            The background should be a real recognizable location with proper perspective and lighting
+            Art style: Gen Z aesthetic, brainrot energy, maximalist, over-saturated colors, digital art, meme culture
+            Character design: Silly/goofy appearance but anatomically plausible, full body or portrait
+            Visual style: Chaotic energy, glitchy effects, neon colors, internet culture vibes, but grounded in reality
+            Format: Portrait orientation, clear character as focal point in believable environment, suitable for collectible card
+            Quality: High detail, eye-catching, unhinged maximalist composition with realistic urban backdrop
+            Think: "what if this ridiculous character was spotted in real life on the street"
         """.trimIndent()
+    }
+
+    /**
+     * Downloads image from URL and saves to local storage
+     * Uses IO dispatcher to avoid NetworkOnMainThreadException
+     * @param imageUrl URL of the image to download
+     * @return File object or null if download/save failed
+     */
+    private suspend fun downloadAndSaveImage(imageUrl: String): File? {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Download image from URL
+                val url = URL(imageUrl)
+                val connection = url.openConnection()
+                connection.connect()
+                val inputStream = connection.getInputStream()
+                val imageBytes = inputStream.readBytes()
+                inputStream.close()
+
+                // Create unique filename
+                val timestamp = System.currentTimeMillis()
+                val filename = "card_${timestamp}.png"
+
+                // Get app's private storage directory
+                val imagesDir = File(context.filesDir, "card_images")
+                if (!imagesDir.exists()) {
+                    imagesDir.mkdirs()
+                }
+
+                // Save to file
+                val imageFile = File(imagesDir, filename)
+                FileOutputStream(imageFile).use { outputStream ->
+                    outputStream.write(imageBytes)
+                }
+
+                imageFile
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
+    }
+
+    /**
+     * Saves base64-encoded image to a file (legacy method, kept for compatibility)
+     * @param base64String Base64-encoded image data
+     * @return File object or null if save failed
+     */
+    private fun saveBase64Image(base64String: String): File? {
+        return try {
+            // Decode base64 string
+            val imageBytes = Base64.decode(base64String, Base64.DEFAULT)
+
+            // Create unique filename
+            val timestamp = System.currentTimeMillis()
+            val filename = "card_${timestamp}.png"
+
+            // Get app's private storage directory
+            val imagesDir = File(context.filesDir, "card_images")
+            if (!imagesDir.exists()) {
+                imagesDir.mkdirs()
+            }
+
+            // Save to file
+            val imageFile = File(imagesDir, filename)
+            FileOutputStream(imageFile).use { outputStream ->
+                outputStream.write(imageBytes)
+            }
+
+            imageFile
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 
     /**
@@ -122,7 +441,7 @@ class CardRepository(
         val random = Random.nextFloat()
         var cumulative = 0f
 
-        CardRarity.values().forEach { rarity ->
+        CardRarity.entries.forEach { rarity ->
             cumulative += rarity.dropRate
             if (random <= cumulative) {
                 return rarity
@@ -130,5 +449,146 @@ class CardRepository(
         }
 
         return CardRarity.COMMON // Fallback
+    }
+
+    /**
+     * Generates a character name based on the user's prompt
+     * Extracts or creates a fitting name from the prompt
+     */
+    private fun generateCharacterName(prompt: String): String {
+        // Clean up the prompt
+        val cleanPrompt = prompt.trim()
+
+        // Try to extract a proper name (capitalized words)
+        val words = cleanPrompt.split(Regex("\\s+"))
+        val capitalizedWords = words.filter { it.firstOrNull()?.isUpperCase() == true }
+
+        if (capitalizedWords.isNotEmpty()) {
+            // Use up to 3 capitalized words as the name
+            return capitalizedWords.take(3).joinToString(" ")
+        }
+
+        // If no capitalized words, create a name from the first 1-3 words
+        val nameWords = words.take(3)
+            .map { it.replaceFirstChar { char -> char.uppercaseChar() } }
+            .joinToString(" ")
+
+        return if (nameWords.isNotBlank()) nameWords else "Mysterious Being"
+    }
+
+    /**
+     * Generates health points based on rarity using deterministic randomness
+     * Common: 50-100, Rare: 100-150, Epic: 150-200, Legendary: 200-300
+     */
+    private fun generateHealth(rarity: CardRarity, seed: Long): Int {
+        val random = Random(seed)
+        return when (rarity) {
+            CardRarity.COMMON -> random.nextInt(50, 101)      // 50-100
+            CardRarity.RARE -> random.nextInt(100, 151)       // 100-150
+            CardRarity.EPIC -> random.nextInt(150, 201)       // 150-200
+            CardRarity.LEGENDARY -> random.nextInt(200, 301)  // 200-300
+        }
+    }
+
+    /**
+     * Generates attack power based on rarity using deterministic randomness
+     * Common: 25-50, Rare: 50-75, Epic: 75-100, Legendary: 100-150
+     */
+    private fun generateAttack(rarity: CardRarity, seed: Long): Int {
+        val random = Random(seed + 1) // Different seed offset for attack
+        return when (rarity) {
+            CardRarity.COMMON -> random.nextInt(25, 51)      // 25-50
+            CardRarity.RARE -> random.nextInt(50, 76)        // 50-75
+            CardRarity.EPIC -> random.nextInt(75, 101)       // 75-100
+            CardRarity.LEGENDARY -> random.nextInt(100, 151) // 100-150
+        }
+    }
+
+    /**
+     * Generates a short biography/backstory for the character
+     * Creates 2-3 sentences based on the prompt and rarity
+     */
+    private fun generateBiography(prompt: String, name: String, rarity: CardRarity): String {
+        val rarityDescriptor = when (rarity) {
+            CardRarity.COMMON -> "a wandering"
+            CardRarity.RARE -> "a skilled"
+            CardRarity.EPIC -> "a legendary"
+            CardRarity.LEGENDARY -> "an immortal"
+        }
+
+        val rarityPower = when (rarity) {
+            CardRarity.COMMON -> "modest abilities"
+            CardRarity.RARE -> "remarkable powers"
+            CardRarity.EPIC -> "extraordinary strength"
+            CardRarity.LEGENDARY -> "unmatched divine power"
+        }
+
+        // Extract key themes from prompt
+        val promptLower = prompt.lowercase()
+        val theme = when {
+            promptLower.contains("fire") || promptLower.contains("flame") -> "wielding flames"
+            promptLower.contains("ice") || promptLower.contains("frost") -> "commanding ice"
+            promptLower.contains("dark") || promptLower.contains("shadow") -> "mastering shadows"
+            promptLower.contains("light") || promptLower.contains("holy") -> "channeling light"
+            promptLower.contains("warrior") || promptLower.contains("knight") -> "skilled in combat"
+            promptLower.contains("mage") || promptLower.contains("wizard") -> "versed in arcane arts"
+            else -> "bearing mysterious powers"
+        }
+
+        return "$name is $rarityDescriptor adventurer $theme. " +
+               "Born from the essence of '$prompt', they possess $rarityPower. " +
+               "Their legend continues to grow with each battle."
+    }
+
+    // MARK: - Card Fusion Operations
+
+    /**
+     * Validate if cards can be fused
+     */
+    fun validateFusion(cards: List<Card>): FusionValidation {
+        return fusionManager.validateFusion(cards)
+    }
+
+    /**
+     * Perform card fusion
+     * @return FusionResult if successful, null if fusion failed
+     */
+    suspend fun performFusion(cards: List<Card>): FusionResult? {
+        return fusionManager.performFusion(cards)
+    }
+
+    /**
+     * Get all fusion recipes (public only)
+     */
+    fun getPublicRecipes(): List<FusionRecipe> {
+        return FusionRecipes.getPublicRecipes()
+    }
+
+    /**
+     * Get discovered recipes (including secret ones)
+     */
+    suspend fun getDiscoveredRecipes(): List<FusionRecipe> {
+        return fusionManager.getDiscoveredRecipes()
+    }
+
+    /**
+     * Get fusion history
+     */
+    fun getFusionHistory(limit: Int = 50): Flow<List<FusionHistory>> {
+        return fusionHistoryDao.getRecentFusions(limit)
+    }
+
+    /**
+     * Get fusion statistics
+     */
+    suspend fun getFusionStats(): FusionStats {
+        return fusionManager.getFusionStats()
+    }
+
+    /**
+     * Find matching recipe for cards
+     */
+    fun findMatchingRecipe(cards: List<Card>): FusionRecipe? {
+        return FusionRecipes.findMatchingRecipe(cards)
     }
 }
