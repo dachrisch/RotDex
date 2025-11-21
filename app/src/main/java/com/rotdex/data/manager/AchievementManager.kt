@@ -38,8 +38,9 @@ class AchievementManager(
 
     /**
      * Check and update collection achievements based on current card count
+     * @return List of newly unlocked achievements
      */
-    suspend fun checkCollectionAchievements() {
+    suspend fun checkCollectionAchievements(): List<Achievement> {
         val totalCards = cardDao.getTotalCardCount().first()
 
         val collectionAchievements = listOf(
@@ -50,59 +51,98 @@ class AchievementManager(
             Achievements.COLLECTOR_250
         )
 
+        val unlocked = mutableListOf<Achievement>()
         collectionAchievements.forEach { achievement ->
-            updateAchievementProgress(achievement, totalCards)
+            if (updateAchievementProgress(achievement, totalCards)) {
+                unlocked.add(achievement)
+            }
         }
+        return unlocked
     }
 
     /**
      * Check and update rarity achievements
+     * @return List of newly unlocked achievements
      */
-    suspend fun checkRarityAchievements(newCard: Card) {
+    suspend fun checkRarityAchievements(newCard: Card): List<Achievement> {
+        val unlocked = mutableListOf<Achievement>()
         when (newCard.rarity) {
             CardRarity.RARE -> {
-                updateAchievementProgress(Achievements.FIRST_RARE, 1, true)
+                if (updateAchievementProgress(Achievements.FIRST_RARE, 1, true)) {
+                    unlocked.add(Achievements.FIRST_RARE)
+                }
                 val rareCount = cardDao.getCardCountByRarity(CardRarity.RARE)
-                updateAchievementProgress(Achievements.RARE_COLLECTOR, rareCount)
+                if (updateAchievementProgress(Achievements.RARE_COLLECTOR, rareCount)) {
+                    unlocked.add(Achievements.RARE_COLLECTOR)
+                }
             }
             CardRarity.EPIC -> {
-                updateAchievementProgress(Achievements.FIRST_EPIC, 1, true)
+                if (updateAchievementProgress(Achievements.FIRST_EPIC, 1, true)) {
+                    unlocked.add(Achievements.FIRST_EPIC)
+                }
                 val epicCount = cardDao.getCardCountByRarity(CardRarity.EPIC)
-                updateAchievementProgress(Achievements.EPIC_COLLECTOR, epicCount)
+                if (updateAchievementProgress(Achievements.EPIC_COLLECTOR, epicCount)) {
+                    unlocked.add(Achievements.EPIC_COLLECTOR)
+                }
             }
             CardRarity.LEGENDARY -> {
-                updateAchievementProgress(Achievements.FIRST_LEGENDARY, 1, true)
+                if (updateAchievementProgress(Achievements.FIRST_LEGENDARY, 1, true)) {
+                    unlocked.add(Achievements.FIRST_LEGENDARY)
+                }
                 val legendaryCount = cardDao.getCardCountByRarity(CardRarity.LEGENDARY)
-                updateAchievementProgress(Achievements.LEGENDARY_COLLECTOR, legendaryCount)
+                if (updateAchievementProgress(Achievements.LEGENDARY_COLLECTOR, legendaryCount)) {
+                    unlocked.add(Achievements.LEGENDARY_COLLECTOR)
+                }
             }
             else -> {}
         }
+        return unlocked
     }
 
     /**
      * Check and update fusion achievements
+     * @return List of newly unlocked achievements
      */
-    suspend fun checkFusionAchievements(isFirstRecipe: Boolean = false) {
+    suspend fun checkFusionAchievements(isFirstRecipe: Boolean = false): List<Achievement> {
+        val unlocked = mutableListOf<Achievement>()
         val successfulFusions = fusionHistoryDao.getSuccessfulFusionCount()
 
-        updateAchievementProgress(Achievements.FIRST_FUSION, successfulFusions, true)
-        updateAchievementProgress(Achievements.FUSION_10, successfulFusions)
-        updateAchievementProgress(Achievements.FUSION_50, successfulFusions)
+        if (updateAchievementProgress(Achievements.FIRST_FUSION, successfulFusions, true)) {
+            unlocked.add(Achievements.FIRST_FUSION)
+        }
+        if (updateAchievementProgress(Achievements.FUSION_10, successfulFusions)) {
+            unlocked.add(Achievements.FUSION_10)
+        }
+        if (updateAchievementProgress(Achievements.FUSION_50, successfulFusions)) {
+            unlocked.add(Achievements.FUSION_50)
+        }
 
         if (isFirstRecipe) {
-            updateAchievementProgress(Achievements.FIRST_RECIPE, 1, true)
+            if (updateAchievementProgress(Achievements.FIRST_RECIPE, 1, true)) {
+                unlocked.add(Achievements.FIRST_RECIPE)
+            }
         }
+        return unlocked
     }
 
     /**
      * Check and update generation achievements
+     * @return List of newly unlocked achievements
      */
-    suspend fun checkGenerationAchievements() {
+    suspend fun checkGenerationAchievements(): List<Achievement> {
+        val unlocked = mutableListOf<Achievement>()
         val totalCards = cardDao.getTotalCardCount().first()
 
-        updateAchievementProgress(Achievements.GENERATOR_10, totalCards)
-        updateAchievementProgress(Achievements.GENERATOR_50, totalCards)
-        updateAchievementProgress(Achievements.GENERATOR_100, totalCards)
+        if (updateAchievementProgress(Achievements.GENERATOR_10, totalCards)) {
+            unlocked.add(Achievements.GENERATOR_10)
+        }
+        if (updateAchievementProgress(Achievements.GENERATOR_50, totalCards)) {
+            unlocked.add(Achievements.GENERATOR_50)
+        }
+        if (updateAchievementProgress(Achievements.GENERATOR_100, totalCards)) {
+            unlocked.add(Achievements.GENERATOR_100)
+        }
+        return unlocked
     }
 
     /**
@@ -110,19 +150,20 @@ class AchievementManager(
      * @param achievement The achievement to update
      * @param currentValue Current progress value
      * @param isIncremental If true, only unlock if this specific increment matters (for "first" achievements)
+     * @return True if achievement was unlocked by this update, false otherwise
      */
     private suspend fun updateAchievementProgress(
         achievement: Achievement,
         currentValue: Int,
         isIncremental: Boolean = false
-    ) {
-        val progress = achievementDao.getProgress(achievement.id) ?: return
+    ): Boolean {
+        val progress = achievementDao.getProgress(achievement.id) ?: return false
 
         // Skip if already unlocked
-        if (progress.isUnlocked) return
+        if (progress.isUnlocked) return false
 
         // For incremental achievements (like "first rare"), only unlock if value == requirement
-        if (isIncremental && currentValue != achievement.requirement) return
+        if (isIncremental && currentValue != achievement.requirement) return false
 
         // Update progress
         achievementDao.updateProgress(achievement.id, currentValue)
@@ -130,7 +171,9 @@ class AchievementManager(
         // Check if requirement met
         if (currentValue >= achievement.requirement) {
             unlockAchievement(achievement)
+            return true
         }
+        return false
     }
 
     /**

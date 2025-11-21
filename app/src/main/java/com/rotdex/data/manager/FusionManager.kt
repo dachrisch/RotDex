@@ -89,7 +89,7 @@ class FusionManager(
             if (!previouslyDiscovered) matchingRecipe else null
         } else null
 
-        // Check achievements after successful fusion
+        // Check achievements after successful fusion (ignoring unlocked list for now - will be handled by ViewModel)
         achievementManager.checkFusionAchievements(isFirstRecipe = recipeDiscovered != null)
         achievementManager.checkCollectionAchievements()
         achievementManager.checkRarityAchievements(savedResultCard)
