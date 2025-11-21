@@ -6,12 +6,101 @@ This document describes the multi-agent workflow for feature development in RotD
 
 ## Agent Definitions
 
-All agents are defined in `.claude/agents/` directory as JSON configuration files. Each agent has:
+All agents are defined in `.claude/agents/` directory as YAML configuration files. Each agent has:
 - **Purpose**: What the agent does
 - **Responsibilities**: Specific tasks it handles
 - **Inputs/Outputs**: What it needs and produces
 - **Workflow**: When it runs and what it depends on
 - **Patterns**: Code patterns and best practices to follow
+
+### Agent Overview Table
+
+| Agent               | Type            | Phase | Purpose                                             |
+|---------------------|-----------------|-------|-----------------------------------------------------|
+| **planning**        | Plan            | 1     | Analyze requirements and create implementation plan |
+| **exploration**     | Explore         | 2     | Find existing patterns and reusable components      |
+| **data-layer**      | general-purpose | 3a    | Implement Room entities, DAOs, and migrations       |
+| **api-integration** | general-purpose | 3b    | Implement API services and network integration      |
+| **business-logic**  | general-purpose | 3c    | Implement repositories and manager classes          |
+| **ui-viewmodel**    | general-purpose | 3d    | Implement Compose screens and ViewModels            |
+| **navigation**      | general-purpose | 3e    | Integrate navigation routes and flows               |
+| **testing**         | general-purpose | 4     | Write unit and instrumented tests                   |
+| **review**          | general-purpose | 5     | Code review and quality assurance                   |
+
+### Workflow Diagram
+
+```
+┌─────────────┐
+│  Planning   │  Analyze requirements, create task breakdown
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│ Exploration │  Find existing patterns to follow
+└──────┬──────┘
+       │
+       ▼
+┌─────────────────────────────────────────────┐
+│         Parallel Implementation             │
+│  ┌────────────┬────────────┬──────────────┐ │
+│  │ Data Layer │ API Layer  │ Business     │ │
+│  │            │            │ Logic        │ │
+│  └────────────┴────────────┴──────────────┘ │
+│  ┌────────────┬────────────┐                │
+│  │ UI/View    │ Navigation │                │
+│  │ Model      │            │                │
+│  └────────────┴────────────┘                │
+└──────────────────┬──────────────────────────┘
+                   │
+                   ▼
+            ┌──────────────┐
+            │   Testing    │  Unit + Instrumented tests
+            └──────┬───────┘
+                   │
+                   ▼
+            ┌──────────────┐
+            │    Review    │  Quality and security review
+            └──────────────┘
+```
+
+### Agent Configuration Format
+
+Each agent YAML file contains:
+
+```yaml
+name: agent-name
+version: 1.0.0
+description: What this agent does
+type: general-purpose|Plan|Explore
+
+purpose: Detailed purpose
+
+responsibilities:
+  - task1
+  - task2
+
+inputs:
+  required:
+    - input1
+  optional:
+    - input2
+
+outputs:
+  deliverables:
+    - output1
+  destination: where files go
+
+workflow:
+  phase: when it runs
+  depends_on:
+    - prerequisites
+  parallel_with:
+    - other agents
+
+prompts:
+  system_context: Agent context
+  task_template: Task structure
+```
 
 ## Development Phases
 
@@ -414,6 +503,48 @@ Before marking a feature complete:
 3. Verify mocks are properly configured
 4. Review error messages in test output
 
+### Agent Not Finding Patterns
+- Ensure exploration agent ran first
+- Check that similar features exist
+- Review CLAUDE.md for architecture
+
+## Usage Examples
+
+### Simple Feature: Card Detail View
+1. **Planning**: Small task, minimal components
+2. **Exploration**: Reference CardCreateScreen
+3. **Implementation**: UI + ViewModel agents only
+4. **Testing**: UI tests
+5. **Review**: Quick review
+
+### Complex Feature: Card Trading
+1. **Planning**: Large task, multiple components
+2. **Exploration**: Review fusion system (similar multi-card logic)
+3. **Implementation**: All 5 agents in parallel (data, API, business, UI, nav)
+4. **Testing**: Comprehensive unit + integration + UI tests
+5. **Review**: Full security and performance review
+
+### Running Single Agent
+```
+Use Task tool with:
+- subagent_type: "general-purpose" (or "Plan"/"Explore")
+- prompt: Reference agent config from .claude/agents/[agent-name].yaml
+- description: Short task description
+```
+
+### Running Parallel Agents
+**Launch multiple agents in ONE message:**
+```
+Message with 5 Task tool calls:
+1. data-layer agent
+2. api-integration agent
+3. business-logic agent
+4. ui-viewmodel agent
+5. navigation agent
+```
+
+This executes all agents simultaneously for maximum efficiency.
+
 ---
 
 ## Templates
@@ -446,8 +577,26 @@ cp feature-dev/TEMPLATE.md feature-dev/[feature-name].md
 
 ## References
 
-- **Agent Definitions**: `.claude/agents/*.yaml`
-- **Architecture Guide**: `CLAUDE.md`
-- **Feature Status**: `docs/features/STATUS.md`
-- **Workflow State**: `feature-dev/workflow.json`
-- **Existing Implementation**: `feature-dev/card-generation-implementation.md`
+### Documentation
+- **Agent Definitions**: `.claude/agents/*.yaml` - Individual agent YAML configs
+- **Agent Overview**: See `agent_definitions` section in `feature-dev/workflow.json`
+- **Architecture Guide**: `CLAUDE.md` - RotDex architecture and patterns
+- **Feature Status**: `docs/features/STATUS.md` - Feature completion tracking
+- **Workflow State**: `feature-dev/workflow.json` - Current development state
+- **Economy Plan**: `docs/economy-progression-plan.md` - Game economy design
+- **Achievement System**: `docs/features/achievements-system.md` - Achievement implementation
+
+### Example Implementations
+- **Card Generation**: `feature-dev/card-generation-implementation.md`
+- **Achievements**: `docs/features/achievements-system.md`
+
+### Key Files to Review
+Before starting agent workflow:
+1. `CLAUDE.md` - Architecture patterns and build commands
+2. `feature-dev/workflow.json` - Current project state and priorities
+3. `feature-dev/agent-workflow.md` - This document
+4. `.claude/agents/` - Agent configuration files
+
+---
+
+**Questions?** Review the agent definitions in `workflow.json` or check individual agent YAML files in `.claude/agents/`.

@@ -5,9 +5,22 @@
   "version": "1.0.0",
 
   "workflow": {
-    "current_phase": "card_generation_complete",
-    "status": "ready_for_next_feature",
-    "progress": 100
+    "current_phase": "sprint_001_economy_completion",
+    "status": "sprint_planning",
+    "progress": 0,
+    "sprint": {
+      "number": 1,
+      "name": "Economy System Completion",
+      "start_date": "2025-11-21",
+      "duration_days": 7,
+      "goal": "Complete economy and progression system",
+      "priorities": [
+        "Daily rewards enhancement with streak milestones",
+        "Spin wheel rebalancing with weighted distribution",
+        "Economy balance testing and validation",
+        "Achievement notification integration"
+      ]
+    }
   },
 
   "features": {
@@ -106,33 +119,86 @@
       "priority": "high",
       "description": "Background energy regeneration using WorkManager",
       "verified": true
+    },
+
+    "achievements_system": {
+      "status": "completed",
+      "completion_date": "2025-11-21",
+      "priority": "high",
+      "description": "Achievement tracking system with rewards and UI",
+      "implementation": {
+        "data_layer": "completed",
+        "business_logic": "completed",
+        "ui_viewmodel": "completed",
+        "navigation": "completed",
+        "testing": "completed"
+      },
+      "key_files": [
+        "app/src/main/java/com/rotdex/data/models/Achievement.kt",
+        "app/src/main/java/com/rotdex/data/database/AchievementDao.kt",
+        "app/src/main/java/com/rotdex/data/manager/AchievementManager.kt",
+        "app/src/main/java/com/rotdex/ui/viewmodel/AchievementsViewModel.kt",
+        "app/src/main/java/com/rotdex/ui/screens/AchievementsScreen.kt",
+        "app/src/main/java/com/rotdex/ui/components/AchievementNotification.kt"
+      ],
+      "database_changes": {
+        "version": 5,
+        "new_entities": ["AchievementProgress"],
+        "new_daos": ["AchievementDao"]
+      },
+      "features": {
+        "achievement_types": 5,
+        "total_achievements": 18,
+        "categories": ["Collection", "Rarity", "Fusion", "Generation", "Streak"],
+        "rewards": ["Coins", "Gems", "Energy"],
+        "ui_features": [
+          "Progress tracking screen with stats",
+          "Achievement unlock notifications",
+          "Filter by achievement type",
+          "Progress bars for incomplete achievements",
+          "Reward badges display"
+        ]
+      },
+      "integration_points": [
+        "CardRepository.generateCard() - triggers collection/rarity/generation achievements",
+        "FusionManager.performFusion() - triggers fusion achievements",
+        "RotDexApplication.onCreate() - initializes achievement tracking"
+      ],
+      "verified": true,
+      "build_status": "successful"
     }
   },
 
   "next_priorities": [
     {
-      "feature": "collection_screen",
+      "feature": "daily_rewards_enhancement",
       "priority": 1,
+      "reason": "Add streak bonuses (Day 7, 14, 21, 30) from economy plan",
+      "estimated_effort": "small"
+    },
+    {
+      "feature": "spin_wheel_rebalancing",
+      "priority": 2,
+      "reason": "Update spin wheel rewards to match economy plan (0.5% jackpot, weighted distribution)",
+      "estimated_effort": "small"
+    },
+    {
+      "feature": "collection_screen",
+      "priority": 3,
       "reason": "Required for 'View in Collection' button functionality",
       "estimated_effort": "medium"
     },
     {
       "feature": "card_detail_view",
-      "priority": 2,
+      "priority": 4,
       "reason": "Allows users to view individual card details from collection",
       "estimated_effort": "small"
     },
     {
       "feature": "card_trading",
-      "priority": 3,
+      "priority": 5,
       "reason": "Social feature for card exchange",
       "estimated_effort": "large"
-    },
-    {
-      "feature": "achievements_system",
-      "priority": 4,
-      "reason": "Gamification to increase engagement",
-      "estimated_effort": "medium"
     }
   ],
 
@@ -215,15 +281,27 @@
       {
         "id": "claude_main",
         "role": "primary_developer",
-        "current_task": "card_generation_complete",
+        "current_task": "achievements_system_complete",
         "status": "idle"
       }
     ],
     "task_queue": [
       {
-        "task": "implement_collection_screen",
+        "task": "enhance_daily_rewards_with_streak_bonuses",
         "assigned_to": null,
         "priority": "high",
+        "dependencies": []
+      },
+      {
+        "task": "rebalance_spin_wheel_rewards",
+        "assigned_to": null,
+        "priority": "high",
+        "dependencies": []
+      },
+      {
+        "task": "implement_collection_screen",
+        "assigned_to": null,
+        "priority": "medium",
         "dependencies": []
       },
       {
@@ -241,12 +319,14 @@
     ],
     "blocked_tasks": [],
     "handoff_notes": [
-      "Card generation is fully working end-to-end",
-      "User confirmed 'now it runs without error'",
-      "All tests passing (unit, integration, compilation)",
+      "Achievement system fully implemented with 18 achievements across 5 categories",
+      "Database upgraded to version 5 with AchievementProgress entity",
+      "Achievement UI complete with notifications, progress screen, and filtering",
+      "Achievements integrated into card generation and fusion flows",
+      "Build successful, no compilation errors",
+      "Next priorities: Complete economy system (daily rewards enhancement, spin wheel rebalancing)",
       "Collection screen is currently a placeholder - needs implementation",
-      "API key should be moved to BuildConfig for security",
-      "Consider adding retry logic for network failures"
+      "API key should be moved to BuildConfig for security"
     ]
   },
 
@@ -269,11 +349,223 @@
     }
   ],
 
+  "agent_definitions": {
+    "overview": "Specialized agents for feature development phases",
+    "agents": {
+      "planning": {
+        "type": "Plan",
+        "phase": 1,
+        "purpose": "Analyze requirements and create implementation plan",
+        "responsibilities": [
+          "Break down features into tasks",
+          "Identify affected components (Database, API, Repository, ViewModel, UI)",
+          "Create dependency graph",
+          "Assess risks and complexity"
+        ],
+        "outputs": [
+          "feature-dev/[feature-name]-plan.md",
+          "Updates to workflow.json and STATUS.md"
+        ],
+        "when_to_use": [
+          "Starting a new feature",
+          "Need to understand scope and complexity"
+        ]
+      },
+      "exploration": {
+        "type": "Explore",
+        "phase": 2,
+        "purpose": "Find existing patterns and reusable components",
+        "responsibilities": [
+          "Find similar existing features",
+          "Identify reusable patterns and components",
+          "Locate relevant code to reference",
+          "Document architectural patterns"
+        ],
+        "outputs": [
+          "feature-dev/[feature-name]-exploration.md",
+          "List of files and patterns to follow"
+        ],
+        "when_to_use": [
+          "After planning, before implementation",
+          "When unsure how to implement something",
+          "To ensure consistency with existing code"
+        ]
+      },
+      "data-layer": {
+        "type": "general-purpose",
+        "phase": "3a",
+        "purpose": "Implement Room entities, DAOs, and migrations",
+        "responsibilities": [
+          "Create Room entities and DAOs",
+          "Add database migrations",
+          "Update DatabaseModule",
+          "Write database tests"
+        ],
+        "outputs": [
+          "data/models/ - Entity classes",
+          "data/database/ - DAO interfaces",
+          "Unit tests"
+        ],
+        "when_to_use": [
+          "Feature needs new database tables",
+          "Adding queries to existing DAOs"
+        ]
+      },
+      "api-integration": {
+        "type": "general-purpose",
+        "phase": "3b",
+        "purpose": "Implement API services and network integration",
+        "responsibilities": [
+          "Define Retrofit API services",
+          "Create request/response models",
+          "Update NetworkModule",
+          "Write API tests"
+        ],
+        "outputs": [
+          "data/api/ - Service interfaces and models",
+          "Integration tests"
+        ],
+        "when_to_use": [
+          "Feature needs external API calls",
+          "Adding new API endpoints"
+        ]
+      },
+      "business-logic": {
+        "type": "general-purpose",
+        "phase": "3c",
+        "purpose": "Implement repositories and manager classes",
+        "responsibilities": [
+          "Create repository classes",
+          "Implement manager classes",
+          "Add validation rules",
+          "Handle errors"
+        ],
+        "outputs": [
+          "data/repository/ - Repository classes",
+          "data/manager/ - Manager classes",
+          "Unit tests"
+        ],
+        "when_to_use": [
+          "Coordinating between database and API",
+          "Complex business rules",
+          "Data transformation logic"
+        ]
+      },
+      "ui-viewmodel": {
+        "type": "general-purpose",
+        "phase": "3d",
+        "purpose": "Implement Compose screens and ViewModels",
+        "responsibilities": [
+          "Create Compose screens",
+          "Implement ViewModels with state management",
+          "Handle user interactions",
+          "Write UI tests"
+        ],
+        "outputs": [
+          "ui/screens/ - Composable screens",
+          "ui/viewmodel/ - ViewModels",
+          "UI tests"
+        ],
+        "when_to_use": [
+          "Building new screens",
+          "Adding UI interactions",
+          "State management"
+        ]
+      },
+      "navigation": {
+        "type": "general-purpose",
+        "phase": "3e",
+        "purpose": "Integrate navigation routes and flows",
+        "responsibilities": [
+          "Add routes to navigation graph",
+          "Integrate screens into app flow",
+          "Implement navigation callbacks"
+        ],
+        "outputs": [
+          "Updated ui/navigation/NavGraph.kt"
+        ],
+        "when_to_use": [
+          "After screens are created",
+          "Adding new navigation flows"
+        ]
+      },
+      "testing": {
+        "type": "general-purpose",
+        "phase": 4,
+        "purpose": "Write unit and instrumented tests",
+        "responsibilities": [
+          "Write unit tests for business logic",
+          "Write instrumented tests for UI",
+          "Write integration tests",
+          "Verify error handling"
+        ],
+        "outputs": [
+          "test/ - Unit tests",
+          "androidTest/ - Instrumented tests"
+        ],
+        "when_to_use": [
+          "After implementation completes",
+          "Adding test coverage",
+          "Verifying edge cases"
+        ]
+      },
+      "review": {
+        "type": "general-purpose",
+        "phase": 5,
+        "purpose": "Code review and quality assurance",
+        "responsibilities": [
+          "Review for security vulnerabilities",
+          "Check error handling",
+          "Verify performance",
+          "Validate architecture adherence"
+        ],
+        "outputs": [
+          "feature-dev/[feature-name]-review.md",
+          "List of issues and recommendations"
+        ],
+        "when_to_use": [
+          "Before merging feature",
+          "Quality gate before release",
+          "Security audit"
+        ]
+      }
+    },
+    "workflow_phases": {
+      "phase_1_planning": "Analyze requirements, create task breakdown",
+      "phase_2_exploration": "Find existing patterns to follow",
+      "phase_3_parallel_implementation": "Data Layer, API, Business Logic, UI/ViewModel, Navigation (run in parallel)",
+      "phase_4_testing": "Unit + Instrumented tests",
+      "phase_5_review": "Quality and security review"
+    },
+    "best_practices": {
+      "before_starting": [
+        "Read feature-dev/agent-workflow.md for full workflow",
+        "Check feature-dev/workflow.json for current state",
+        "Review CLAUDE.md for architecture patterns"
+      ],
+      "during_execution": [
+        "Run planning → exploration → parallel implementation → testing → review",
+        "Launch implementation agents in parallel when possible",
+        "Update workflow.json after each phase",
+        "Document decisions in feature docs"
+      ],
+      "after_completion": [
+        "Review all outputs",
+        "Run tests: ./gradlew test connectedAndroidTest",
+        "Run linter: ./gradlew detekt",
+        "Update documentation",
+        "Mark complete in STATUS.md"
+      ]
+    }
+  },
+
   "documentation": {
     "main": "CLAUDE.md",
     "testing": "TESTING.md",
     "implementation": "feature-dev/card-generation-implementation.md",
-    "workflow": "feature-dev/workflow.json"
+    "workflow": "feature-dev/workflow.json",
+    "agent_workflow": "feature-dev/agent-workflow.md",
+    "agents": ".claude/agents/"
   },
 
   "build_commands": {
@@ -286,9 +578,11 @@
   },
 
   "notes": [
-    "All card generation work is complete and tested",
-    "User has confirmed the feature works without errors",
-    "Next logical step is implementing the Collection screen",
+    "Achievement system implementation complete (2025-11-21)",
+    "18 achievements tracking collection, rarity, fusion, generation, and streaks",
+    "Full UI with notifications, progress screen, and filtering",
+    "Economy plan documented in docs/economy-progression-plan.md",
+    "Next steps: Complete economy system (daily rewards, spin wheel)",
     "Consider security improvements (API key management)",
     "All changes are on branch: claude/plan-gameplay-mechanics-01HFsPEa4d1hcogid8Pvk6cb"
   ]
