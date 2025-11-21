@@ -22,8 +22,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rotdex.data.models.*
+import com.rotdex.ui.components.RotDexLogo
 import com.rotdex.ui.viewmodel.DailyRewardsViewModel
 import com.rotdex.ui.viewmodel.SpinState
 import com.rotdex.ui.viewmodel.StreakState
@@ -47,14 +49,14 @@ fun DailyRewardsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Daily Rewards") },
+                title = { RotDexLogo() },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         }
@@ -128,46 +130,42 @@ fun UserStatsCard(profile: UserProfile) {
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            StatItem(
-                icon = Icons.Default.Favorite,
+            RewardStatItem(
+                emoji = "⚡",
                 label = "Energy",
-                value = "${profile.currentEnergy}/${profile.maxEnergy}",
-                color = Color(0xFFFF6B9D)
+                value = "${profile.currentEnergy}/${profile.maxEnergy}"
             )
-            StatItem(
-                icon = Icons.Default.Star,
+            RewardStatItem(
+                emoji = "🪙",
                 label = "Coins",
-                value = profile.brainrotCoins.toString(),
-                color = Color(0xFFFFD700)
+                value = profile.brainrotCoins.toString()
             )
-            StatItem(
-                icon = Icons.Default.Star,
+            RewardStatItem(
+                emoji = "💎",
                 label = "Gems",
-                value = profile.gems.toString(),
-                color = Color(0xFF4A90E2)
+                value = profile.gems.toString()
             )
         }
     }
 }
 
 @Composable
-fun StatItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String, color: Color) {
+private fun RewardStatItem(emoji: String, label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = color,
-            modifier = Modifier.size(32.dp)
+        Text(
+            text = emoji,
+            fontSize = 32.sp
         )
         Text(
             text = value,
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.ExtraBold
         )
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Medium
         )
     }
 }
@@ -194,9 +192,10 @@ fun StreakCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Login Streak",
+                text = "LOGIN STREAK 🔥",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -252,12 +251,10 @@ fun StreakCard(
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = onUseProtection) {
-                                Icon(Icons.Default.Star, null)
-                                Spacer(Modifier.width(4.dp))
-                                Text("Use Protection")
+                                Text("🛡️ USE PROTECTION", fontWeight = FontWeight.ExtraBold)
                             }
                             OutlinedButton(onClick = onDeclineProtection) {
-                                Text("Start Fresh")
+                                Text("START FRESH", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -332,9 +329,10 @@ fun SpinWheelCard(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Daily Spin",
+                text = "DAILY SPIN 🎰",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -352,11 +350,10 @@ fun SpinWheelCard(
                             .fillMaxWidth()
                             .height(56.dp)
                     ) {
-                        Icon(Icons.Default.Star, null)
-                        Spacer(Modifier.width(8.dp))
                         Text(
-                            text = if (canSpin) "SPIN NOW!" else "Come back tomorrow!",
-                            style = MaterialTheme.typography.titleMedium
+                            text = if (canSpin) "✨ LET'S GOOO!" else "❌ COME BACK TOMORROW!",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.ExtraBold
                         )
                     }
                 }
@@ -378,37 +375,36 @@ fun SpinWheelCard(
                 }
 
                 is SpinState.AlreadySpun -> {
-                    Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(100.dp),
-                        tint = Color.Green
+                    Text(
+                        text = "✅",
+                        fontSize = 100.sp
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Already spun today!",
-                        style = MaterialTheme.typography.titleLarge
+                        text = "ALREADY SPUN TODAY!",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold
                     )
                     Text(
-                        text = "Come back tomorrow for another spin",
+                        text = "Come back tomorrow for more goodies",
                         style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Medium
                     )
                 }
 
                 is SpinState.Error -> {
-                    Icon(
-                        Icons.Default.Warning,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.error
+                    Text(
+                        text = "⚠️",
+                        fontSize = 64.sp
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Error: ${spinState.message}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
@@ -460,11 +456,9 @@ fun SpinWheelDisplay() {
         }
 
         // Center indicator
-        Icon(
-            imageVector = Icons.Default.Star,
-            contentDescription = "Spin indicator",
-            modifier = Modifier.size(48.dp),
-            tint = Color.Yellow
+        Text(
+            text = "✨",
+            fontSize = 48.sp
         )
     }
 }
@@ -498,32 +492,44 @@ fun RewardResultDisplay(reward: SpinReward, onDismiss: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Icon(
-            imageVector = Icons.Default.Star,
-            contentDescription = null,
-            modifier = Modifier.size(100.dp),
-            tint = getColorForRewardType(reward.type)
+        Text(
+            text = getEmojiForRewardType(reward.type),
+            fontSize = 100.sp
         )
 
         Text(
-            text = reward.displayName,
+            text = reward.displayName.uppercase(),
             style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = getColorForRewardType(reward.type)
+            fontWeight = FontWeight.ExtraBold,
+            color = getColorForRewardType(reward.type),
+            textAlign = TextAlign.Center
         )
 
         Text(
             text = reward.description,
             style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Medium
         )
 
         Button(
             onClick = onDismiss,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Claim Reward")
+            Text("CLAIM IT!", fontWeight = FontWeight.ExtraBold)
         }
+    }
+}
+
+fun getEmojiForRewardType(type: SpinRewardType): String {
+    return when (type) {
+        SpinRewardType.ENERGY -> "⚡"
+        SpinRewardType.COINS -> "🪙"
+        SpinRewardType.GEMS -> "💎"
+        SpinRewardType.FREE_PACK -> "🎁"
+        SpinRewardType.RARITY_BOOST -> "🚀"
+        SpinRewardType.STREAK_PROTECTION -> "🛡️"
+        SpinRewardType.JACKPOT -> "💰"
     }
 }
 
@@ -578,38 +584,38 @@ fun MilestoneRewardDialog(milestone: StreakMilestone, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = {
-            Icon(
-                Icons.Default.Star,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = Color(0xFFFFD700)
+            Text(
+                text = "🏆",
+                fontSize = 64.sp
             )
         },
         title = {
             Text(
-                text = "Milestone Reached!",
-                textAlign = TextAlign.Center
+                text = "MILESTONE REACHED! 🎉",
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.ExtraBold
             )
         },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = milestone.displayName,
+                    text = milestone.displayName.uppercase(),
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = milestone.description,
                     style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Medium
                 )
             }
         },
         confirmButton = {
             Button(onClick = onDismiss) {
-                Text("Awesome!")
+                Text("LET'S GOOO!", fontWeight = FontWeight.ExtraBold)
             }
         }
     )

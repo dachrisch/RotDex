@@ -34,6 +34,7 @@ import coil3.compose.AsyncImage
 import com.rotdex.data.models.Card
 import com.rotdex.data.models.CardRarity
 import com.rotdex.ui.components.CardDisplayMode
+import com.rotdex.ui.components.RotDexLogo
 import com.rotdex.ui.components.StyledCardView
 import com.rotdex.ui.theme.getColor
 import com.rotdex.ui.viewmodel.CollectionViewModel
@@ -61,12 +62,16 @@ fun CollectionScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Card Collection") },
+                title = { RotDexLogo() },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                ),
                 actions = {
                     // Filter button
                     IconButton(onClick = { showFilterMenu = true }) {
@@ -112,11 +117,7 @@ fun CollectionScreen(
                             )
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                }
             )
         }
     ) { paddingValues ->

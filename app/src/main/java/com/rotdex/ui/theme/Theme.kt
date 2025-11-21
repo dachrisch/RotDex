@@ -18,9 +18,13 @@ import androidx.core.view.WindowCompat
 private val DarkColorScheme = darkColorScheme(
     primary = RotDexPrimary,
     secondary = RotDexSecondary,
-    tertiary = Pink80,
+    tertiary = RotDexTertiary,
     background = RotDexBackground,
-    surface = RotDexSurface
+    surface = RotDexSurface,
+    surfaceVariant = RotDexSurfaceVariant,
+    primaryContainer = PlayfulPurple,
+    secondaryContainer = RotDexSurface,
+    tertiaryContainer = RotDexSurfaceVariant
 )
 
 private val LightColorScheme = lightColorScheme(

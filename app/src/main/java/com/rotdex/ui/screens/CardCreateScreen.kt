@@ -33,7 +33,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.rotdex.data.models.GameConfig
 import com.rotdex.ui.components.CardDisplayMode
+import com.rotdex.ui.components.RotDexLogo
 import com.rotdex.ui.components.StyledCardView
+import com.rotdex.ui.utils.ActionVerbs
 import com.rotdex.ui.viewmodel.CardCreateViewModel
 import com.rotdex.ui.viewmodel.CardGenerationState
 import java.io.File
@@ -58,15 +60,15 @@ fun CardCreateScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Create Card") },
+                title = { RotDexLogo() },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         }
@@ -117,11 +119,9 @@ fun CardCreateScreen(
                                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                                 )
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.Bolt,
-                                        contentDescription = "Energy",
-                                        modifier = Modifier.size(24.dp),
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                    Text(
+                                        text = "⚡",
+                                        fontSize = 24.sp
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
@@ -138,11 +138,9 @@ fun CardCreateScreen(
                                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                                 )
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.Bolt,
-                                        contentDescription = "Cost",
-                                        modifier = Modifier.size(24.dp),
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                    Text(
+                                        text = "⚡",
+                                        fontSize = 24.sp
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
@@ -158,10 +156,12 @@ fun CardCreateScreen(
 
                 // Prompt Input Section
                 Text(
-                    text = "What brainrot card do you want to create?",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
+                    text = "WHAT CARD U COOKIN? ✨",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 0.5.sp
                 )
 
                 // Calculate extra coin cost
@@ -174,8 +174,8 @@ fun CardCreateScreen(
                     value = promptText,
                     onValueChange = { promptText = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Card prompt") },
-                    placeholder = { Text("e.g., cool wizard") },
+                    label = { Text("Drop your idea here") },
+                    placeholder = { Text("e.g., sigma wizard with drip") },
                     minLines = 3,
                     maxLines = 5,
                     enabled = generationState !is CardGenerationState.Generating,
@@ -199,14 +199,8 @@ fun CardCreateScreen(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.MonetizationOn,
-                                        contentDescription = "Coins",
-                                        modifier = Modifier.size(16.dp),
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
                                     Text(
-                                        text = "+$coinCost",
+                                        text = "🪙 +$coinCost",
                                         color = MaterialTheme.colorScheme.primary,
                                         fontWeight = FontWeight.Bold
                                     )
@@ -233,12 +227,12 @@ fun CardCreateScreen(
                         ) {
                             Column {
                                 Text(
-                                    text = "Extra characters",
+                                    text = "Extra spice 🌶️",
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                                 )
                                 Text(
-                                    text = "$extraChars chars over limit ($freeCharLimit free)",
+                                    text = "$extraChars chars over free limit ($freeCharLimit free)",
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Medium
                                 )
@@ -247,11 +241,9 @@ fun CardCreateScreen(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.MonetizationOn,
-                                    contentDescription = "Coin cost",
-                                    modifier = Modifier.size(24.dp),
-                                    tint = MaterialTheme.colorScheme.primary
+                                Text(
+                                    text = "🪙",
+                                    fontSize = 24.sp
                                 )
                                 Text(
                                     text = "$coinCost",
@@ -275,25 +267,14 @@ fun CardCreateScreen(
                              generationState !is CardGenerationState.Generating &&
                              (coinCost == 0 || (userProfile?.brainrotCoins ?: 0) >= coinCost)
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Bolt,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text("Generate Card (-${GameConfig.CARD_GENERATION_ENERGY_COST} Energy)")
-                        if (coinCost > 0) {
-                            Icon(
-                                imageVector = Icons.Default.MonetizationOn,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text("-$coinCost")
-                        }
-                    }
+                    Text(
+                        text = if (coinCost > 0) {
+                            "⚡ LET'S GOOOO! (-${GameConfig.CARD_GENERATION_ENERGY_COST} ⚡ -$coinCost 🪙)"
+                        } else {
+                            "⚡ LET'S GOOOO! (-${GameConfig.CARD_GENERATION_ENERGY_COST} ⚡)"
+                        },
+                        fontWeight = FontWeight.ExtraBold
+                    )
                 }
 
                 // State Messages
@@ -460,19 +441,13 @@ fun FullScreenGeneratingAnimation() {
         label = "alpha"
     )
 
-    // Animated status messages
+    // Animated status messages using playful action verbs
     var messageIndex by remember { mutableIntStateOf(0) }
-    val messages = listOf(
-        "✨ Conjuring magic...",
-        "🎨 Creating your card...",
-        "🔮 Channeling energy...",
-        "⚡ Almost there...",
-        "🎴 Finalizing..."
-    )
+    val messages = remember { ActionVerbs.getGenerationVerbCycle(6) }
 
     LaunchedEffect(Unit) {
         while (true) {
-            delay(2000)
+            delay(1500) // Faster cycle for more chaos
             messageIndex = (messageIndex + 1) % messages.size
         }
     }
@@ -615,19 +590,13 @@ fun GeneratingAnimation() {
         label = "alpha"
     )
 
-    // Animated status messages
+    // Animated status messages using playful action verbs
     var messageIndex by remember { mutableIntStateOf(0) }
-    val messages = listOf(
-        "✨ Conjuring magic...",
-        "🎨 Creating your card...",
-        "🔮 Channeling energy...",
-        "⚡ Almost there...",
-        "🎴 Finalizing..."
-    )
+    val messages = remember { ActionVerbs.getGenerationVerbCycle(6) }
 
     LaunchedEffect(Unit) {
         while (true) {
-            delay(2000)
+            delay(1500) // Faster cycle for more chaos
             messageIndex = (messageIndex + 1) % messages.size
         }
     }
@@ -827,11 +796,12 @@ fun FullScreenCardReveal(
 
                 // Success message
                 Text(
-                    text = "✨ Card Created! ✨",
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    textAlign = TextAlign.Center
+                    text = "YOOO IT'S READY! ✨",
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center,
+                    letterSpacing = 1.sp
                 )
 
                 // Card display using StyledCardView
@@ -853,16 +823,16 @@ fun FullScreenCardReveal(
                         onClick = onCreateAnother,
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            contentColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
-                        Text("Create Another", fontSize = 16.sp)
+                        Text("COOK ANOTHER", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
                     Button(
                         onClick = onViewCollection,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("View Collection", fontSize = 16.sp)
+                        Text("SEE MY DECK", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 

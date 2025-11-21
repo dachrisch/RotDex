@@ -1,6 +1,8 @@
 package com.rotdex.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -12,6 +14,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.rotdex.ui.components.RotDexLogo
 import com.rotdex.ui.viewmodel.DailyRewardsViewModel
 
 /**
@@ -24,6 +27,7 @@ fun HomeScreen(
     onNavigateToCollection: () -> Unit,
     onNavigateToCardCreate: () -> Unit,
     onNavigateToFusion: () -> Unit = {},
+    onNavigateToAchievements: () -> Unit = {},
     viewModel: DailyRewardsViewModel = hiltViewModel()
 ) {
     val userProfile by viewModel.userProfile.collectAsState()
@@ -31,10 +35,10 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("🧠 RotDex") },
+                title = { RotDexLogo() },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         }
@@ -43,16 +47,18 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Welcome Section
             Text(
-                text = "Collect the Chaos",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                text = "COLLECT THE CHAOS 💥",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary,
+                letterSpacing = 1.sp
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -94,30 +100,42 @@ fun HomeScreen(
             // Navigation Buttons
             NavigationButton(
                 icon = Icons.Default.CardGiftcard,
-                title = "Daily Rewards",
-                subtitle = "Spin the wheel & maintain your streak",
+                emoji = "🎁",
+                title = "FREE STUFF TIME",
+                subtitle = "Spin & keep that streak alive 🔥",
                 onClick = onNavigateToDailyRewards
             )
 
             NavigationButton(
                 icon = Icons.Default.Collections,
-                title = "Card Collection",
-                subtitle = "View your collected cards",
+                emoji = "📚",
+                title = "YOUR DECK",
+                subtitle = "Check out your collection of chaos",
                 onClick = onNavigateToCollection
             )
 
             NavigationButton(
                 icon = Icons.Default.Create,
-                title = "Create Card",
-                subtitle = "Generate new brainrot cards",
+                emoji = "✨",
+                title = "COOK UP SOME HEAT",
+                subtitle = "Generate new brainrot cards fr fr",
                 onClick = onNavigateToCardCreate
             )
 
             NavigationButton(
                 icon = Icons.Default.AutoFixHigh,
-                title = "Card Fusion",
-                subtitle = "Combine cards to create better ones",
+                emoji = "⚗️",
+                title = "THE BLENDER",
+                subtitle = "Mash cards together and see what happens",
                 onClick = onNavigateToFusion
+            )
+
+            NavigationButton(
+                icon = Icons.Default.EmojiEvents,
+                emoji = "🏆",
+                title = "ACHIEVEMENTS",
+                subtitle = "Flex your progress and get rewards",
+                onClick = onNavigateToAchievements
             )
         }
     }
@@ -149,6 +167,7 @@ private fun StatItem(icon: String, label: String, value: String) {
 @Composable
 private fun NavigationButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
+    emoji: String,
     title: String,
     subtitle: String,
     onClick: () -> Unit
@@ -157,39 +176,41 @@ private fun NavigationButton(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.primary
+            // Emoji icon
+            Text(
+                text = emoji,
+                fontSize = 48.sp
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.5.sp
                 )
                 Text(
                     text = subtitle,
                     fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = "Navigate",
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp)
             )
         }
     }

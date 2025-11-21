@@ -43,11 +43,14 @@ import coil3.request.crossfade
 import com.rotdex.R
 import com.rotdex.data.models.*
 import com.rotdex.ui.components.CardDisplayMode
+import com.rotdex.ui.components.RotDexLogo
 import com.rotdex.ui.components.StyledCardView
 import com.rotdex.ui.theme.getColor
+import com.rotdex.ui.utils.ActionVerbs
 import com.rotdex.ui.viewmodel.FusionState
 import com.rotdex.ui.viewmodel.FusionViewModel
 import java.io.File
+import kotlinx.coroutines.delay
 
 /**
  * Main fusion screen for combining cards
@@ -69,15 +72,15 @@ fun FusionScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Card Fusion ⚗️") },
+                title = { RotDexLogo() },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         }
@@ -214,9 +217,11 @@ private fun SelectedCardsDisplay(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "Fusion Chamber",
+                text = "THE BLENDER 🌀",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary,
+                letterSpacing = 0.5.sp
             )
 
             // Selected cards slots
@@ -250,9 +255,9 @@ private fun SelectedCardsDisplay(
                             tint = Color(0xFFFFD700)
                         )
                         Text(
-                            text = "${it.name} Recipe!",
+                            text = "${it.name} RECIPE UNLOCKED!",
                             style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.ExtraBold
                         )
                     }
                 }
@@ -263,10 +268,11 @@ private fun SelectedCardsDisplay(
                 when (it) {
                     is FusionValidation.Valid -> {
                         Text(
-                            text = "Success Rate: ${(it.successRate * 100).toInt()}%",
+                            text = "VIBE CHECK: ${(it.successRate * 100).toInt()}% 💯",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 0.5.sp
                         )
                     }
 
@@ -293,7 +299,7 @@ private fun SelectedCardsDisplay(
                 ) {
                     Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Clear")
+                    Text("CLEAR", fontWeight = FontWeight.Bold)
                 }
 
                 // Fuse button
@@ -307,7 +313,7 @@ private fun SelectedCardsDisplay(
                 ) {
                     Icon(Icons.Default.AutoFixHigh, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("FUSE CARDS", fontWeight = FontWeight.Bold)
+                    Text("MASH 'EM UP! ⚗️", fontWeight = FontWeight.ExtraBold, letterSpacing = 0.5.sp)
                 }
             }
         }
@@ -542,30 +548,55 @@ private fun EmptyCardMessage() {
 
 
 /**
- * Fusion animation screen
+ * Fusion animation screen with text-based status updates
  */
 @Composable
 private fun FusionAnimation() {
     val infiniteTransition = rememberInfiniteTransition(label = "fusion")
+
+    // Rotating animation for icon
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing),
+            animation = tween(2000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "rotation"
     )
 
+    // Pulsing animation
     val scale by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 1.2f,
+        initialValue = 0.9f,
+        targetValue = 1.1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(500),
+            animation = tween(800, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "scale"
     )
+
+    // Alpha animation for shimmer
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+
+    // Animated fusion verbs
+    var messageIndex by remember { mutableIntStateOf(0) }
+    val messages = remember { ActionVerbs.getFusionVerbCycle(6) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1500)
+            messageIndex = (messageIndex + 1) % messages.size
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -582,23 +613,71 @@ private fun FusionAnimation() {
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            verticalArrangement = Arrangement.spacedBy(32.dp),
+            modifier = Modifier.padding(32.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.AutoFixHigh,
-                contentDescription = "Fusing",
-                modifier = Modifier
-                    .size(120.dp)
-                    .rotate(rotation)
-                    .scale(scale),
-                tint = MaterialTheme.colorScheme.primary
-            )
+            // Animated fusion icon
+            Box(
+                modifier = Modifier.size(200.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                // Outer rotating border
+                Box(
+                    modifier = Modifier
+                        .size(180.dp)
+                        .rotate(rotation)
+                        .border(
+                            width = 6.dp,
+                            brush = Brush.sweepGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.secondary,
+                                    MaterialTheme.colorScheme.tertiary,
+                                    MaterialTheme.colorScheme.primary
+                                )
+                            ),
+                            shape = CircleShape
+                        )
+                )
 
+                // Pulsing center icon
+                Icon(
+                    imageVector = Icons.Default.AutoFixHigh,
+                    contentDescription = "Fusing",
+                    modifier = Modifier
+                        .size(100.dp)
+                        .scale(scale)
+                        .alpha(alpha)
+                        .rotate(-rotation),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+
+                // Orbiting sparkles
+                for (i in 0..2) {
+                    val angle = rotation + (i * 120f)
+                    val offsetX = (90 * kotlin.math.cos(Math.toRadians(angle.toDouble()))).toFloat()
+                    val offsetY = (90 * kotlin.math.sin(Math.toRadians(angle.toDouble()))).toFloat()
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .offset(x = offsetX.dp, y = offsetY.dp)
+                            .size(28.dp)
+                            .alpha(alpha),
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                }
+            }
+
+            // Animated status text with transition
             Text(
-                text = "Fusing Cards...",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                text = messages[messageIndex].uppercase(),
+                fontSize = 28.sp,
+                fontWeight = FontWeight.ExtraBold,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.primary,
+                letterSpacing = 1.sp,
+                modifier = Modifier.alpha(alpha)
             )
         }
     }
@@ -637,11 +716,12 @@ private fun FusionResultScreen(
 
             // Success message
             Text(
-                text = "✨ Fusion Successful! ✨",
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                textAlign = TextAlign.Center
+                text = "YOOO IT WORKED! ✨💥",
+                fontSize = 36.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center,
+                letterSpacing = 1.sp
             )
 
             // Recipe discovery (if any)
@@ -656,10 +736,11 @@ private fun FusionResultScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "🎉 New Recipe Discovered!",
+                            text = "🎉 NEW RECIPE UNLOCKED!",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            letterSpacing = 0.5.sp
                         )
                         Text(
                             text = it.name,
@@ -699,16 +780,16 @@ private fun FusionResultScreen(
                     onClick = onFuseAgain,
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        contentColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Text("Fuse Again", fontSize = 16.sp)
+                    Text("MASH AGAIN", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
                 Button(
                     onClick = onViewCollection,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("View Collection", fontSize = 16.sp)
+                    Text("SEE MY DECK", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -745,21 +826,23 @@ private fun FusionFailedScreen(
         ) {
             // Failed message
             Text(
-                text = "❌ Fusion Failed!",
-                fontSize = 48.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                textAlign = TextAlign.Center
+                text = "💀 RIP FUSION 💀",
+                fontSize = 52.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.error,
+                textAlign = TextAlign.Center,
+                letterSpacing = 1.sp
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "The fusion attempt was unsuccessful.\nYour cards were not consumed, but coins were spent.",
+                text = "Bro the vibe was off...\nYour cards are safe but coins = gone",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onErrorContainer,
                 textAlign = TextAlign.Center,
-                lineHeight = 24.sp
+                lineHeight = 28.sp,
+                fontWeight = FontWeight.Medium
             )
 
             Spacer(modifier = Modifier.height(48.dp))
@@ -775,9 +858,10 @@ private fun FusionFailedScreen(
                 )
             ) {
                 Text(
-                    text = "Try Again",
+                    text = "RUN IT BACK",
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.5.sp
                 )
             }
         }
