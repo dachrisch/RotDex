@@ -56,8 +56,6 @@ fun CollectionScreen(
     val stats by viewModel.stats.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
 
-    var showFilterMenu by remember { mutableStateOf(false) }
-    var showSortMenu by remember { mutableStateOf(false) }
     var selectedCard by remember { mutableStateOf<Card?>(null) }
 
     Scaffold(
@@ -86,51 +84,6 @@ fun CollectionScreen(
                             CompactStatItem(icon = "💎", value = "${profile.gems}")
                         }
                     }
-
-                    // Filter button
-                    IconButton(onClick = { showFilterMenu = true }) {
-                        Icon(Icons.Default.FilterList, contentDescription = "Filter")
-                    }
-                    DropdownMenu(
-                        expanded = showFilterMenu,
-                        onDismissRequest = { showFilterMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("All Cards") },
-                            onClick = {
-                                viewModel.filterByRarity(null)
-                                showFilterMenu = false
-                            }
-                        )
-                        CardRarity.entries.forEach { rarity ->
-                            DropdownMenuItem(
-                                text = { Text(rarity.displayName) },
-                                onClick = {
-                                    viewModel.filterByRarity(rarity)
-                                    showFilterMenu = false
-                                }
-                            )
-                        }
-                    }
-
-                    // Sort button
-                    IconButton(onClick = { showSortMenu = true }) {
-                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
-                    }
-                    DropdownMenu(
-                        expanded = showSortMenu,
-                        onDismissRequest = { showSortMenu = false }
-                    ) {
-                        SortOrder.entries.forEach { order ->
-                            DropdownMenuItem(
-                                text = { Text(order.displayName) },
-                                onClick = {
-                                    viewModel.setSortOrder(order)
-                                    showSortMenu = false
-                                }
-                            )
-                        }
-                    }
                 }
             )
         }
@@ -141,32 +94,18 @@ fun CollectionScreen(
                 .padding(paddingValues)
         ) {
             // Collection stats
-            CollectionStatsCard(stats = stats)
-
-            // Active filters indicator
-            if (selectedRarity != null) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Filtered by: ${selectedRarity?.displayName}",
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                        TextButton(onClick = { viewModel.filterByRarity(null) }) {
-                            Text("Clear")
-                        }
+            CollectionStatsCard(
+                stats = stats,
+                selectedRarity = selectedRarity,
+                onRarityClick = { rarity ->
+                    // Toggle: if already selected, clear filter; otherwise set filter
+                    if (selectedRarity == rarity) {
+                        viewModel.filterByRarity(null)
+                    } else {
+                        viewModel.filterByRarity(rarity)
                     }
                 }
-            }
+            )
 
             // Cards grid
             if (cards.isEmpty()) {
@@ -233,7 +172,11 @@ fun CollectionScreen(
  * Collection statistics card with rarity-colored icons
  */
 @Composable
-fun CollectionStatsCard(stats: com.rotdex.ui.viewmodel.CollectionStats) {
+fun CollectionStatsCard(
+    stats: com.rotdex.ui.viewmodel.CollectionStats,
+    selectedRarity: CardRarity?,
+    onRarityClick: (CardRarity) -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -248,10 +191,30 @@ fun CollectionStatsCard(stats: com.rotdex.ui.viewmodel.CollectionStats) {
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            RarityStatBadge(rarity = CardRarity.COMMON, count = stats.commonCount)
-            RarityStatBadge(rarity = CardRarity.RARE, count = stats.rareCount)
-            RarityStatBadge(rarity = CardRarity.EPIC, count = stats.epicCount)
-            RarityStatBadge(rarity = CardRarity.LEGENDARY, count = stats.legendaryCount)
+            RarityStatBadge(
+                rarity = CardRarity.COMMON,
+                count = stats.commonCount,
+                isSelected = selectedRarity == CardRarity.COMMON,
+                onClick = { onRarityClick(CardRarity.COMMON) }
+            )
+            RarityStatBadge(
+                rarity = CardRarity.RARE,
+                count = stats.rareCount,
+                isSelected = selectedRarity == CardRarity.RARE,
+                onClick = { onRarityClick(CardRarity.RARE) }
+            )
+            RarityStatBadge(
+                rarity = CardRarity.EPIC,
+                count = stats.epicCount,
+                isSelected = selectedRarity == CardRarity.EPIC,
+                onClick = { onRarityClick(CardRarity.EPIC) }
+            )
+            RarityStatBadge(
+                rarity = CardRarity.LEGENDARY,
+                count = stats.legendaryCount,
+                isSelected = selectedRarity == CardRarity.LEGENDARY,
+                onClick = { onRarityClick(CardRarity.LEGENDARY) }
+            )
         }
     }
 }
@@ -260,19 +223,37 @@ fun CollectionStatsCard(stats: com.rotdex.ui.viewmodel.CollectionStats) {
  * Rarity badge with colored circle and count
  */
 @Composable
-fun RarityStatBadge(rarity: CardRarity, count: Int) {
+fun RarityStatBadge(
+    rarity: CardRarity,
+    count: Int,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(56.dp)
+            .size(if (isSelected) 64.dp else 56.dp)
+            .clip(RoundedCornerShape(if (isSelected) 32.dp else 28.dp))
+            .clickable(onClick = onClick)
             .background(
                 color = rarity.getColor(),
-                shape = RoundedCornerShape(28.dp)
+                shape = RoundedCornerShape(if (isSelected) 32.dp else 28.dp)
+            )
+            .then(
+                if (isSelected) {
+                    Modifier.border(
+                        width = 3.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(32.dp)
+                    )
+                } else {
+                    Modifier
+                }
             )
     ) {
         Text(
             text = count.toString(),
-            fontSize = 20.sp,
+            fontSize = if (isSelected) 22.sp else 20.sp,
             fontWeight = FontWeight.ExtraBold,
             color = Color.White
         )
