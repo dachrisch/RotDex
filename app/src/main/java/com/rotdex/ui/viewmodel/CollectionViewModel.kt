@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rotdex.data.models.Card
 import com.rotdex.data.models.CardRarity
+import com.rotdex.data.models.UserProfile
 import com.rotdex.data.repository.CardRepository
+import com.rotdex.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,8 +22,15 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class CollectionViewModel @Inject constructor(
-    private val cardRepository: CardRepository
+    private val cardRepository: CardRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
+
+    val userProfile: StateFlow<UserProfile?> = userRepository.userProfile.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = null
+    )
 
     private val _selectedRarity = MutableStateFlow<CardRarity?>(null)
     val selectedRarity: StateFlow<CardRarity?> = _selectedRarity.asStateFlow()

@@ -54,6 +54,7 @@ fun CollectionScreen(
     val cards by viewModel.cards.collectAsState()
     val selectedRarity by viewModel.selectedRarity.collectAsState()
     val stats by viewModel.stats.collectAsState()
+    val userProfile by viewModel.userProfile.collectAsState()
 
     var showFilterMenu by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
@@ -73,6 +74,19 @@ fun CollectionScreen(
                     titleContentColor = MaterialTheme.colorScheme.onSurface
                 ),
                 actions = {
+                    // Stats
+                    userProfile?.let { profile ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            CompactStatItem(icon = "⚡", value = "${profile.currentEnergy}")
+                            CompactStatItem(icon = "🪙", value = "${profile.brainrotCoins}")
+                            CompactStatItem(icon = "💎", value = "${profile.gems}")
+                        }
+                    }
+
                     // Filter button
                     IconButton(onClick = { showFilterMenu = true }) {
                         Icon(Icons.Default.FilterList, contentDescription = "Filter")
@@ -333,5 +347,23 @@ fun FullscreenCardView(
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
+    }
+}
+
+@Composable
+private fun CompactStatItem(icon: String, value: String) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = icon,
+            fontSize = 16.sp
+        )
+        Text(
+            text = value,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }

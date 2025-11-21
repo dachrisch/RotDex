@@ -6,6 +6,8 @@ import com.rotdex.data.manager.AchievementManager
 import com.rotdex.data.models.Achievement
 import com.rotdex.data.models.AchievementProgress
 import com.rotdex.data.models.AchievementType
+import com.rotdex.data.models.UserProfile
+import com.rotdex.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -21,8 +23,15 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class AchievementsViewModel @Inject constructor(
-    private val achievementManager: AchievementManager
+    private val achievementManager: AchievementManager,
+    private val userRepository: UserRepository
 ) : ViewModel() {
+
+    val userProfile: StateFlow<UserProfile?> = userRepository.userProfile.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = null
+    )
 
     private val _selectedFilter = MutableStateFlow<AchievementType?>(null)
     val selectedFilter: StateFlow<AchievementType?> = _selectedFilter.asStateFlow()

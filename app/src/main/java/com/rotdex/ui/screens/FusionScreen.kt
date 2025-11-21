@@ -68,6 +68,7 @@ fun FusionScreen(
     val validation by viewModel.validation.collectAsState()
     val matchingRecipe by viewModel.matchingRecipe.collectAsState()
     val publicRecipes by viewModel.publicRecipes.collectAsState()
+    val userProfile by viewModel.userProfile.collectAsState()
 
     Scaffold(
         topBar = {
@@ -76,6 +77,19 @@ fun FusionScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    userProfile?.let { profile ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            CompactStatItem(icon = "⚡", value = "${profile.currentEnergy}")
+                            CompactStatItem(icon = "🪙", value = "${profile.brainrotCoins}")
+                            CompactStatItem(icon = "💎", value = "${profile.gems}")
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -918,5 +932,23 @@ private fun ErrorScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CompactStatItem(icon: String, value: String) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = icon,
+            fontSize = 16.sp
+        )
+        Text(
+            text = value,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }

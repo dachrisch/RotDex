@@ -55,6 +55,19 @@ fun DailyRewardsScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 },
+                actions = {
+                    userProfile?.let { profile ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            CompactStatItem(icon = "⚡", value = "${profile.currentEnergy}")
+                            CompactStatItem(icon = "🪙", value = "${profile.brainrotCoins}")
+                            CompactStatItem(icon = "💎", value = "${profile.gems}")
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -613,5 +626,23 @@ fun getColorForRewardType(type: SpinRewardType): Color {
         SpinRewardType.RARITY_BOOST -> Color(0xFFFF6B6B)
         SpinRewardType.STREAK_PROTECTION -> Color(0xFF4ECDC4)
         SpinRewardType.JACKPOT -> Color(0xFFFF1744)
+    }
+}
+
+@Composable
+private fun CompactStatItem(icon: String, value: String) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = icon,
+            fontSize = 16.sp
+        )
+        Text(
+            text = value,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }

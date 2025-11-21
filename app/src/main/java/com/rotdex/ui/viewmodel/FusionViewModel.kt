@@ -21,6 +21,12 @@ class FusionViewModel @Inject constructor(
     private val userRepository: UserRepository
 ) : ViewModel() {
 
+    val userProfile: StateFlow<UserProfile?> = userRepository.userProfile.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = null
+    )
+
     // All available cards for fusion
     val allCards: StateFlow<List<Card>> = cardRepository.getAllCards()
         .stateIn(

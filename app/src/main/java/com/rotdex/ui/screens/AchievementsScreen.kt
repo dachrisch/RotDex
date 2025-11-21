@@ -39,6 +39,7 @@ fun AchievementsScreen(
     val achievementsWithProgress by viewModel.filteredAchievements.collectAsState()
     val stats by viewModel.stats.collectAsState()
     val selectedFilter by viewModel.selectedFilter.collectAsState()
+    val userProfile by viewModel.userProfile.collectAsState()
 
     Scaffold(
         topBar = {
@@ -47,6 +48,19 @@ fun AchievementsScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                },
+                actions = {
+                    userProfile?.let { profile ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            CompactStatItem(icon = "⚡", value = "${profile.currentEnergy}")
+                            CompactStatItem(icon = "🪙", value = "${profile.brainrotCoins}")
+                            CompactStatItem(icon = "💎", value = "${profile.gems}")
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -404,5 +418,23 @@ private fun formatTimestamp(timestamp: Long): String {
         hours > 0 -> "$hours hour${if (hours > 1) "s" else ""} ago"
         minutes > 0 -> "$minutes minute${if (minutes > 1) "s" else ""} ago"
         else -> "Just now"
+    }
+}
+
+@Composable
+private fun CompactStatItem(icon: String, value: String) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = icon,
+            fontSize = 16.sp
+        )
+        Text(
+            text = value,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
