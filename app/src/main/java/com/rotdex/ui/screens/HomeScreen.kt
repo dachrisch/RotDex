@@ -28,6 +28,7 @@ fun HomeScreen(
     onNavigateToCardCreate: () -> Unit,
     onNavigateToFusion: () -> Unit = {},
     onNavigateToAchievements: () -> Unit = {},
+    onNavigateToConnectionTest: () -> Unit = {},
     viewModel: DailyRewardsViewModel = hiltViewModel()
 ) {
     val userProfile by viewModel.userProfile.collectAsState()
@@ -114,6 +115,14 @@ fun HomeScreen(
                 emoji = "🏆",
                 title = "ACHIEVEMENTS",
                 onClick = onNavigateToAchievements
+            )
+
+            // Temporary connection test button
+            NavigationButton(
+                icon = Icons.Default.Bluetooth,
+                emoji = "🧪",
+                title = "CONNECTION TEST",
+                onClick = onNavigateToConnectionTest
             )
         }
     }

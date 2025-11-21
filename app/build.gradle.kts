@@ -102,6 +102,9 @@ dependencies {
     // WorkManager for background tasks
     implementation("androidx.work:work-runtime-ktx:2.11.0")
 
+    // Nearby Connections for Bluetooth multiplayer
+    implementation("com.google.android.gms:play-services-nearby:19.3.0")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("androidx.arch.core:core-testing:2.2.0")

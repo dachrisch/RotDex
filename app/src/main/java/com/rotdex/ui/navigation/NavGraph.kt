@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import com.rotdex.ui.screens.AchievementsScreen
 import com.rotdex.ui.screens.CardCreateScreen
 import com.rotdex.ui.screens.CollectionScreen
+import com.rotdex.ui.screens.ConnectionTestScreen
 import com.rotdex.ui.screens.DailyRewardsScreen
 import com.rotdex.ui.screens.FusionScreen
 import com.rotdex.ui.screens.HomeScreen
@@ -27,6 +28,7 @@ sealed class Screen(val route: String) {
     object CardCreate : Screen("card_create")
     object Fusion : Screen("fusion")
     object Achievements : Screen("achievements")
+    object ConnectionTest : Screen("connection_test")
 }
 
 /**
@@ -47,7 +49,8 @@ fun NavGraph(
                 onNavigateToCollection = { navController.navigate(Screen.Collection.route) },
                 onNavigateToCardCreate = { navController.navigate(Screen.CardCreate.route) },
                 onNavigateToFusion = { navController.navigate(Screen.Fusion.route) },
-                onNavigateToAchievements = { navController.navigate(Screen.Achievements.route) }
+                onNavigateToAchievements = { navController.navigate(Screen.Achievements.route) },
+                onNavigateToConnectionTest = { navController.navigate(Screen.ConnectionTest.route) }
             )
         }
 
@@ -109,6 +112,12 @@ fun NavGraph(
             val viewModel: AchievementsViewModel = hiltViewModel()
             AchievementsScreen(
                 viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.ConnectionTest.route) {
+            ConnectionTestScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
