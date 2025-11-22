@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "rotdex-android": {
+      "type": "stdio",
+      "command": "./gradlew",
+      "args": [":mcp-server:run", "--console=plain", "-q"],
+      "env": {
+        "JAVA_HOME": "${env:JAVA_HOME}"
+      }
+    }
+  }
+}
