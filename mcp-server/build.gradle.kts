@@ -11,10 +11,6 @@ application {
     mainClass.set("com.rotdex.mcp.server.MainKt")
 }
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     // MCP Kotlin SDK
     implementation("io.modelcontextprotocol:kotlin-sdk:0.6.0")
