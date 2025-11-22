@@ -8,6 +8,13 @@ on:
       - main
       - master
 
+# Cancel duplicate runs - when pushing to a branch with an open PR,
+# only keep the most recent run
+# Use ref_name (not ref) so push and PR events get the same group
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   compile:
     name: Compilation Check
