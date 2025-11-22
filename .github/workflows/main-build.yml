@@ -20,23 +20,7 @@ jobs:
         distribution: 'temurin'
 
     - name: Setup Gradle
-      uses: gradle/gradle-build-action@v3
-      with:
-        gradle-version: wrapper
-
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-
-    - name: Cache Gradle packages
-      uses: actions/cache@v4
-      continue-on-error: true
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-
+      uses: gradle/actions/setup-gradle@v5
 
     - name: Compile Kotlin sources
       run: ./gradlew compileDebugKotlin compileReleaseKotlin --no-daemon
@@ -60,23 +44,7 @@ jobs:
         distribution: 'temurin'
 
     - name: Setup Gradle
-      uses: gradle/gradle-build-action@v3
-      with:
-        gradle-version: wrapper
-
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-
-    - name: Cache Gradle packages
-      uses: actions/cache@v4
-      continue-on-error: true
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-
+      uses: gradle/actions/setup-gradle@v5
 
     - name: Run Lint
       run: ./gradlew lintDebug
@@ -117,23 +85,7 @@ jobs:
         distribution: 'temurin'
 
     - name: Setup Gradle
-      uses: gradle/gradle-build-action@v3
-      with:
-        gradle-version: wrapper
-
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-
-    - name: Cache Gradle packages
-      uses: actions/cache@v4
-      continue-on-error: true
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-
+      uses: gradle/actions/setup-gradle@v5
 
     - name: Build ${{ matrix.variant }} APK
       run: ./gradlew assemble${{ matrix.variant == 'debug' && 'Debug' || 'Release' }}
@@ -175,10 +127,7 @@ jobs:
         distribution: 'temurin'
 
     - name: Setup Gradle
-      uses: gradle/gradle-build-action@v3
-
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+      uses: gradle/actions/setup-gradle@v5
 
     - name: Generate dependency updates report
       run: ./gradlew dependencyUpdates
