@@ -8,11 +8,10 @@ on:
       - main
       - master
 
-# Cancel duplicate runs - when pushing to a branch with an open PR,
-# only keep the most recent run
-# Use ref_name (not ref) so push and PR events get the same group
+# Cancel duplicate runs within the same PR or branch
+# Each PR/branch gets its own concurrency group, so different PRs can run in parallel
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -31,23 +30,7 @@ jobs:
         distribution: 'temurin'
 
     - name: Setup Gradle
-      uses: gradle/gradle-build-action@v3
-      with:
-        gradle-version: wrapper
-
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-
-    - name: Cache Gradle packages
-      uses: actions/cache@v4
-      continue-on-error: true
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-
+      uses: gradle/actions/setup-gradle@v5
 
     - name: Compile Kotlin sources
       run: ./gradlew compileDebugKotlin compileDebugAndroidTestKotlin --no-daemon
@@ -71,23 +54,7 @@ jobs:
         distribution: 'temurin'
 
     - name: Setup Gradle
-      uses: gradle/gradle-build-action@v3
-      with:
-        gradle-version: wrapper
-
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-
-    - name: Cache Gradle packages
-      uses: actions/cache@v4
-      continue-on-error: true
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-
+      uses: gradle/actions/setup-gradle@v5
 
     - name: Run Lint
       run: ./gradlew lintDebug
@@ -129,23 +96,7 @@ jobs:
         distribution: 'temurin'
 
     - name: Setup Gradle
-      uses: gradle/gradle-build-action@v3
-      with:
-        gradle-version: wrapper
-
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-
-    - name: Cache Gradle packages
-      uses: actions/cache@v4
-      continue-on-error: true
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-
+      uses: gradle/actions/setup-gradle@v5
 
     - name: Build ${{ matrix.variant }} APK
       run: ./gradlew assemble${{ matrix.variant == 'debug' && 'Debug' || 'Release' }}
@@ -175,10 +126,7 @@ jobs:
         distribution: 'temurin'
 
     - name: Setup Gradle
-      uses: gradle/gradle-build-action@v3
-
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+      uses: gradle/actions/setup-gradle@v5
 
     - name: Check build configuration
       run: ./gradlew assembleDebug --dry-run
@@ -202,21 +150,7 @@ jobs:
         distribution: 'temurin'
 
     - name: Setup Gradle
-      uses: gradle/gradle-build-action@v3
-
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-
-    - name: Cache Gradle packages
-      uses: actions/cache@v4
-      continue-on-error: true
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-
+      uses: gradle/actions/setup-gradle@v5
 
     - name: Run detekt
       run: ./gradlew detekt
