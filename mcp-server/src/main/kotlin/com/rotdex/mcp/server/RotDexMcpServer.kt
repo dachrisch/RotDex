@@ -465,11 +465,18 @@ class RotDexMcpServer {
     }
 
     suspend fun start() {
+        System.err.println("Creating StdioServerTransport...")
         val transport = StdioServerTransport(
             inputStream = System.`in`.asSource().buffered(),
             outputStream = System.out.asSink().buffered()
         )
+        System.err.println("Transport created, connecting to server...")
+
+        // connect() internally calls transport.start() which begins reading from stdin
+        // The server should now be processing messages
         server.connect(transport)
+
+        System.err.println("Connected and listening for messages...")
 
         // Keep the server running until cancelled
         awaitCancellation()

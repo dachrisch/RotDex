@@ -15,8 +15,7 @@ dependencies {
     // MCP Kotlin SDK
     implementation("io.modelcontextprotocol:kotlin-sdk:0.7.3")
 
-    // kotlinx-io for stream conversion (required for StdioServerTransport)
-    implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.7.0")
+    // Note: kotlinx-io is provided transitively by the MCP SDK
 
     // Ktor for HTTP client (needed by MCP SDK)
     implementation("io.ktor:ktor-client-cio:3.0.0")
