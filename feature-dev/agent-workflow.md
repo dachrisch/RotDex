@@ -15,17 +15,40 @@ All agents are defined in `.claude/agents/` directory as YAML configuration file
 
 ### Agent Overview Table
 
+#### Project-Specific Agents (`.claude/agents/`)
+
 | Agent               | Type            | Phase | Purpose                                             |
 |---------------------|-----------------|-------|-----------------------------------------------------|
-| **planning**        | Plan            | 1     | Analyze requirements and create implementation plan |
-| **exploration**     | Explore         | 2     | Find existing patterns and reusable components      |
-| **data-layer**      | general-purpose | 3a    | Implement Room entities, DAOs, and migrations       |
-| **api-integration** | general-purpose | 3b    | Implement API services and network integration      |
-| **business-logic**  | general-purpose | 3c    | Implement repositories and manager classes          |
-| **ui-viewmodel**    | general-purpose | 3d    | Implement Compose screens and ViewModels            |
-| **navigation**      | general-purpose | 3e    | Integrate navigation routes and flows               |
-| **testing**         | general-purpose | 4     | Write unit and instrumented tests                   |
-| **review**          | general-purpose | 5     | Code review and quality assurance                   |
+| **planning**        | Planning Agent  | 1     | Analyze requirements and create implementation plan |
+| **exploration**     | Exploration Agent | 2   | Find existing patterns and reusable components      |
+| **data-layer**      | Data Layer Agent | 3a   | Implement Room entities, DAOs, and migrations       |
+| **api-integration** | API Integration Agent | 3b | Implement API services and network integration    |
+| **business-logic**  | Business Logic Agent | 3c | Implement repositories and manager classes         |
+| **ui-viewmodel**    | UI & ViewModel Agent | 3d | Implement Compose screens and ViewModels           |
+| **navigation**      | Navigation Agent | 3e   | Integrate navigation routes and flows               |
+| **testing**         | Testing Agent   | 4     | Write unit and instrumented tests                   |
+| **review**          | Review Agent    | 5     | Code review and quality assurance                   |
+
+#### Global Agents Available (`~/.claude/agents/`)
+
+These general-purpose agents complement the project-specific workflow:
+
+| Agent                      | Type            | Purpose                                                      |
+|----------------------------|-----------------|--------------------------------------------------------------|
+| **requirements-analyst**   | requirements-analyst | Transform vague requests into detailed technical specs  |
+| **architecture-designer**  | architecture-designer | Design system architecture, create ADRs                |
+| **tdd-engineer**           | tdd-engineer    | Implement features using test-driven development             |
+| **qa-verification-engineer** | qa-verification-engineer | Run comprehensive quality checks, produce QA reports |
+| **git-commit-manager**     | git-commit-manager | Handle git commits and PR creation                        |
+| **cleanup-coordinator**    | cleanup-coordinator | Ensure PRs contain only relevant changes                 |
+| **documentation-specialist** | documentation-specialist | Create and update technical documentation           |
+
+**Note:** Global agents can be used at any phase to supplement the project workflow. For example:
+- Use `requirements-analyst` before `planning` for complex features
+- Use `tdd-engineer` instead of or alongside `testing` for TDD approach
+- Use `qa-verification-engineer` after `review` for comprehensive QA
+- Use `git-commit-manager` after all phases complete to create PRs
+- Use `cleanup-coordinator` before commits to verify PR scope
 
 ### Workflow Diagram
 
@@ -578,7 +601,8 @@ cp feature-dev/TEMPLATE.md feature-dev/[feature-name].md
 ## References
 
 ### Documentation
-- **Agent Definitions**: `.claude/agents/*.yaml` - Individual agent YAML configs
+- **Project Agents**: `.claude/agents/*.md` - RotDex-specific agent configs
+- **Global Agents**: `~/.claude/agents/*.md` - General development workflow agents
 - **Agent Overview**: See `agent_definitions` section in `feature-dev/workflow.json`
 - **Architecture Guide**: `CLAUDE.md` - RotDex architecture and patterns
 - **Feature Status**: `docs/features/STATUS.md` - Feature completion tracking
@@ -599,4 +623,6 @@ Before starting agent workflow:
 
 ---
 
-**Questions?** Review the agent definitions in `workflow.json` or check individual agent YAML files in `.claude/agents/`.
+**Questions?** Review the agent definitions in `workflow.json` or check individual agent files:
+- Project agents: `.claude/agents/*.md`
+- Global agents: `~/.claude/agents/*.md`
