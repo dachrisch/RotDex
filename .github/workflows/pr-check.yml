@@ -179,4 +179,4 @@ jobs:
       if: always()
       with:
         name: detekt-report
-        path: build/reports/detekt/
+        path: app/build/reports/detekt/
