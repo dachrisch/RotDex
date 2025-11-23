@@ -4,9 +4,29 @@ on:
   push:
     branches: [ main, master ]
 
+permissions:
+  actions: write
+  contents: read
+
 jobs:
+  pre_job:
+    name: Check Duplicate
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5
+        with:
+          concurrent_skipping: 'same_content_newer'
+          skip_after_successful_duplicate: 'true'
+          paths_ignore: '["**/README.md", "**/docs/**", "**/*.md", ".gitignore", "LICENSE"]'
+          do_not_skip: '["workflow_dispatch", "schedule"]'
+
   compile:
     name: Compilation Check
+    needs: pre_job
+    if: needs.pre_job.outputs.should_skip != 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -31,7 +51,8 @@ jobs:
   lint-and-test:
     name: Lint and Test
     runs-on: ubuntu-latest
-    needs: compile
+    needs: [pre_job, compile]
+    if: needs.pre_job.outputs.should_skip != 'true'
 
     steps:
     - name: Checkout code
@@ -69,7 +90,8 @@ jobs:
   build-apks:
     name: Build APK (${{ matrix.variant }})
     runs-on: ubuntu-latest
-    needs: lint-and-test
+    needs: [pre_job, lint-and-test]
+    if: needs.pre_job.outputs.should_skip != 'true'
     strategy:
       matrix:
         variant: [debug, release]
@@ -102,7 +124,8 @@ jobs:
   validate:
     name: Validation
     runs-on: ubuntu-latest
-    needs: compile
+    needs: [pre_job, compile]
+    if: needs.pre_job.outputs.should_skip != 'true'
 
     steps:
     - name: Checkout code
@@ -114,7 +137,8 @@ jobs:
   report:
     name: Generate Reports
     runs-on: ubuntu-latest
-    needs: lint-and-test
+    needs: [pre_job, lint-and-test]
+    if: needs.pre_job.outputs.should_skip != 'true'
 
     steps:
     - name: Checkout code
