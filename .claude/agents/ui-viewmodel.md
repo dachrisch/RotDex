@@ -1,3 +1,9 @@
+---
+name: UI & ViewModel Agent
+description: UI screens and ViewModel implementation agent
+tools: Read, Edit, Write, Bash, Glob, Grep
+---
+
 # UI & ViewModel Agent
 
 **Version:** 1.0.0

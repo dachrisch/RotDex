@@ -1,3 +1,9 @@
+---
+name: Planning Agent
+description: Feature planning and task breakdown agent
+tools: Glob, Grep, Read
+---
+
 # Planning Agent
 
 **Version:** 1.0.0

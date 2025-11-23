@@ -1,3 +1,9 @@
+---
+name: Review Agent
+description: Code review and quality assurance agent
+tools: Read, Edit, Write, Bash, Glob, Grep
+---
+
 # Review Agent
 
 **Version:** 1.0.0

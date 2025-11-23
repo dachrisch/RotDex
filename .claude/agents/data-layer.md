@@ -1,3 +1,9 @@
+---
+name: Data Layer Agent
+description: Database and data model implementation agent
+tools: Read, Edit, Write, Bash, Glob, Grep
+---
+
 # Data Layer Agent
 
 **Version:** 1.0.0

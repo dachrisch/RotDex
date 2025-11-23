@@ -1,3 +1,9 @@
+---
+name: Business Logic Agent
+description: Repository and business logic implementation agent
+tools: Read, Edit, Write, Bash, Glob, Grep
+---
+
 # Business Logic Agent
 
 **Version:** 1.0.0

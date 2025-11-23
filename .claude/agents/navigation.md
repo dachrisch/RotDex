@@ -1,3 +1,9 @@
+---
+name: Navigation Agent
+description: Navigation and routing implementation agent
+tools: Read, Edit, Write, Bash, Glob, Grep
+---
+
 # Navigation Agent
 
 **Version:** 1.0.0

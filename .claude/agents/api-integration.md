@@ -1,3 +1,9 @@
+---
+name: API Integration Agent
+description: API service and network integration agent
+tools: Read, Edit, Write, Bash, Glob, Grep
+---
+
 # API Integration Agent
 
 **Version:** 1.0.0

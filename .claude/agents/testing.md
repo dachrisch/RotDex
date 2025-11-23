@@ -1,3 +1,9 @@
+---
+name: Testing Agent
+description: Test implementation and quality assurance agent
+tools: Read, Edit, Write, Bash, Glob, Grep
+---
+
 # Testing Agent
 
 **Version:** 1.0.0

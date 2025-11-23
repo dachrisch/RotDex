@@ -1,3 +1,9 @@
+---
+name: Exploration Agent
+description: Codebase exploration and pattern discovery agent
+tools: Glob, Grep, Read
+---
+
 # Exploration Agent
 
 **Version:** 1.0.0
