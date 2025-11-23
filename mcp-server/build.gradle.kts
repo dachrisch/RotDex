@@ -13,7 +13,10 @@ application {
 
 dependencies {
     // MCP Kotlin SDK
-    implementation("io.modelcontextprotocol:kotlin-sdk:0.6.0")
+    implementation("io.modelcontextprotocol:kotlin-sdk:0.7.3")
+
+    // kotlinx-io for stream conversion (required for StdioServerTransport)
+    implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.7.0")
 
     // Ktor for HTTP client (needed by MCP SDK)
     implementation("io.ktor:ktor-client-cio:3.0.0")
@@ -38,7 +41,7 @@ tasks.test {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 }
 
 tasks.jar {

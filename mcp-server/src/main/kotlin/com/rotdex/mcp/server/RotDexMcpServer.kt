@@ -3,12 +3,25 @@ package com.rotdex.mcp.server
 import com.rotdex.mcp.tools.AdbTools
 import com.rotdex.mcp.tools.GradleTools
 import com.rotdex.mcp.tools.LogcatTools
-import io.modelcontextprotocol.kotlin.sdk.Implementation
-import io.modelcontextprotocol.kotlin.sdk.Server
-import io.modelcontextprotocol.kotlin.sdk.ServerOptions
-import io.modelcontextprotocol.kotlin.sdk.Tool
+
+// MCP SDK - Server module
+import io.modelcontextprotocol.kotlin.sdk.server.Server
+import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
 import io.modelcontextprotocol.kotlin.sdk.server.StdioServerTransport
-import kotlinx.coroutines.runBlocking
+
+// MCP SDK - Core types
+import io.modelcontextprotocol.kotlin.sdk.Implementation
+import io.modelcontextprotocol.kotlin.sdk.ServerCapabilities
+import io.modelcontextprotocol.kotlin.sdk.Tool
+import io.modelcontextprotocol.kotlin.sdk.CallToolResult
+import io.modelcontextprotocol.kotlin.sdk.TextContent
+
+// kotlinx.io for stdio stream conversion
+import kotlinx.io.asSink
+import kotlinx.io.asSource
+import kotlinx.io.buffered
+
+// JSON serialization
 import kotlinx.serialization.json.*
 
 /**
@@ -18,13 +31,13 @@ import kotlinx.serialization.json.*
 class RotDexMcpServer {
 
     private val server = Server(
-        Implementation(
+        serverInfo = Implementation(
             name = "rotdex-mcp-server",
             version = "1.0.0"
         ),
-        ServerOptions(
-            capabilities = io.modelcontextprotocol.kotlin.sdk.ServerCapabilities(
-                tools = io.modelcontextprotocol.kotlin.sdk.ServerCapabilities.Tools(listChanged = true)
+        options = ServerOptions(
+            capabilities = ServerCapabilities(
+                tools = ServerCapabilities.Tools(listChanged = true)
             )
         )
     )
@@ -38,11 +51,14 @@ class RotDexMcpServer {
         server.addTool(
             name = "list_devices",
             description = "List all connected Android devices via ADB"
-        ) { _ ->
-            runBlocking {
-                val result = AdbTools.listDevices()
-                toolResult(result.isSuccess, if (result.isSuccess) result.stdout else result.stderr)
-            }
+        ) {
+            val result = AdbTools.listDevices()
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = if (result.isSuccess) result.stdout else result.stderr)
+                ),
+                isError = !result.isSuccess
+            )
         }
 
         server.addTool(
@@ -61,13 +77,16 @@ class RotDexMcpServer {
                 )),
                 required = listOf("device_id")
             )
-        ) { args ->
-            runBlocking {
-                val deviceId = args["device_id"]?.jsonPrimitive?.content ?: ""
-                val apkPath = args["apk_path"]?.jsonPrimitive?.content ?: GradleTools.getDebugApkPath()
-                val result = AdbTools.installApk(deviceId, apkPath)
-                toolResult(result.isSuccess, if (result.isSuccess) result.stdout else result.stderr)
-            }
+        ) { request ->
+            val deviceId = request.arguments["device_id"]?.jsonPrimitive?.content ?: ""
+            val apkPath = request.arguments["apk_path"]?.jsonPrimitive?.content ?: GradleTools.getDebugApkPath()
+            val result = AdbTools.installApk(deviceId, apkPath)
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = if (result.isSuccess) result.stdout else result.stderr)
+                ),
+                isError = !result.isSuccess
+            )
         }
 
         server.addTool(
@@ -82,12 +101,15 @@ class RotDexMcpServer {
                 )),
                 required = listOf("device_id")
             )
-        ) { args ->
-            runBlocking {
-                val deviceId = args["device_id"]?.jsonPrimitive?.content ?: ""
-                val result = AdbTools.launchApp(deviceId)
-                toolResult(result.isSuccess, if (result.isSuccess) "App launched" else result.stderr)
-            }
+        ) { request ->
+            val deviceId = request.arguments["device_id"]?.jsonPrimitive?.content ?: ""
+            val result = AdbTools.launchApp(deviceId)
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = if (result.isSuccess) "App launched" else result.stderr)
+                ),
+                isError = !result.isSuccess
+            )
         }
 
         server.addTool(
@@ -102,12 +124,15 @@ class RotDexMcpServer {
                 )),
                 required = listOf("device_id")
             )
-        ) { args ->
-            runBlocking {
-                val deviceId = args["device_id"]?.jsonPrimitive?.content ?: ""
-                val result = AdbTools.stopApp(deviceId)
-                toolResult(result.isSuccess, if (result.isSuccess) "App stopped" else result.stderr)
-            }
+        ) { request ->
+            val deviceId = request.arguments["device_id"]?.jsonPrimitive?.content ?: ""
+            val result = AdbTools.stopApp(deviceId)
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = if (result.isSuccess) "App stopped" else result.stderr)
+                ),
+                isError = !result.isSuccess
+            )
         }
 
         server.addTool(
@@ -122,12 +147,15 @@ class RotDexMcpServer {
                 )),
                 required = listOf("device_id")
             )
-        ) { args ->
-            runBlocking {
-                val deviceId = args["device_id"]?.jsonPrimitive?.content ?: ""
-                val result = AdbTools.clearAppData(deviceId)
-                toolResult(result.isSuccess, if (result.isSuccess) "App data cleared" else result.stderr)
-            }
+        ) { request ->
+            val deviceId = request.arguments["device_id"]?.jsonPrimitive?.content ?: ""
+            val result = AdbTools.clearAppData(deviceId)
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = if (result.isSuccess) "App data cleared" else result.stderr)
+                ),
+                isError = !result.isSuccess
+            )
         }
 
         server.addTool(
@@ -146,13 +174,16 @@ class RotDexMcpServer {
                 )),
                 required = listOf("device_id", "output_path")
             )
-        ) { args ->
-            runBlocking {
-                val deviceId = args["device_id"]?.jsonPrimitive?.content ?: ""
-                val outputPath = args["output_path"]?.jsonPrimitive?.content ?: ""
-                val result = AdbTools.takeScreenshot(deviceId, outputPath)
-                toolResult(result.isSuccess, if (result.isSuccess) result.stdout else result.stderr)
-            }
+        ) { request ->
+            val deviceId = request.arguments["device_id"]?.jsonPrimitive?.content ?: ""
+            val outputPath = request.arguments["output_path"]?.jsonPrimitive?.content ?: ""
+            val result = AdbTools.takeScreenshot(deviceId, outputPath)
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = if (result.isSuccess) result.stdout else result.stderr)
+                ),
+                isError = !result.isSuccess
+            )
         }
 
         server.addTool(
@@ -167,53 +198,68 @@ class RotDexMcpServer {
                 )),
                 required = listOf("device_id")
             )
-        ) { args ->
-            runBlocking {
-                val deviceId = args["device_id"]?.jsonPrimitive?.content ?: ""
-                val result = AdbTools.getDeviceInfo(deviceId)
-                toolResult(result.isSuccess, if (result.isSuccess) result.stdout else result.stderr)
-            }
+        ) { request ->
+            val deviceId = request.arguments["device_id"]?.jsonPrimitive?.content ?: ""
+            val result = AdbTools.getDeviceInfo(deviceId)
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = if (result.isSuccess) result.stdout else result.stderr)
+                ),
+                isError = !result.isSuccess
+            )
         }
 
         // Gradle Tools
         server.addTool(
             name = "build_debug",
             description = "Build the debug APK using Gradle"
-        ) { _ ->
-            runBlocking {
-                val result = GradleTools.assembleDebug()
-                toolResult(result.isSuccess, if (result.isSuccess) "Debug APK built at ${GradleTools.getDebugApkPath()}" else result.stderr)
-            }
+        ) {
+            val result = GradleTools.assembleDebug()
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = if (result.isSuccess) "Debug APK built at ${GradleTools.getDebugApkPath()}" else result.stderr)
+                ),
+                isError = !result.isSuccess
+            )
         }
 
         server.addTool(
             name = "build_release",
             description = "Build the release APK using Gradle"
-        ) { _ ->
-            runBlocking {
-                val result = GradleTools.assembleRelease()
-                toolResult(result.isSuccess, if (result.isSuccess) "Release APK built at ${GradleTools.getReleaseApkPath()}" else result.stderr)
-            }
+        ) {
+            val result = GradleTools.assembleRelease()
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = if (result.isSuccess) "Release APK built at ${GradleTools.getReleaseApkPath()}" else result.stderr)
+                ),
+                isError = !result.isSuccess
+            )
         }
 
         server.addTool(
             name = "clean",
             description = "Clean the Gradle build"
-        ) { _ ->
-            runBlocking {
-                val result = GradleTools.clean()
-                toolResult(result.isSuccess, if (result.isSuccess) "Build cleaned" else result.stderr)
-            }
+        ) {
+            val result = GradleTools.clean()
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = if (result.isSuccess) "Build cleaned" else result.stderr)
+                ),
+                isError = !result.isSuccess
+            )
         }
 
         server.addTool(
             name = "run_tests",
             description = "Run all unit tests"
-        ) { _ ->
-            runBlocking {
-                val result = GradleTools.runTests()
-                toolResult(result.isSuccess, result.stdout.ifBlank { result.stderr })
-            }
+        ) {
+            val result = GradleTools.runTests()
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = result.stdout.ifBlank { result.stderr })
+                ),
+                isError = !result.isSuccess
+            )
         }
 
         server.addTool(
@@ -228,32 +274,41 @@ class RotDexMcpServer {
                 )),
                 required = listOf("test_class")
             )
-        ) { args ->
-            runBlocking {
-                val testClass = args["test_class"]?.jsonPrimitive?.content ?: ""
-                val result = GradleTools.runTestClass(testClass)
-                toolResult(result.isSuccess, result.stdout.ifBlank { result.stderr })
-            }
+        ) { request ->
+            val testClass = request.arguments["test_class"]?.jsonPrimitive?.content ?: ""
+            val result = GradleTools.runTestClass(testClass)
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = result.stdout.ifBlank { result.stderr })
+                ),
+                isError = !result.isSuccess
+            )
         }
 
         server.addTool(
             name = "run_instrumented_tests",
             description = "Run instrumented tests on a connected device"
-        ) { _ ->
-            runBlocking {
-                val result = GradleTools.runInstrumentedTests()
-                toolResult(result.isSuccess, result.stdout.ifBlank { result.stderr })
-            }
+        ) {
+            val result = GradleTools.runInstrumentedTests()
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = result.stdout.ifBlank { result.stderr })
+                ),
+                isError = !result.isSuccess
+            )
         }
 
         server.addTool(
             name = "run_detekt",
             description = "Run Detekt static analysis"
-        ) { _ ->
-            runBlocking {
-                val result = GradleTools.runDetekt()
-                toolResult(result.isSuccess, result.stdout.ifBlank { result.stderr })
-            }
+        ) {
+            val result = GradleTools.runDetekt()
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = result.stdout.ifBlank { result.stderr })
+                ),
+                isError = !result.isSuccess
+            )
         }
 
         server.addTool(
@@ -268,12 +323,15 @@ class RotDexMcpServer {
                 )),
                 required = listOf("device_id")
             )
-        ) { args ->
-            runBlocking {
-                val deviceId = args["device_id"]?.jsonPrimitive?.content ?: ""
-                val result = GradleTools.buildAndInstall(deviceId)
-                toolResult(result.isSuccess, if (result.isSuccess) "Built and installed successfully" else result.stderr)
-            }
+        ) { request ->
+            val deviceId = request.arguments["device_id"]?.jsonPrimitive?.content ?: ""
+            val result = GradleTools.buildAndInstall(deviceId)
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = if (result.isSuccess) "Built and installed successfully" else result.stderr)
+                ),
+                isError = !result.isSuccess
+            )
         }
 
         // Logcat Tools
@@ -293,13 +351,16 @@ class RotDexMcpServer {
                 )),
                 required = listOf("device_id")
             )
-        ) { args ->
-            runBlocking {
-                val deviceId = args["device_id"]?.jsonPrimitive?.content ?: ""
-                val lines = args["lines"]?.jsonPrimitive?.intOrNull ?: 100
-                val result = LogcatTools.getAppLogs(deviceId, lines)
-                toolResult(result.isSuccess, if (result.isSuccess) result.stdout else result.stderr)
-            }
+        ) { request ->
+            val deviceId = request.arguments["device_id"]?.jsonPrimitive?.content ?: ""
+            val lines = request.arguments["lines"]?.jsonPrimitive?.intOrNull ?: 100
+            val result = LogcatTools.getAppLogs(deviceId, lines)
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = if (result.isSuccess) result.stdout else result.stderr)
+                ),
+                isError = !result.isSuccess
+            )
         }
 
         server.addTool(
@@ -314,12 +375,15 @@ class RotDexMcpServer {
                 )),
                 required = listOf("device_id")
             )
-        ) { args ->
-            runBlocking {
-                val deviceId = args["device_id"]?.jsonPrimitive?.content ?: ""
-                val result = LogcatTools.getErrorLogs(deviceId)
-                toolResult(result.isSuccess, if (result.isSuccess) result.stdout else result.stderr)
-            }
+        ) { request ->
+            val deviceId = request.arguments["device_id"]?.jsonPrimitive?.content ?: ""
+            val result = LogcatTools.getErrorLogs(deviceId)
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = if (result.isSuccess) result.stdout else result.stderr)
+                ),
+                isError = !result.isSuccess
+            )
         }
 
         server.addTool(
@@ -334,12 +398,15 @@ class RotDexMcpServer {
                 )),
                 required = listOf("device_id")
             )
-        ) { args ->
-            runBlocking {
-                val deviceId = args["device_id"]?.jsonPrimitive?.content ?: ""
-                val result = LogcatTools.getCrashLogs(deviceId)
-                toolResult(result.isSuccess, if (result.isSuccess) result.stdout else result.stderr)
-            }
+        ) { request ->
+            val deviceId = request.arguments["device_id"]?.jsonPrimitive?.content ?: ""
+            val result = LogcatTools.getCrashLogs(deviceId)
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = if (result.isSuccess) result.stdout else result.stderr)
+                ),
+                isError = !result.isSuccess
+            )
         }
 
         server.addTool(
@@ -358,13 +425,16 @@ class RotDexMcpServer {
                 )),
                 required = listOf("device_id", "pattern")
             )
-        ) { args ->
-            runBlocking {
-                val deviceId = args["device_id"]?.jsonPrimitive?.content ?: ""
-                val pattern = args["pattern"]?.jsonPrimitive?.content ?: ""
-                val result = LogcatTools.searchLogs(deviceId, pattern)
-                toolResult(result.isSuccess, if (result.isSuccess) result.stdout else result.stderr)
-            }
+        ) { request ->
+            val deviceId = request.arguments["device_id"]?.jsonPrimitive?.content ?: ""
+            val pattern = request.arguments["pattern"]?.jsonPrimitive?.content ?: ""
+            val result = LogcatTools.searchLogs(deviceId, pattern)
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = if (result.isSuccess) result.stdout else result.stderr)
+                ),
+                isError = !result.isSuccess
+            )
         }
 
         server.addTool(
@@ -379,26 +449,23 @@ class RotDexMcpServer {
                 )),
                 required = listOf("device_id")
             )
-        ) { args ->
-            runBlocking {
-                val deviceId = args["device_id"]?.jsonPrimitive?.content ?: ""
-                val result = LogcatTools.clearLogs(deviceId)
-                toolResult(result.isSuccess, if (result.isSuccess) "Logs cleared" else result.stderr)
-            }
+        ) { request ->
+            val deviceId = request.arguments["device_id"]?.jsonPrimitive?.content ?: ""
+            val result = LogcatTools.clearLogs(deviceId)
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = if (result.isSuccess) "Logs cleared" else result.stderr)
+                ),
+                isError = !result.isSuccess
+            )
         }
     }
 
-    private fun toolResult(success: Boolean, message: String): io.modelcontextprotocol.kotlin.sdk.CallToolResult {
-        return io.modelcontextprotocol.kotlin.sdk.CallToolResult(
-            content = listOf(
-                io.modelcontextprotocol.kotlin.sdk.TextContent(text = message)
-            ),
-            isError = !success
-        )
-    }
-
     suspend fun start() {
-        val transport = StdioServerTransport()
+        val transport = StdioServerTransport(
+            inputStream = System.`in`.asSource().buffered(),
+            outputStream = System.out.asSink().buffered()
+        )
         server.connect(transport)
     }
 }

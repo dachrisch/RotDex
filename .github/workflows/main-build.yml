@@ -43,7 +43,7 @@ jobs:
       uses: gradle/actions/setup-gradle@v5
 
     - name: Compile Kotlin sources
-      run: ./gradlew compileDebugKotlin compileReleaseKotlin --no-daemon
+      run: ./gradlew compileDebugKotlin compileReleaseKotlin :mcp-server:compileKotlin :mcp-server:compileTestKotlin --no-daemon
 
     - name: Verify compilation success
       run: echo "✓ Compilation successful - no Kotlin errors found"
@@ -71,7 +71,7 @@ jobs:
       run: ./gradlew lintDebug
 
     - name: Run Unit Tests
-      run: ./gradlew testDebugUnitTest
+      run: ./gradlew testDebugUnitTest :mcp-server:test
 
     - name: Upload Lint Results
       uses: actions/upload-artifact@v5
@@ -85,7 +85,9 @@ jobs:
       if: always()
       with:
         name: test-results-main
-        path: app/build/reports/tests/testDebugUnitTest/
+        path: |
+          app/build/reports/tests/testDebugUnitTest/
+          mcp-server/build/reports/tests/test/
 
   build-apks:
     name: Build APK (${{ matrix.variant }})
