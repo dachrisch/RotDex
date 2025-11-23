@@ -25,7 +25,7 @@ import kotlinx.io.buffered
 import kotlinx.serialization.json.*
 
 // Coroutines
-import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.Job
 
 /**
  * MCP Server for RotDex Android development.
@@ -465,20 +465,20 @@ class RotDexMcpServer {
     }
 
     suspend fun start() {
-        System.err.println("Creating StdioServerTransport...")
         val transport = StdioServerTransport(
             inputStream = System.`in`.asSource().buffered(),
             outputStream = System.out.asSink().buffered()
         )
-        System.err.println("Transport created, connecting to server...")
 
-        // connect() internally calls transport.start() which begins reading from stdin
-        // The server should now be processing messages
-        server.connect(transport)
+        // Create a session and wait for it to close
+        val session = server.connect(transport)
+        val done = Job()
 
-        System.err.println("Connected and listening for messages...")
+        session.onClose {
+            done.complete()
+        }
 
-        // Keep the server running until cancelled
-        awaitCancellation()
+        // Wait for the session to complete
+        done.join()
     }
 }

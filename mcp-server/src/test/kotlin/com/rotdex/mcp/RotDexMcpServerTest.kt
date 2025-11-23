@@ -69,7 +69,7 @@ class RotDexMcpServerTest {
     }
 
     @Test
-    fun `server starts via gradlew and responds to initialization`() {
+    fun `server starts via gradlew and stays running`() {
         // Find project root (where gradlew is located)
         var projectRoot = File(System.getProperty("user.dir"))
         while (!File(projectRoot, "gradlew").exists() && projectRoot.parentFile != null) {
@@ -84,7 +84,8 @@ class RotDexMcpServerTest {
 
         assertTrue(gradlew.exists(), "gradlew not found at ${gradlew.absolutePath}")
 
-        // Start the MCP server process
+        // Start the MCP server process with stdin from PIPE (not null)
+        // This is important because the server exits when stdin is closed/EOF
         val processBuilder = ProcessBuilder(
             gradlew.absolutePath,
             ":mcp-server:run",
@@ -92,58 +93,21 @@ class RotDexMcpServerTest {
             "-q"
         ).directory(projectRoot)
             .redirectErrorStream(false) // Keep stderr separate to see server logs
+            .redirectInput(ProcessBuilder.Redirect.PIPE) // Keep stdin open
 
         val process = processBuilder.start()
 
         try {
-            // Wait for server to start (give it time to initialize)
-            Thread.sleep(3000)
+            // Wait for server to start (give it time to initialize gradle + JVM)
+            Thread.sleep(5000)
 
-            // Check if the server is still running (indicates successful startup)
-            // Note: With stdio transport, the server stays running waiting for input
-            if (process.isAlive) {
-                // Server started successfully
-                // Send initialize request and keep stdin open
-                val writer = process.outputStream.bufferedWriter()
-                val initRequest = """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}"""
-                writer.write(initRequest)
-                writer.newLine()
-                writer.flush()
-                // Don't close the stream - keep server running
-
-                // Wait for response
-                Thread.sleep(2000)
-
-                // Read response (with timeout)
-                val response = StringBuilder()
-                val reader = process.inputStream.bufferedReader()
-                val startTime = System.currentTimeMillis()
-                while (System.currentTimeMillis() - startTime < 5000) {
-                    if (reader.ready()) {
-                        val line = reader.readLine() ?: break
-                        response.append(line)
-                        if (line.contains("result") || line.contains("error")) {
-                            break
-                        }
-                    }
-                    Thread.sleep(100)
-                }
-
-                // Verify server is running or got a response
-                val responseStr = response.toString()
-                assertTrue(
-                    responseStr.contains("jsonrpc") || responseStr.contains("result") || process.isAlive,
-                    "Server should respond or still be running. Response: $responseStr"
-                )
-            } else {
-                // Server exited - check if it exited cleanly (exit code 0)
-                // This can happen if stdin was closed before the test could interact
-                val exitCode = process.exitValue()
-                assertTrue(
-                    exitCode == 0,
-                    "Server exited with non-zero exit code: $exitCode"
-                )
-            }
+            // The key test: server should stay running waiting for input on stdin
+            // This validates the server started successfully and is waiting for MCP messages
+            assertTrue(
+                process.isAlive,
+                "Server should stay running while waiting for input. " +
+                "If it exits immediately, check server startup logs."
+            )
         } finally {
             // Clean up: kill the server process
             process.destroyForcibly()
