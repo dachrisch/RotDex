@@ -24,6 +24,9 @@ import kotlinx.io.buffered
 // JSON serialization
 import kotlinx.serialization.json.*
 
+// Coroutines
+import kotlinx.coroutines.awaitCancellation
+
 /**
  * MCP Server for RotDex Android development.
  * Exposes ADB, Gradle, and Logcat tools for AI-assisted development.
@@ -467,5 +470,8 @@ class RotDexMcpServer {
             outputStream = System.out.asSink().buffered()
         )
         server.connect(transport)
+
+        // Keep the server running until cancelled
+        awaitCancellation()
     }
 }
