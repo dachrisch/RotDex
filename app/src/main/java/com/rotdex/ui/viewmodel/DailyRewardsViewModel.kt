@@ -37,9 +37,22 @@ class DailyRewardsViewModel @Inject constructor(
     private val _nextMilestone = MutableStateFlow<StreakMilestone?>(null)
     val nextMilestone: StateFlow<StreakMilestone?> = _nextMilestone.asStateFlow()
 
+    private val _lastSpinReward = MutableStateFlow<SpinReward?>(null)
+    val lastSpinReward: StateFlow<SpinReward?> = _lastSpinReward.asStateFlow()
+
     init {
         checkDailyStreak()
         loadNextMilestone()
+        loadLastSpinReward()
+    }
+
+    /**
+     * Load the last spin reward for display
+     */
+    private fun loadLastSpinReward() {
+        viewModelScope.launch {
+            _lastSpinReward.value = userRepository.getLastSpinReward()
+        }
     }
 
     /**

@@ -107,10 +107,10 @@ app/src/main/java/com/rotdex/
 9. Save card to Room database with local file path as `imageUrl`
 
 #### Energy System
-- Max energy: 10 (configured in `GameConfig.MAX_ENERGY`)
+- Default max energy: 5 (configured in `UserProfile.maxEnergy`, can increase via upgrades)
 - Card generation costs 1 energy (`GameConfig.CARD_GENERATION_ENERGY_COST`)
 - Regenerates via `EnergyRegenerationWorker` (periodic WorkManager task every 15 minutes)
-- Energy regeneration interval: 30 minutes per point (`GameConfig.ENERGY_REGEN_INTERVAL_MINUTES`)
+- Energy regeneration interval: 4 hours per point (configured in `UserRepository.regenerateEnergy()`)
 
 #### Card Fusion System
 - Managed by `FusionManager` class
@@ -140,12 +140,12 @@ app/src/main/java/com/rotdex/
 - Image status enum: `IN_PROGRESS`, `COMPLETED`, `FAILED`
 
 #### Game Economy Configuration
-All costs and limits centralized in `GameConfig.kt`:
+All costs and limits centralized in `GameConfig.kt` and `UserProfile.kt`:
 - Card generation: 1 energy
-- Fusion: 50 coins
-- Max energy: 10
-- Energy regen: every 30 minutes
-- Daily rewards: 50 coins + 3 energy
+- Fusion: 50 coins (base, scales with rarity)
+- Default max energy: 5 (stored per-user in `UserProfile.maxEnergy`)
+- Energy regen: every 4 hours per point
+- Daily rewards: Spin wheel with variable rewards
 
 ## Development Guidelines
 

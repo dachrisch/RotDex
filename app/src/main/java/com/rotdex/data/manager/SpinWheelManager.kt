@@ -141,6 +141,14 @@ class SpinWheelManager(
             )
         )
     }
+
+    /**
+     * Get the last spin reward (for displaying what was won)
+     */
+    suspend fun getLastSpinReward(): SpinReward? {
+        val lastSpin = spinHistoryDao.getLastSpin() ?: return null
+        return RewardConfig.SPIN_REWARDS.find { it.type == lastSpin.rewardType }
+    }
 }
 
 /**

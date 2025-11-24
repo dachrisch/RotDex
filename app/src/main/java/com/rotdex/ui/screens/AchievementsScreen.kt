@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -212,19 +213,21 @@ private fun FilterChips(
     onFilterSelected: (AchievementType?) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    LazyRow(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // All filter
-        FilterChip(
-            selected = selectedFilter == null,
-            onClick = { onFilterSelected(null) },
-            label = { Text("All") }
-        )
+        item {
+            FilterChip(
+                selected = selectedFilter == null,
+                onClick = { onFilterSelected(null) },
+                label = { Text("All") }
+            )
+        }
 
         // Type filters
-        AchievementType.entries.forEach { type ->
+        items(AchievementType.entries.toTypedArray()) { type ->
             FilterChip(
                 selected = selectedFilter == type,
                 onClick = { onFilterSelected(type) },
@@ -236,7 +239,8 @@ private fun FilterChips(
                             AchievementType.FUSION -> "Fusion"
                             AchievementType.GENERATION -> "Generation"
                             AchievementType.STREAK -> "Streak"
-                        }
+                        },
+                        maxLines = 1
                     )
                 }
             )

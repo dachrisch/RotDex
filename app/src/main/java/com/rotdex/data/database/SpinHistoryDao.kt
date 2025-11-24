@@ -14,6 +14,9 @@ interface SpinHistoryDao {
     @Query("SELECT * FROM spin_history ORDER BY timestamp DESC LIMIT :limit")
     fun getRecentSpins(limit: Int = 50): Flow<List<SpinHistory>>
 
+    @Query("SELECT * FROM spin_history ORDER BY timestamp DESC LIMIT 1")
+    suspend fun getLastSpin(): SpinHistory?
+
     @Query("SELECT * FROM spin_history WHERE id = :id")
     suspend fun getSpinById(id: Long): SpinHistory?
 

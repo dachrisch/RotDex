@@ -45,6 +45,7 @@ fun DailyRewardsScreen(
     val streakState by viewModel.streakState.collectAsState()
     val spinState by viewModel.spinState.collectAsState()
     val nextMilestone by viewModel.nextMilestone.collectAsState()
+    val lastSpinReward by viewModel.lastSpinReward.collectAsState()
 
     Scaffold(
         topBar = {
@@ -87,7 +88,8 @@ fun DailyRewardsScreen(
                 spinState = spinState,
                 canSpin = userProfile?.let { !it.hasUsedSpinToday } ?: false,
                 onSpin = { viewModel.performSpin() },
-                onDismissResult = { viewModel.resetSpinState() }
+                onDismissResult = { viewModel.resetSpinState() },
+                lastSpinReward = lastSpinReward
             )
         }
     }
@@ -288,7 +290,8 @@ fun SpinWheelCard(
     spinState: SpinState,
     canSpin: Boolean,
     onSpin: () -> Unit,
-    onDismissResult: () -> Unit
+    onDismissResult: () -> Unit,
+    lastSpinReward: SpinReward? = null
 ) {
     Card(
         modifier = Modifier
@@ -319,6 +322,32 @@ fun SpinWheelCard(
                     SpinWheelDisplay()
 
                     Spacer(modifier = Modifier.height(24.dp))
+
+                    // Show last reward if user already spun today
+                    if (!canSpin && lastSpinReward != null) {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Today's reward: ${getEmojiForRewardType(lastSpinReward.type)} ${lastSpinReward.displayName}",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
 
                     Button(
                         onClick = onSpin,

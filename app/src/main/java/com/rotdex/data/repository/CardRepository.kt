@@ -45,8 +45,8 @@ class CardRepository(
             generateFusionCardInternal(fusionPrompt)
         },
         generateRpgAttributes = { prompt, rarity, timestamp ->
-            // Generate RPG stats for fusion character
-            val name = generateCharacterName(prompt)
+            // Generate RPG stats for fusion character with a fusion-specific name
+            val name = generateFusionCharacterName(prompt)
             val health = generateHealth(rarity, timestamp)
             val attack = generateAttack(rarity, timestamp)
             Triple(name, health, attack)
@@ -449,6 +449,45 @@ class CardRepository(
         }
 
         return CardRarity.COMMON // Fallback
+    }
+
+    /**
+     * Generates a unique fusion character name by combining parent card names
+     * Creates brainrot-style mashup names from the fusion prompt
+     */
+    private fun generateFusionCharacterName(fusionPrompt: String): String {
+        // Extract parent names from fusion prompt (usually in parentheses or after "of")
+        val parentNames = mutableListOf<String>()
+
+        // Try to extract names from parentheses like (fire dragon warrior)
+        val parenRegex = """\(([^)]+)\)""".toRegex()
+        parenRegex.findAll(fusionPrompt).forEach { match ->
+            parentNames.add(match.groupValues[1].trim())
+        }
+
+        // If we found parent names, create a fusion name
+        if (parentNames.size >= 2) {
+            val name1 = parentNames[0].split(" ").firstOrNull() ?: "Chaos"
+            val name2 = parentNames[1].split(" ").lastOrNull() ?: "Entity"
+
+            // Fusion name patterns - brainrot style
+            val patterns = listOf(
+                "${name1.take(4)}${name2.takeLast(4).replaceFirstChar { it.uppercase() }}",  // FireRrior
+                "$name1-$name2",  // Fire-Warrior
+                "${name1}x${name2}",  // FirexWarrior
+                "Ultra $name1 $name2",  // Ultra Fire Warrior
+                "$name1 ${name2}oid",  // Fire Warrioroid
+                "Neo ${name1}${name2.take(3)}",  // Neo Firewar
+                "${name1}zilla",  // Firezilla
+                "Mega ${name1.take(3)}${name2.takeLast(3)}",  // Mega Firior
+            )
+            return patterns.random().replaceFirstChar { it.uppercase() }
+        }
+
+        // Fallback: generate a random brainrot fusion name
+        val prefixes = listOf("Ultra", "Neo", "Omega", "Sigma", "Chaos", "Turbo", "Giga", "Meta", "Hyper")
+        val suffixes = listOf("Entity", "Being", "Spawn", "Chimera", "Abomination", "Fusion", "Hybrid", "Amalgam")
+        return "${prefixes.random()} ${suffixes.random()}"
     }
 
     /**

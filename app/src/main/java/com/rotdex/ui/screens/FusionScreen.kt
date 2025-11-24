@@ -270,12 +270,12 @@ private fun SelectedCardsDisplay(
                 letterSpacing = 0.5.sp
             )
 
-            // Selected cards slots
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            // Selected cards slots - Row instead of LazyRow to show all 5 slots
+            Row(
+                horizontalArrangement = Arrangement.SpaceEvenly,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                items(FusionRules.MAX_FUSION_CARDS) { index ->
+                repeat(FusionRules.MAX_FUSION_CARDS) { index ->
                     FusionCardSlot(
                         card = selectedCards.getOrNull(index),
                         index = index
@@ -372,7 +372,7 @@ private fun FusionCardSlot(
 ) {
     Box(
         modifier = Modifier
-            .size(80.dp)
+            .size(64.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(
                 color = if (card != null) {

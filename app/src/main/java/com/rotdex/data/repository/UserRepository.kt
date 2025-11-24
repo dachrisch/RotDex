@@ -62,6 +62,8 @@ class UserRepository(
     fun getRecentSpins(limit: Int = 50): Flow<List<SpinHistory>> =
         spinHistoryDao.getRecentSpins(limit)
 
+    suspend fun getLastSpinReward() = spinWheelManager.getLastSpinReward()
+
     // MARK: - Energy Operations
 
     /**
