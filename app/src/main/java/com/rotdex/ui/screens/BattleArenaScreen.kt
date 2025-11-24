@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,7 +25,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -38,6 +42,7 @@ import coil3.request.crossfade
 import com.rotdex.data.manager.ConnectionState
 import com.rotdex.data.models.*
 import com.rotdex.ui.viewmodel.BattleArenaViewModel
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -583,103 +588,252 @@ private fun BattleSection(
     cardTransferred: Boolean,
     onPlayAgain: () -> Unit
 ) {
+    // Track which card is currently attacking for animation
+    val currentSegment = battleStory.getOrNull(currentStoryIndex)
+    val isLocalAttacking = currentSegment?.isLocalAction == true
+    val isOpponentAttacking = currentSegment?.isLocalAction == false && currentSegment.damageDealt != null
+    val isBattleActive = battleResult == null && battleStory.isNotEmpty()
+
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // VS Display
+        // VS Display with animated cards
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Local card
-            localCard?.let { BattleCardDisplay(it, "YOU") }
-
-            Text(
-                text = "VS",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.error
-            )
-
-            // Opponent card
-            opponentCard?.let { BattleCardDisplay(it, "FOE") }
-        }
-
-        // Battle story display
-        if (battleStory.isNotEmpty()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+            // Local card with attack animation
+            localCard?.let {
+                AnimatedBattleCard(
+                    battleCard = it,
+                    label = "YOU",
+                    isAttacking = isLocalAttacking && isBattleActive,
+                    isTakingDamage = isOpponentAttacking && isBattleActive,
+                    isWinner = battleResult?.winnerIsLocal == true,
+                    isLoser = battleResult?.winnerIsLocal == false,
+                    isDraw = battleResult?.isDraw == true
                 )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "BATTLE LOG",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.height(8.dp))
+            }
 
-                    battleStory.take(currentStoryIndex + 1).forEach { segment ->
-                        AnimatedVisibility(
-                            visible = true,
-                            enter = fadeIn() + expandVertically()
-                        ) {
-                            Text(
-                                text = segment.text,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = if (segment.isLocalAction)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            )
-                        }
-                    }
-                }
+            // Animated VS text
+            AnimatedVsText(isBattleActive = isBattleActive)
+
+            // Opponent card with attack animation
+            opponentCard?.let {
+                AnimatedBattleCard(
+                    battleCard = it,
+                    label = "FOE",
+                    isAttacking = isOpponentAttacking && isBattleActive,
+                    isTakingDamage = isLocalAttacking && isBattleActive,
+                    isWinner = battleResult?.winnerIsLocal == false,
+                    isLoser = battleResult?.winnerIsLocal == true,
+                    isDraw = battleResult?.isDraw == true
+                )
             }
         }
 
-        // Result display
+        // Battle story display with better styling
+        if (battleStory.isNotEmpty()) {
+            BattleLogCard(
+                battleStory = battleStory,
+                currentStoryIndex = currentStoryIndex
+            )
+        }
+
+        // Result display with animation
         battleResult?.let { result ->
-            ResultCard(result = result, cardTransferred = cardTransferred, onPlayAgain = onPlayAgain)
+            AnimatedResultCard(
+                result = result,
+                cardTransferred = cardTransferred,
+                onPlayAgain = onPlayAgain
+            )
         }
     }
 }
 
 @Composable
-private fun BattleCardDisplay(battleCard: BattleCard, label: String) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold
-        )
+private fun AnimatedVsText(isBattleActive: Boolean) {
+    val infiniteTransition = rememberInfiniteTransition(label = "vs")
 
-        Card(
-            modifier = Modifier.size(100.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = getRarityColor(battleCard.card.rarity).copy(alpha = 0.3f)
-            )
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(battleCard.card.imageUrl)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = battleCard.card.name,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (isBattleActive) 1.3f else 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(500, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "vsScale"
+    )
+
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = -5f,
+        targetValue = 5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(300),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "vsRotation"
+    )
+
+    Text(
+        text = "VS",
+        style = MaterialTheme.typography.headlineLarge,
+        fontWeight = FontWeight.ExtraBold,
+        color = MaterialTheme.colorScheme.error,
+        modifier = Modifier
+            .scale(scale)
+            .graphicsLayer {
+                rotationZ = if (isBattleActive) rotation else 0f
             }
+    )
+}
+
+@Composable
+private fun AnimatedBattleCard(
+    battleCard: BattleCard,
+    label: String,
+    isAttacking: Boolean,
+    isTakingDamage: Boolean,
+    isWinner: Boolean,
+    isLoser: Boolean,
+    isDraw: Boolean
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "battle")
+
+    // Attack animation - lunge forward
+    val attackOffset by animateFloatAsState(
+        targetValue = if (isAttacking) 20f else 0f,
+        animationSpec = tween(200, easing = EaseOutBack),
+        label = "attackOffset"
+    )
+
+    // Damage animation - shake
+    val shakeOffset by infiniteTransition.animateFloat(
+        initialValue = -8f,
+        targetValue = 8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(50),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "shake"
+    )
+
+    // Damage flash
+    var showDamageFlash by remember { mutableStateOf(false) }
+    LaunchedEffect(isTakingDamage) {
+        if (isTakingDamage) {
+            showDamageFlash = true
+            delay(300)
+            showDamageFlash = false
+        }
+    }
+
+    // Winner pulse animation
+    val winnerScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(500),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "winnerScale"
+    )
+
+    // Loser fade
+    val loserAlpha by animateFloatAsState(
+        targetValue = if (isLoser) 0.4f else 1f,
+        animationSpec = tween(1000),
+        label = "loserAlpha"
+    )
+
+    val cardModifier = Modifier
+        .graphicsLayer {
+            translationX = when {
+                isAttacking -> attackOffset * (if (label == "YOU") 1 else -1)
+                isTakingDamage -> shakeOffset
+                else -> 0f
+            }
+            scaleX = if (isWinner) winnerScale else 1f
+            scaleY = if (isWinner) winnerScale else 1f
+            alpha = loserAlpha
+        }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = cardModifier
+    ) {
+        // Label with winner/loser indicator
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold
+            )
+            if (isWinner) {
+                Text("👑", fontSize = 16.sp)
+            } else if (isLoser) {
+                Text("💀", fontSize = 16.sp)
+            } else if (isDraw) {
+                Text("🤝", fontSize = 16.sp)
+            }
+        }
+
+        // Card with effects
+        Box {
+            Card(
+                modifier = Modifier.size(110.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = when {
+                        isWinner -> Color(0xFF4CAF50).copy(alpha = 0.4f)
+                        isLoser -> Color(0xFFF44336).copy(alpha = 0.3f)
+                        else -> getRarityColor(battleCard.card.rarity).copy(alpha = 0.3f)
+                    }
+                )
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(battleCard.card.imageUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = battleCard.card.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+
+                    // Damage flash overlay
+                    if (showDamageFlash) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Red.copy(alpha = 0.5f))
+                        )
+                    }
+
+                    // Winner glow
+                    if (isWinner) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color(0xFFFFD700).copy(alpha = 0.2f))
+                        )
+                    }
+                }
+            }
+
+            // Health bar
+            HealthBar(
+                currentHealth = battleCard.currentHealth,
+                maxHealth = battleCard.effectiveHealth,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(4.dp)
+            )
         }
 
         Text(
@@ -688,21 +842,142 @@ private fun BattleCardDisplay(battleCard: BattleCard, label: String) {
             fontWeight = FontWeight.Bold
         )
 
-        Text(
-            text = "ATK:${battleCard.effectiveAttack}",
-            style = MaterialTheme.typography.labelSmall
-        )
-        Text(
-            text = "HP:${battleCard.effectiveHealth}",
-            style = MaterialTheme.typography.labelSmall
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = "⚔️${battleCard.effectiveAttack}",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "❤️${battleCard.effectiveHealth}",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun HealthBar(
+    currentHealth: Int,
+    maxHealth: Int,
+    modifier: Modifier = Modifier
+) {
+    val healthPercent = if (maxHealth > 0) currentHealth.toFloat() / maxHealth else 1f
+    val healthColor = when {
+        healthPercent > 0.5f -> Color(0xFF4CAF50)
+        healthPercent > 0.25f -> Color(0xFFFF9800)
+        else -> Color(0xFFF44336)
+    }
+
+    Box(
+        modifier = modifier
+            .width(90.dp)
+            .height(8.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color.Gray.copy(alpha = 0.5f))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(healthPercent)
+                .background(healthColor)
         )
     }
 }
 
 @Composable
-private fun ResultCard(result: BattleResult, cardTransferred: Boolean, onPlayAgain: () -> Unit) {
+private fun BattleLogCard(
+    battleStory: List<BattleStorySegment>,
+    currentStoryIndex: Int
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("⚔️", fontSize = 20.sp)
+                Text(
+                    text = "BATTLE LOG",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+
+            battleStory.take(currentStoryIndex + 1).forEachIndexed { index, segment ->
+                val isLatest = index == currentStoryIndex
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn() + slideInVertically()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .then(
+                                if (isLatest) Modifier.background(
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                                    RoundedCornerShape(8.dp)
+                                ).padding(8.dp)
+                                else Modifier.padding(8.dp)
+                            ),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Text(
+                            text = if (segment.isLocalAction) "🔵" else "🔴",
+                            fontSize = 14.sp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = segment.text,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (segment.isLocalAction)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.error,
+                            fontWeight = if (isLatest) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AnimatedResultCard(
+    result: BattleResult,
+    cardTransferred: Boolean,
+    onPlayAgain: () -> Unit
+) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(500)
+        visible = true
+    }
+
+    val scale by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "resultScale"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(scale),
         colors = CardDefaults.cardColors(
             containerColor = when {
                 result.isDraw -> MaterialTheme.colorScheme.tertiaryContainer
@@ -716,14 +991,16 @@ private fun ResultCard(result: BattleResult, cardTransferred: Boolean, onPlayAga
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Big result text with emoji
             Text(
                 text = when {
-                    result.isDraw -> "DRAW!"
-                    result.winnerIsLocal == true -> "VICTORY!"
-                    else -> "DEFEAT!"
+                    result.isDraw -> "🤝 DRAW! 🤝"
+                    result.winnerIsLocal == true -> "🏆 VICTORY! 🏆"
+                    else -> "💀 DEFEAT! 💀"
                 },
                 style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.ExtraBold
+                fontWeight = FontWeight.ExtraBold,
+                textAlign = TextAlign.Center
             )
 
             // Card transfer info
@@ -732,34 +1009,45 @@ private fun ResultCard(result: BattleResult, cardTransferred: Boolean, onPlayAga
                     Text(
                         text = "Both cards lost in the chaos!",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        textAlign = TextAlign.Center
                     )
                 }
                 result.winnerIsLocal == true && result.cardWon != null -> {
-                    Text(
-                        text = "You claimed: ${result.cardWon.name}!",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF4CAF50)
-                    )
-                    if (cardTransferred) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "Card added to your collection!",
-                            style = MaterialTheme.typography.bodyMedium
+                            text = "🎉 You claimed: ${result.cardWon.name}! 🎉",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4CAF50),
+                            textAlign = TextAlign.Center
                         )
+                        if (cardTransferred) {
+                            Text(
+                                text = "✅ Card added to your collection!",
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
                 result.winnerIsLocal == false -> {
                     Text(
-                        text = "Your card was claimed by the victor!",
+                        text = "😢 Your card was claimed by the victor!",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFFF44336)
+                        color = Color(0xFFF44336),
+                        textAlign = TextAlign.Center
                     )
                 }
             }
 
-            Button(onClick = onPlayAgain) {
-                Text("PLAY AGAIN", fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+
+            Button(
+                onClick = onPlayAgain,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("🔄 PLAY AGAIN", fontWeight = FontWeight.Bold, fontSize = 18.sp)
             }
         }
     }
