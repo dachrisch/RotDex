@@ -6,6 +6,14 @@ plugins {
     id("com.google.dagger.hilt.android")
 }
 
+// Generate unique version code based on timestamp (for debug builds)
+fun generateVersionCode(): Int {
+    // Use minutes since 2024-01-01 to generate unique version codes
+    val baseTimestamp = 1704067200000L // 2024-01-01 00:00:00 UTC
+    val minutesSinceBase = ((System.currentTimeMillis() - baseTimestamp) / 60000).toInt()
+    return minutesSinceBase
+}
+
 android {
     namespace = "com.rotdex"
     compileSdk = 36
@@ -14,8 +22,8 @@ android {
         applicationId = "com.rotdex"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = generateVersionCode()
+        versionName = "1.0.0-dev"
 
         testInstrumentationRunner = "com.rotdex.HiltTestRunner"
         vectorDrawables {

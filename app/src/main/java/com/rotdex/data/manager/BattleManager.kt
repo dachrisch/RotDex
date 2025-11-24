@@ -185,25 +185,58 @@ class BattleManager(private val context: Context) {
             }
     }
 
+    // Store full card data for transfer
+    private var localFullCard: Card? = null
+
+    // Track if stats should be revealed
+    private val _statsRevealed = MutableStateFlow(false)
+    val statsRevealed: StateFlow<Boolean> = _statsRevealed.asStateFlow()
+
     /**
      * Select a card for battle
      */
     fun selectCard(card: Card) {
         val battleCard = BattleCard.fromCard(card)
         _localCard.value = battleCard
+        localFullCard = card
         addMessage("Selected: ${card.name}")
 
-        // Send card info to opponent
-        sendMessage("CARD|${card.id}|${card.name}|${battleCard.effectiveAttack}|${battleCard.effectiveHealth}|${card.rarity.name}")
+        // Send card preview (image only, no stats) during selection
+        // Format: CARDPREVIEW|id|name|rarity|imageUrl
+        val previewData = listOf(
+            "CARDPREVIEW",
+            card.id.toString(),
+            card.name,
+            card.rarity.name,
+            card.imageUrl.replace("|", "~")
+        ).joinToString("|")
+        sendMessage(previewData)
     }
 
     /**
      * Mark ready to battle
      */
     fun setReady() {
-        if (_localCard.value == null) return
+        val card = localFullCard ?: return
+        val battleCard = _localCard.value ?: return
 
         localReady = true
+
+        // Now send full card data (with stats) for battle
+        // Format: CARD|id|name|attack|health|rarity|prompt|imageUrl|biography
+        val cardData = listOf(
+            "CARD",
+            card.id.toString(),
+            card.name,
+            battleCard.effectiveAttack.toString(),
+            battleCard.effectiveHealth.toString(),
+            card.rarity.name,
+            card.prompt.replace("|", "~"),
+            card.imageUrl.replace("|", "~"),
+            card.biography.replace("|", "~")
+        ).joinToString("|")
+        sendMessage(cardData)
+
         sendMessage("READY|true")
         addMessage("Ready to battle!")
 
@@ -223,10 +256,22 @@ class BattleManager(private val context: Context) {
         val (story, result) = calculateBattle(local, opponent)
 
         _battleStory.value = story
-        _battleResult.value = result
 
-        // Send result to opponent
-        val resultMsg = "RESULT|${if (result.isDraw) "DRAW" else if (result.winnerIsLocal == true) "LOCAL" else "OPPONENT"}|${result.battleStory}"
+        // Send story segments to opponent for synchronized animation
+        // Format: STORY|index|text|isLocalAction|damage
+        story.forEachIndexed { index, segment ->
+            val storyMsg = "STORY|$index|${segment.text.replace("|", "~")}|${segment.isLocalAction}|${segment.damageDealt ?: -1}"
+            sendMessage(storyMsg)
+        }
+
+        // Update result with full card data for transfer
+        val finalResult = result.copy(
+            cardWon = if (!result.isDraw && result.winnerIsLocal == true) opponentFullCard else null
+        )
+        _battleResult.value = finalResult
+
+        // Send result to opponent (they won if host lost)
+        val resultMsg = "RESULT|${if (finalResult.isDraw) "DRAW" else if (finalResult.winnerIsLocal == true) "LOCAL" else "OPPONENT"}"
         sendMessage(resultMsg)
 
         _battleState.value = BattleState.BATTLE_COMPLETE
@@ -317,44 +362,99 @@ class BattleManager(private val context: Context) {
         return verbs.random()
     }
 
+    // Store opponent's full card for potential transfer
+    private var opponentFullCard: Card? = null
+
     private fun handleReceivedMessage(message: String) {
         val parts = message.split("|")
         when (parts[0]) {
+            "CARDPREVIEW" -> {
+                // CARDPREVIEW|id|name|rarity|imageUrl - no stats yet
+                val id = parts[1].toLongOrNull() ?: 0
+                val name = parts[2]
+                val rarity = try { CardRarity.valueOf(parts[3]) } catch (e: Exception) { CardRarity.COMMON }
+                val imageUrl = parts.getOrNull(4)?.replace("~", "|") ?: ""
+
+                // Create preview card (stats hidden)
+                val previewCard = Card(
+                    id = id,
+                    prompt = "",
+                    imageUrl = imageUrl,
+                    rarity = rarity,
+                    name = name,
+                    attack = 0, // Hidden
+                    health = 0, // Hidden
+                    biography = ""
+                )
+                _opponentCard.value = BattleCard(
+                    card = previewCard,
+                    effectiveAttack = 0, // Hidden
+                    effectiveHealth = 0, // Hidden
+                    currentHealth = 0
+                )
+                addMessage("Opponent selected their card")
+            }
             "CARD" -> {
-                // CARD|id|name|attack|health|rarity
+                // CARD|id|name|attack|health|rarity|prompt|imageUrl|biography - full stats
                 val id = parts[1].toLongOrNull() ?: 0
                 val name = parts[2]
                 val attack = parts[3].toIntOrNull() ?: 50
                 val health = parts[4].toIntOrNull() ?: 100
                 val rarity = try { CardRarity.valueOf(parts[5]) } catch (e: Exception) { CardRarity.COMMON }
+                val prompt = parts.getOrNull(6)?.replace("~", "|") ?: ""
+                val imageUrl = parts.getOrNull(7)?.replace("~", "|") ?: ""
+                val biography = parts.getOrNull(8)?.replace("~", "|") ?: ""
 
-                // Create a temporary card for battle
+                // Create full card for potential transfer
                 val opponentCardData = Card(
                     id = id,
-                    prompt = "",
-                    imageUrl = "",
+                    prompt = prompt,
+                    imageUrl = imageUrl,
                     rarity = rarity,
                     name = name,
                     attack = attack,
-                    health = health
+                    health = health,
+                    biography = biography
                 )
+                opponentFullCard = opponentCardData
                 _opponentCard.value = BattleCard(
                     card = opponentCardData,
                     effectiveAttack = attack,
                     effectiveHealth = health,
                     currentHealth = health
                 )
-                addMessage("Opponent selected: $name")
+                _statsRevealed.value = true
+                addMessage("Opponent revealed: $name (ATK:$attack HP:$health)")
             }
             "READY" -> {
                 opponentReady = parts[1] == "true"
                 addMessage("Opponent is ready!")
                 checkBothReady()
             }
+            "STORY" -> {
+                // Receive story segment from host
+                // STORY|index|text|isLocalAction|damage
+                _battleState.value = BattleState.BATTLE_IN_PROGRESS
+                val index = parts[1].toIntOrNull() ?: 0
+                val text = parts[2].replace("~", "|")
+                // Flip isLocalAction for non-host (their local is host's opponent)
+                val isLocalAction = parts[3] != "true"  // Inverted!
+                val damage = parts[4].toIntOrNull()?.takeIf { it >= 0 }
+
+                val segment = BattleStorySegment(text, isLocalAction, damage)
+                val currentStory = _battleStory.value.toMutableList()
+                // Ensure we add at correct index
+                while (currentStory.size <= index) {
+                    currentStory.add(segment)
+                }
+                if (currentStory.size > index) {
+                    currentStory[index] = segment
+                }
+                _battleStory.value = currentStory
+            }
             "RESULT" -> {
                 // Non-host receives result
                 val outcome = parts[1]
-                val story = parts.drop(2).joinToString("|")
 
                 val local = _localCard.value ?: return
                 val opponent = _opponentCard.value ?: return
@@ -362,15 +462,17 @@ class BattleManager(private val context: Context) {
                 val isDraw = outcome == "DRAW"
                 val localWins = outcome == "OPPONENT" // Flip perspective for non-host
 
+                val fullStory = _battleStory.value.joinToString(" ") { it.text }
+
                 _battleResult.value = BattleResult(
                     isDraw = isDraw,
                     winnerIsLocal = if (isDraw) null else localWins,
                     winnerCardName = if (isDraw) null else if (localWins) local.card.name else opponent.card.name,
                     loserCardName = if (isDraw) null else if (localWins) opponent.card.name else local.card.name,
-                    localCardFinalHealth = 0, // Not tracked for non-host
+                    localCardFinalHealth = 0,
                     opponentCardFinalHealth = 0,
-                    battleStory = story,
-                    cardWon = if (!isDraw && localWins) opponent.card else null
+                    battleStory = fullStory,
+                    cardWon = if (!isDraw && localWins) opponentFullCard else null
                 )
                 _battleState.value = BattleState.BATTLE_COMPLETE
             }
@@ -405,6 +507,9 @@ class BattleManager(private val context: Context) {
         _messages.value = emptyList()
         localReady = false
         opponentReady = false
+        localFullCard = null
+        opponentFullCard = null
+        _statsRevealed.value = false
     }
 
     fun stopAll() {

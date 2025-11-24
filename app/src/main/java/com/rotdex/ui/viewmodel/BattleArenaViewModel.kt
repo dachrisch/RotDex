@@ -40,12 +40,22 @@ class BattleArenaViewModel @Inject constructor(
     val localCard: StateFlow<BattleCard?> = battleManager.localCard
     val opponentCard: StateFlow<BattleCard?> = battleManager.opponentCard
 
+    // Stats revealed (after both ready)
+    val statsRevealed: StateFlow<Boolean> = battleManager.statsRevealed
+
     // Battle story for progressive display
     val battleStory: StateFlow<List<BattleStorySegment>> = battleManager.battleStory
 
     // Currently displayed story segment index
     private val _currentStoryIndex = MutableStateFlow(0)
     val currentStoryIndex: StateFlow<Int> = _currentStoryIndex.asStateFlow()
+
+    // Card transfer state
+    private val _cardTransferred = MutableStateFlow(false)
+    val cardTransferred: StateFlow<Boolean> = _cardTransferred.asStateFlow()
+
+    // Selected card ID (to delete if lost)
+    private var selectedCardId: Long? = null
 
     // Battle result
     val battleResult: StateFlow<BattleResult?> = battleManager.battleResult
@@ -86,6 +96,7 @@ class BattleArenaViewModel @Inject constructor(
     }
 
     fun selectCard(card: Card) {
+        selectedCardId = card.id
         battleManager.selectCard(card)
     }
 
@@ -119,9 +130,57 @@ class BattleArenaViewModel @Inject constructor(
         _currentStoryIndex.value = 0
     }
 
+    /**
+     * Transfer card after battle:
+     * - Winner receives opponent's card (added to collection)
+     * - Loser's card is deleted from their collection
+     * - Draw: both lose their cards (deleted)
+     */
+    fun processCardTransfer() {
+        if (_cardTransferred.value) return
+
+        viewModelScope.launch {
+            val result = battleResult.value ?: return@launch
+
+            when {
+                result.isDraw -> {
+                    // Draw: delete local card
+                    selectedCardId?.let { id ->
+                        cardRepository.getCardById(id)?.let { card ->
+                            cardRepository.deleteCard(card)
+                        }
+                    }
+                }
+                result.winnerIsLocal == true -> {
+                    // Won: add opponent's card to collection
+                    result.cardWon?.let { wonCard ->
+                        // Create new card with fresh ID (0 = auto-generate)
+                        val newCard = wonCard.copy(
+                            id = 0,
+                            createdAt = System.currentTimeMillis()
+                        )
+                        cardRepository.saveCardToCollection(newCard)
+                    }
+                }
+                result.winnerIsLocal == false -> {
+                    // Lost: delete local card
+                    selectedCardId?.let { id ->
+                        cardRepository.getCardById(id)?.let { card ->
+                            cardRepository.deleteCard(card)
+                        }
+                    }
+                }
+            }
+
+            _cardTransferred.value = true
+        }
+    }
+
     fun stopAll() {
         battleManager.stopAll()
         _currentStoryIndex.value = 0
+        _cardTransferred.value = false
+        selectedCardId = null
     }
 
     override fun onCleared() {

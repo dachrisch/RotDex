@@ -74,6 +74,8 @@ class CardRepository(
 
     suspend fun deleteCard(card: Card) = cardDao.deleteCard(card)
 
+    suspend fun saveCardToCollection(card: Card): Long = cardDao.insertCard(card)
+
     suspend fun toggleFavorite(cardId: Long, isFavorite: Boolean) =
         cardDao.toggleFavorite(cardId, isFavorite)
 

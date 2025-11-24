@@ -52,10 +52,18 @@ fun BattleArenaScreen(
     val battleStory by viewModel.battleStory.collectAsState()
     val currentStoryIndex by viewModel.currentStoryIndex.collectAsState()
     val battleResult by viewModel.battleResult.collectAsState()
+    val cardTransferred by viewModel.cardTransferred.collectAsState()
     val messages by viewModel.messages.collectAsState()
     val discoveredDevices by viewModel.discoveredDevices.collectAsState()
     val playerCards by viewModel.playerCards.collectAsState()
     val playerName by viewModel.playerName.collectAsState()
+
+    // Process card transfer when battle completes
+    LaunchedEffect(battleResult) {
+        if (battleResult != null && !cardTransferred) {
+            viewModel.processCardTransfer()
+        }
+    }
 
     var hasPermissions by remember { mutableStateOf(false) }
 
@@ -179,6 +187,7 @@ fun BattleArenaScreen(
                         battleStory = battleStory,
                         currentStoryIndex = currentStoryIndex,
                         battleResult = battleResult,
+                        cardTransferred = cardTransferred,
                         onPlayAgain = { viewModel.stopAll() }
                     )
                 }
@@ -379,6 +388,11 @@ private fun CardSelectionSection(
             SelectedCardPreview(battleCard = selectedCard)
         }
 
+        // Opponent card preview (image only, no stats)
+        if (opponentCard != null) {
+            OpponentCardPreview(battleCard = opponentCard)
+        }
+
         // Card selection grid
         Text(
             text = "Your Cards:",
@@ -457,6 +471,52 @@ private fun SelectedCardPreview(battleCard: BattleCard) {
 }
 
 @Composable
+private fun OpponentCardPreview(battleCard: BattleCard) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(battleCard.card.imageUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Opponent's card",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(8.dp))
+            )
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "OPPONENT'S CARD",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Text(
+                    text = battleCard.card.rarity.displayName,
+                    color = getRarityColor(battleCard.card.rarity)
+                )
+            }
+
+            Column(horizontalAlignment = Alignment.End) {
+                Text("ATK: ???", fontWeight = FontWeight.Bold)
+                Text("HP: ???", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
 private fun SelectableCardItem(
     card: Card,
     isSelected: Boolean,
@@ -520,6 +580,7 @@ private fun BattleSection(
     battleStory: List<BattleStorySegment>,
     currentStoryIndex: Int,
     battleResult: BattleResult?,
+    cardTransferred: Boolean,
     onPlayAgain: () -> Unit
 ) {
     Column(
@@ -586,7 +647,7 @@ private fun BattleSection(
 
         // Result display
         battleResult?.let { result ->
-            ResultCard(result = result, onPlayAgain = onPlayAgain)
+            ResultCard(result = result, cardTransferred = cardTransferred, onPlayAgain = onPlayAgain)
         }
     }
 }
@@ -639,7 +700,7 @@ private fun BattleCardDisplay(battleCard: BattleCard, label: String) {
 }
 
 @Composable
-private fun ResultCard(result: BattleResult, onPlayAgain: () -> Unit) {
+private fun ResultCard(result: BattleResult, cardTransferred: Boolean, onPlayAgain: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -665,12 +726,36 @@ private fun ResultCard(result: BattleResult, onPlayAgain: () -> Unit) {
                 fontWeight = FontWeight.ExtraBold
             )
 
-            if (!result.isDraw && result.winnerIsLocal == true && result.cardWon != null) {
-                Text(
-                    text = "You won: ${result.cardWon.name}!",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
+            // Card transfer info
+            when {
+                result.isDraw -> {
+                    Text(
+                        text = "Both cards lost in the chaos!",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                }
+                result.winnerIsLocal == true && result.cardWon != null -> {
+                    Text(
+                        text = "You claimed: ${result.cardWon.name}!",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF4CAF50)
+                    )
+                    if (cardTransferred) {
+                        Text(
+                            text = "Card added to your collection!",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+                result.winnerIsLocal == false -> {
+                    Text(
+                        text = "Your card was claimed by the victor!",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color(0xFFF44336)
+                    )
+                }
             }
 
             Button(onClick = onPlayAgain) {
