@@ -53,19 +53,34 @@ fun ConnectionTestScreen(
 
     // Request permissions on launch
     LaunchedEffect(Unit) {
-        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(
-                Manifest.permission.BLUETOOTH_ADVERTISE,
-                Manifest.permission.BLUETOOTH_CONNECT,
-                Manifest.permission.BLUETOOTH_SCAN,
-                Manifest.permission.NEARBY_WIFI_DEVICES
-            )
-        } else {
-            arrayOf(
-                Manifest.permission.BLUETOOTH,
-                Manifest.permission.BLUETOOTH_ADMIN,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            )
+        val permissions = when {
+            // Android 13+ (API 33): New BT permissions + Nearby WiFi
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
+                arrayOf(
+                    Manifest.permission.BLUETOOTH_ADVERTISE,
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.BLUETOOTH_SCAN,
+                    Manifest.permission.NEARBY_WIFI_DEVICES
+                )
+            }
+            // Android 12 (API 31-32): New BT permissions only
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+                arrayOf(
+                    Manifest.permission.BLUETOOTH_ADVERTISE,
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.BLUETOOTH_SCAN,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                )
+            }
+            // Android 6-11 (API 23-30): Legacy BT permissions
+            else -> {
+                arrayOf(
+                    Manifest.permission.BLUETOOTH,
+                    Manifest.permission.BLUETOOTH_ADMIN,
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            }
         }
         permissionLauncher.launch(permissions)
     }
