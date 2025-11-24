@@ -6,6 +6,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.rotdex.ui.screens.AchievementsScreen
+import com.rotdex.ui.screens.BattleArenaScreen
 import com.rotdex.ui.screens.CardCreateScreen
 import com.rotdex.ui.screens.CollectionScreen
 import com.rotdex.ui.screens.ConnectionTestScreen
@@ -29,6 +30,7 @@ sealed class Screen(val route: String) {
     object Fusion : Screen("fusion")
     object Achievements : Screen("achievements")
     object ConnectionTest : Screen("connection_test")
+    object BattleArena : Screen("battle_arena")
 }
 
 /**
@@ -50,7 +52,8 @@ fun NavGraph(
                 onNavigateToCardCreate = { navController.navigate(Screen.CardCreate.route) },
                 onNavigateToFusion = { navController.navigate(Screen.Fusion.route) },
                 onNavigateToAchievements = { navController.navigate(Screen.Achievements.route) },
-                onNavigateToConnectionTest = { navController.navigate(Screen.ConnectionTest.route) }
+                onNavigateToConnectionTest = { navController.navigate(Screen.ConnectionTest.route) },
+                onNavigateToBattleArena = { navController.navigate(Screen.BattleArena.route) }
             )
         }
 
@@ -118,6 +121,12 @@ fun NavGraph(
 
         composable(Screen.ConnectionTest.route) {
             ConnectionTestScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.BattleArena.route) {
+            BattleArenaScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

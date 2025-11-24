@@ -29,6 +29,7 @@ fun HomeScreen(
     onNavigateToFusion: () -> Unit = {},
     onNavigateToAchievements: () -> Unit = {},
     onNavigateToConnectionTest: () -> Unit = {},
+    onNavigateToBattleArena: () -> Unit = {},
     viewModel: DailyRewardsViewModel = hiltViewModel()
 ) {
     val userProfile by viewModel.userProfile.collectAsState()
@@ -115,6 +116,13 @@ fun HomeScreen(
                 emoji = "🏆",
                 title = "ACHIEVEMENTS",
                 onClick = onNavigateToAchievements
+            )
+
+            NavigationButton(
+                icon = Icons.Default.LocalFireDepartment,
+                emoji = "⚔️",
+                title = "BATTLE ARENA",
+                onClick = onNavigateToBattleArena
             )
 
             // Temporary connection test button
