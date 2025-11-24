@@ -95,7 +95,7 @@ jobs:
   build-apks:
     name: Build APK (${{ matrix.variant }})
     runs-on: ubuntu-latest
-    needs: [pre_job, lint-and-test]
+    needs: [pre_job, lint-and-test, code-quality]
     if: needs.pre_job.outputs.should_skip != 'true'
     strategy:
       matrix:
