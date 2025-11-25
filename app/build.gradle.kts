@@ -6,12 +6,14 @@ plugins {
     id("com.google.dagger.hilt.android")
 }
 
-// Generate unique version code based on timestamp (for debug builds)
-fun generateVersionCode(): Int {
-    // Use minutes since 2024-01-01 to generate unique version codes
-    val baseTimestamp = 1704067200000L // 2024-01-01 00:00:00 UTC
-    val minutesSinceBase = ((System.currentTimeMillis() - baseTimestamp) / 60000).toInt()
-    return minutesSinceBase
+// Generate unique version code based on git commit count
+// Uses Gradle exec task to be configuration-cache friendly
+val gitVersionCode = providers.exec {
+    commandLine("git", "rev-list", "--count", "HEAD")
+}.standardOutput.asText.map { output ->
+    val commitCount = output.trim().toIntOrNull() ?: 0
+    // Base offset ensures we're always higher than old timestamp-based versions
+    10000 + commitCount
 }
 
 android {
@@ -22,7 +24,7 @@ android {
         applicationId = "com.rotdex"
         minSdk = 24
         targetSdk = 36
-        versionCode = generateVersionCode()
+        versionCode = gitVersionCode.get()
         versionName = "1.0.0-dev"
 
         testInstrumentationRunner = "com.rotdex.HiltTestRunner"
