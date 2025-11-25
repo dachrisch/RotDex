@@ -115,28 +115,37 @@ class BattleManager(private val context: Context) {
                 Payload.Type.FILE -> {
                     // Receive card image file
                     payload.asFile()?.let { filePayload ->
-                        val file = filePayload.asJavaFile()
-                        if (file != null) {
-                            // Get info about this transfer
-                            val transferInfo = expectedImageTransfers[payload.id]
+                        val parcelFileDescriptor = filePayload.asParcelFileDescriptor()
+                        if (parcelFileDescriptor != null) {
+                            try {
+                                // Get info about this transfer
+                                val transferInfo = expectedImageTransfers[payload.id]
 
-                            // Move to proper location
-                            val imagesDir = java.io.File(context.filesDir, "card_images")
-                            if (!imagesDir.exists()) imagesDir.mkdirs()
+                                // Read file content from ParcelFileDescriptor
+                                val inputStream = java.io.FileInputStream(parcelFileDescriptor.fileDescriptor)
+                                val imageBytes = inputStream.readBytes()
+                                inputStream.close()
+                                parcelFileDescriptor.close()
 
-                            val newFileName = "opponent_${transferInfo?.cardId ?: System.currentTimeMillis()}_${file.name}"
-                            val newFile = java.io.File(imagesDir, newFileName)
-                            file.copyTo(newFile, overwrite = true)
-                            file.delete() // Clean up temp file
+                                // Save to proper location
+                                val imagesDir = java.io.File(context.filesDir, "card_images")
+                                if (!imagesDir.exists()) imagesDir.mkdirs()
 
-                            val imagePath = newFile.absolutePath
-                            Log.d(TAG, "Received image file: $imagePath")
+                                val newFileName = "opponent_${transferInfo?.cardId ?: System.currentTimeMillis()}.jpg"
+                                val newFile = java.io.File(imagesDir, newFileName)
+                                newFile.writeBytes(imageBytes)
 
-                            // Store path and update cards if they're waiting for this image
-                            if (transferInfo != null) {
-                                receivedImagePaths[transferInfo.cardId] = imagePath
-                                updateCardWithImage(transferInfo.cardId, imagePath)
-                                expectedImageTransfers.remove(payload.id)
+                                val imagePath = newFile.absolutePath
+                                Log.d(TAG, "Received image file: $imagePath, size: ${imageBytes.size}")
+
+                                // Store path and update cards if they're waiting for this image
+                                if (transferInfo != null) {
+                                    receivedImagePaths[transferInfo.cardId] = imagePath
+                                    updateCardWithImage(transferInfo.cardId, imagePath)
+                                    expectedImageTransfers.remove(payload.id)
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Failed to read file payload: ${e.message}")
                             }
                         }
                     }
