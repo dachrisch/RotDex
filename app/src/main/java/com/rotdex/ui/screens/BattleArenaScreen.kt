@@ -1202,33 +1202,21 @@ fun BattlePrimaryAnimationScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Top: Round header and progress
+        // Top: Battle progress (no round numbers - continuous story flow)
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "ROUND $roundNumber",
+                text = "⚔️ BATTLE IN PROGRESS ⚔️",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.primary
             )
 
-            // Progress indicator
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "Round $roundNumber of $totalSegments",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            // Progress bar
+            // Progress bar (generic battle progress)
             LinearProgressIndicator(
-                progress = { (roundNumber.toFloat() / totalSegments.toFloat()) },
+                progress = { (currentStoryIndex.toFloat() / battleStory.size.coerceAtLeast(1).toFloat()) },
                 modifier = Modifier
                     .fillMaxWidth(0.6f)
                     .height(8.dp)

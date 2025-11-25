@@ -101,6 +101,9 @@ class BattleManager(private val context: Context) {
     private val expectedImageTransfers = mutableMapOf<Long, ImageTransferInfo>()  // payloadId -> info
     private val receivedImagePaths = mutableMapOf<Long, String>()  // cardId -> local file path
 
+    // Track FILE payloads that arrived before IMAGE_TRANSFER metadata
+    private val orphanedFiles = mutableMapOf<Long, String>()  // payloadId -> temp file path
+
     // Payload callback for battle messages
     private val payloadCallback = object : PayloadCallback() {
         override fun onPayloadReceived(endpointId: String, payload: Payload) {
@@ -114,13 +117,11 @@ class BattleManager(private val context: Context) {
                 }
                 Payload.Type.FILE -> {
                     // Receive card image file
+                    // IMPORTANT: Can arrive BEFORE or AFTER IMAGE_TRANSFER metadata message
                     payload.asFile()?.let { filePayload ->
                         val parcelFileDescriptor = filePayload.asParcelFileDescriptor()
                         if (parcelFileDescriptor != null) {
                             try {
-                                // Get info about this transfer
-                                val transferInfo = expectedImageTransfers[payload.id]
-
                                 // Read file content from ParcelFileDescriptor
                                 val inputStream = java.io.FileInputStream(parcelFileDescriptor.fileDescriptor)
                                 val imageBytes = inputStream.readBytes()
@@ -131,18 +132,26 @@ class BattleManager(private val context: Context) {
                                 val imagesDir = java.io.File(context.filesDir, "card_images")
                                 if (!imagesDir.exists()) imagesDir.mkdirs()
 
-                                val newFileName = "opponent_${transferInfo?.cardId ?: System.currentTimeMillis()}.jpg"
+                                val newFileName = "temp_${payload.id}_${System.currentTimeMillis()}.jpg"
                                 val newFile = java.io.File(imagesDir, newFileName)
                                 newFile.writeBytes(imageBytes)
 
                                 val imagePath = newFile.absolutePath
-                                Log.d(TAG, "Received image file: $imagePath, size: ${imageBytes.size}")
+                                Log.d(TAG, "Received FILE payload: payloadId=${payload.id}, path=$imagePath, size=${imageBytes.size}")
 
-                                // Store path and update cards if they're waiting for this image
+                                // Check if we already have metadata for this payload
+                                val transferInfo = expectedImageTransfers[payload.id]
+
                                 if (transferInfo != null) {
+                                    // Case 1: IMAGE_TRANSFER arrived FIRST - we can complete immediately
+                                    Log.d(TAG, "Metadata already received, completing transfer for card ${transferInfo.cardId}")
                                     receivedImagePaths[transferInfo.cardId] = imagePath
                                     updateCardWithImage(transferInfo.cardId, imagePath)
                                     expectedImageTransfers.remove(payload.id)
+                                } else {
+                                    // Case 2: IMAGE_TRANSFER NOT YET arrived - store file temporarily
+                                    Log.d(TAG, "Metadata not yet received, storing orphaned file: payloadId=${payload.id}")
+                                    orphanedFiles[payload.id] = imagePath
                                 }
                             } catch (e: Exception) {
                                 Log.e(TAG, "Failed to read file payload: ${e.message}")
@@ -440,13 +449,27 @@ class BattleManager(private val context: Context) {
         when (parts[0]) {
             "IMAGE_TRANSFER" -> {
                 // IMAGE_TRANSFER|cardId|fileName|size|payloadId
+                // IMPORTANT: Can arrive BEFORE or AFTER FILE payload
                 val cardId = parts[1].toLongOrNull() ?: 0
                 val fileName = parts[2]
                 val payloadId = parts.getOrNull(4)?.toLongOrNull() ?: 0
 
-                // Register that we're expecting this image
-                expectedImageTransfers[payloadId] = ImageTransferInfo(cardId, fileName)
-                Log.d(TAG, "Expecting image: cardId=$cardId, payloadId=$payloadId, fileName=$fileName")
+                Log.d(TAG, "Received IMAGE_TRANSFER metadata: cardId=$cardId, payloadId=$payloadId, fileName=$fileName")
+
+                // Check if FILE already arrived (orphaned)
+                val orphanedPath = orphanedFiles[payloadId]
+
+                if (orphanedPath != null) {
+                    // Case 1: FILE arrived FIRST - complete transfer now
+                    Log.d(TAG, "File already received, completing transfer for card $cardId")
+                    receivedImagePaths[cardId] = orphanedPath
+                    updateCardWithImage(cardId, orphanedPath)
+                    orphanedFiles.remove(payloadId)
+                } else {
+                    // Case 2: FILE NOT YET arrived - register expectation
+                    Log.d(TAG, "File not yet received, waiting for payloadId=$payloadId")
+                    expectedImageTransfers[payloadId] = ImageTransferInfo(cardId, fileName)
+                }
             }
             "CARDPREVIEW" -> {
                 // CARDPREVIEW|id|name|rarity - no stats yet, image will arrive separately
@@ -618,13 +641,16 @@ class BattleManager(private val context: Context) {
 
     /**
      * Update opponent card with received image path
+     * Forces UI refresh by updating StateFlow
      */
     private fun updateCardWithImage(cardId: Long, imagePath: String) {
         _opponentCard.value?.let { battleCard ->
             if (battleCard.card.id == cardId) {
-                val updatedCard = battleCard.card.copy(imageUrl = imagePath)
+                // Add timestamp to bust Coil's cache and force reload
+                val cacheBustedPath = "$imagePath?t=${System.currentTimeMillis()}"
+                val updatedCard = battleCard.card.copy(imageUrl = cacheBustedPath)
                 _opponentCard.value = battleCard.copy(card = updatedCard)
-                Log.d(TAG, "Updated opponent card $cardId with image: $imagePath")
+                Log.d(TAG, "Updated opponent card $cardId with image: $cacheBustedPath")
             }
         }
 
@@ -649,6 +675,17 @@ class BattleManager(private val context: Context) {
         _statsRevealed.value = false
         expectedImageTransfers.clear()
         receivedImagePaths.clear()
+
+        // Clean up orphaned files
+        orphanedFiles.forEach { (payloadId, filePath) ->
+            try {
+                java.io.File(filePath).delete()
+                Log.d(TAG, "Cleaned up orphaned file: payloadId=$payloadId")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to clean up orphaned file: ${e.message}")
+            }
+        }
+        orphanedFiles.clear()
     }
 
     fun stopAll() {
