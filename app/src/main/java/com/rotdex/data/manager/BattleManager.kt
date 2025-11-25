@@ -96,18 +96,68 @@ class BattleManager(private val context: Context) {
         }
     }
 
+    // Track expected image transfers and received image paths
+    private data class ImageTransferInfo(val cardId: Long, val fileName: String)
+    private val expectedImageTransfers = mutableMapOf<Long, ImageTransferInfo>()  // payloadId -> info
+    private val receivedImagePaths = mutableMapOf<Long, String>()  // cardId -> local file path
+
     // Payload callback for battle messages
     private val payloadCallback = object : PayloadCallback() {
         override fun onPayloadReceived(endpointId: String, payload: Payload) {
-            payload.asBytes()?.let { bytes ->
-                val messageStr = String(bytes, Charsets.UTF_8)
-                Log.d(TAG, "Received: $messageStr")
-                handleReceivedMessage(messageStr)
+            when (payload.type) {
+                Payload.Type.BYTES -> {
+                    payload.asBytes()?.let { bytes ->
+                        val messageStr = String(bytes, Charsets.UTF_8)
+                        Log.d(TAG, "Received: $messageStr")
+                        handleReceivedMessage(messageStr)
+                    }
+                }
+                Payload.Type.FILE -> {
+                    // Receive card image file
+                    payload.asFile()?.let { filePayload ->
+                        val file = filePayload.asJavaFile()
+                        if (file != null) {
+                            // Get info about this transfer
+                            val transferInfo = expectedImageTransfers[payload.id]
+
+                            // Move to proper location
+                            val imagesDir = java.io.File(context.filesDir, "card_images")
+                            if (!imagesDir.exists()) imagesDir.mkdirs()
+
+                            val newFileName = "opponent_${transferInfo?.cardId ?: System.currentTimeMillis()}_${file.name}"
+                            val newFile = java.io.File(imagesDir, newFileName)
+                            file.copyTo(newFile, overwrite = true)
+                            file.delete() // Clean up temp file
+
+                            val imagePath = newFile.absolutePath
+                            Log.d(TAG, "Received image file: $imagePath")
+
+                            // Store path and update cards if they're waiting for this image
+                            if (transferInfo != null) {
+                                receivedImagePaths[transferInfo.cardId] = imagePath
+                                updateCardWithImage(transferInfo.cardId, imagePath)
+                                expectedImageTransfers.remove(payload.id)
+                            }
+                        }
+                    }
+                }
+                else -> {}
             }
         }
 
         override fun onPayloadTransferUpdate(endpointId: String, update: PayloadTransferUpdate) {
-            // Not needed for text messages
+            when (update.status) {
+                PayloadTransferUpdate.Status.SUCCESS -> {
+                    Log.d(TAG, "Payload ${update.payloadId} transferred successfully")
+                }
+                PayloadTransferUpdate.Status.FAILURE -> {
+                    Log.e(TAG, "Payload ${update.payloadId} transfer failed")
+                    expectedImageTransfers.remove(update.payloadId)
+                }
+                else -> {
+                    // IN_PROGRESS or CANCELED
+                }
+            }
         }
     }
 
@@ -201,14 +251,16 @@ class BattleManager(private val context: Context) {
         localFullCard = card
         addMessage("Selected: ${card.name}")
 
-        // Send card preview (image only, no stats) during selection
-        // Format: CARDPREVIEW|id|name|rarity|imageUrl
+        // Send card image first
+        sendCardImage(card.imageUrl, card.id)
+
+        // Then send card preview (image will arrive separately)
+        // Format: CARDPREVIEW|id|name|rarity
         val previewData = listOf(
             "CARDPREVIEW",
             card.id.toString(),
             card.name,
-            card.rarity.name,
-            card.imageUrl.replace("|", "~")
+            card.rarity.name
         ).joinToString("|")
         sendMessage(previewData)
     }
@@ -222,8 +274,8 @@ class BattleManager(private val context: Context) {
 
         localReady = true
 
-        // Now send full card data (with stats) for battle
-        // Format: CARD|id|name|attack|health|rarity|prompt|imageUrl|biography
+        // Send full card data (with stats) for battle
+        // Format: CARD|id|name|attack|health|rarity|prompt|biography (image was sent earlier)
         val cardData = listOf(
             "CARD",
             card.id.toString(),
@@ -232,7 +284,6 @@ class BattleManager(private val context: Context) {
             battleCard.effectiveHealth.toString(),
             card.rarity.name,
             card.prompt.replace("|", "~"),
-            card.imageUrl.replace("|", "~"),
             card.biography.replace("|", "~")
         ).joinToString("|")
         sendMessage(cardData)
@@ -368,12 +419,24 @@ class BattleManager(private val context: Context) {
     private fun handleReceivedMessage(message: String) {
         val parts = message.split("|")
         when (parts[0]) {
+            "IMAGE_TRANSFER" -> {
+                // IMAGE_TRANSFER|cardId|fileName|size|payloadId
+                val cardId = parts[1].toLongOrNull() ?: 0
+                val fileName = parts[2]
+                val payloadId = parts.getOrNull(4)?.toLongOrNull() ?: 0
+
+                // Register that we're expecting this image
+                expectedImageTransfers[payloadId] = ImageTransferInfo(cardId, fileName)
+                Log.d(TAG, "Expecting image: cardId=$cardId, payloadId=$payloadId, fileName=$fileName")
+            }
             "CARDPREVIEW" -> {
-                // CARDPREVIEW|id|name|rarity|imageUrl - no stats yet
+                // CARDPREVIEW|id|name|rarity - no stats yet, image will arrive separately
                 val id = parts[1].toLongOrNull() ?: 0
                 val name = parts[2]
                 val rarity = try { CardRarity.valueOf(parts[3]) } catch (e: Exception) { CardRarity.COMMON }
-                val imageUrl = parts.getOrNull(4)?.replace("~", "|") ?: ""
+
+                // Use received image path if available, otherwise empty (will update when image arrives)
+                val imageUrl = receivedImagePaths[id] ?: ""
 
                 // Create preview card (stats hidden)
                 val previewCard = Card(
@@ -395,15 +458,19 @@ class BattleManager(private val context: Context) {
                 addMessage("Opponent selected their card")
             }
             "CARD" -> {
-                // CARD|id|name|attack|health|rarity|prompt|imageUrl|biography - full stats
+                // CARD|id|name|attack|health|rarity|prompt|biography - full stats (image was sent separately)
                 val id = parts[1].toLongOrNull() ?: 0
                 val name = parts[2]
                 val attack = parts[3].toIntOrNull() ?: 50
                 val health = parts[4].toIntOrNull() ?: 100
                 val rarity = try { CardRarity.valueOf(parts[5]) } catch (e: Exception) { CardRarity.COMMON }
                 val prompt = parts.getOrNull(6)?.replace("~", "|") ?: ""
-                val imageUrl = parts.getOrNull(7)?.replace("~", "|") ?: ""
-                val biography = parts.getOrNull(8)?.replace("~", "|") ?: ""
+                val biography = parts.getOrNull(7)?.replace("~", "|") ?: ""
+
+                // Use received image path, or existing from preview
+                val imageUrl = receivedImagePaths[id]
+                    ?: _opponentCard.value?.card?.imageUrl
+                    ?: ""
 
                 // Create full card for potential transfer
                 val opponentCardData = Card(
@@ -499,6 +566,53 @@ class BattleManager(private val context: Context) {
         }
     }
 
+    /**
+     * Send card image file to opponent
+     */
+    private fun sendCardImage(imageUrl: String, cardId: Long) {
+        currentEndpointId?.let { endpointId ->
+            try {
+                val imageFile = java.io.File(imageUrl)
+                if (imageFile.exists()) {
+                    // Create File payload
+                    val filePayload = Payload.fromFile(imageFile)
+                    val payloadId = filePayload.id
+
+                    // Send metadata message first so receiver knows what's coming
+                    sendMessage("IMAGE_TRANSFER|$cardId|${imageFile.name}|${imageFile.length()}|$payloadId")
+
+                    // Then send the file
+                    connectionsClient.sendPayload(endpointId, filePayload)
+                    Log.d(TAG, "Sending image: cardId=$cardId, payloadId=$payloadId, size=${imageFile.length()}")
+                } else {
+                    Log.e(TAG, "Image file not found: $imageUrl")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to send image: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Update opponent card with received image path
+     */
+    private fun updateCardWithImage(cardId: Long, imagePath: String) {
+        _opponentCard.value?.let { battleCard ->
+            if (battleCard.card.id == cardId) {
+                val updatedCard = battleCard.card.copy(imageUrl = imagePath)
+                _opponentCard.value = battleCard.copy(card = updatedCard)
+                Log.d(TAG, "Updated opponent card $cardId with image: $imagePath")
+            }
+        }
+
+        // Also update opponentFullCard for potential transfer
+        opponentFullCard?.let { card ->
+            if (card.id == cardId) {
+                opponentFullCard = card.copy(imageUrl = imagePath)
+            }
+        }
+    }
+
     private fun resetBattleState() {
         _localCard.value = null
         _opponentCard.value = null
@@ -510,6 +624,8 @@ class BattleManager(private val context: Context) {
         localFullCard = null
         opponentFullCard = null
         _statsRevealed.value = false
+        expectedImageTransfers.clear()
+        receivedImagePaths.clear()
     }
 
     fun stopAll() {
