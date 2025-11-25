@@ -593,7 +593,7 @@ private fun SelectableCardItem(
 }
 
 @Composable
-private fun BattleSection(
+internal fun BattleSection(
     localCard: BattleCard?,
     opponentCard: BattleCard?,
     battleStory: List<BattleStorySegment>,
@@ -705,7 +705,7 @@ private fun AnimatedVsText(isBattleActive: Boolean) {
 }
 
 @Composable
-private fun AnimatedBattleCard(
+internal fun AnimatedBattleCard(
     battleCard: BattleCard,
     label: String,
     isAttacking: Boolean,
