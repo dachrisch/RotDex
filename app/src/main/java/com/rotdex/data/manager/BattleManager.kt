@@ -310,7 +310,8 @@ class BattleManager(private val context: Context) {
         val local = _localCard.value ?: return
         val opponent = _opponentCard.value ?: return
 
-        _battleState.value = BattleState.BATTLE_IN_PROGRESS
+        // Start with animation state
+        _battleState.value = BattleState.BATTLE_ANIMATING
 
         // Generate battle story and calculate outcome
         val (story, result) = calculateBattle(local, opponent)
@@ -334,6 +335,15 @@ class BattleManager(private val context: Context) {
         val resultMsg = "RESULT|${if (finalResult.isDraw) "DRAW" else if (finalResult.winnerIsLocal == true) "LOCAL" else "OPPONENT"}"
         sendMessage(resultMsg)
 
+        // Note: State will transition to BATTLE_COMPLETE when animation finishes
+        // or when user skips (controlled by ViewModel)
+    }
+
+    /**
+     * Complete the battle animation and show final results
+     * Called by ViewModel when animation finishes or is skipped
+     */
+    fun completeBattleAnimation() {
         _battleState.value = BattleState.BATTLE_COMPLETE
     }
 
@@ -510,7 +520,11 @@ class BattleManager(private val context: Context) {
             "STORY" -> {
                 // Receive story segment from host
                 // STORY|index|text|isLocalAction|damage
-                _battleState.value = BattleState.BATTLE_IN_PROGRESS
+                // First story segment triggers animation state
+                if (_battleStory.value.isEmpty()) {
+                    _battleState.value = BattleState.BATTLE_ANIMATING
+                }
+
                 val index = parts[1].toIntOrNull() ?: 0
                 val text = parts[2].replace("~", "|")
                 // Flip isLocalAction for non-host (their local is host's opponent)

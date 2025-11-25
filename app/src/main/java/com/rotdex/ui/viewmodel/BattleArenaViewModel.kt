@@ -100,34 +100,57 @@ class BattleArenaViewModel @Inject constructor(
         battleManager.selectCard(card)
     }
 
-    fun setReady() {
-        battleManager.setReady()
-
-        // Start story animation when battle begins
+    init {
+        // Observe battle state and start animation when BATTLE_ANIMATING state is entered
         viewModelScope.launch {
-            // Wait for battle to complete
             battleManager.battleState.collect { state ->
-                if (state == BattleState.BATTLE_IN_PROGRESS || state == BattleState.BATTLE_COMPLETE) {
+                if (state == BattleState.BATTLE_ANIMATING && battleManager.battleStory.value.isNotEmpty()) {
                     animateStory()
-                    return@collect
                 }
             }
         }
     }
 
+    fun setReady() {
+        battleManager.setReady()
+    }
+
+    private var storyAnimationJob: kotlinx.coroutines.Job? = null
+
     private suspend fun animateStory() {
         _currentStoryIndex.value = 0
         val segments = battleManager.battleStory.value
 
-        for (i in segments.indices) {
-            _currentStoryIndex.value = i
-            // Delay between segments for dramatic effect
-            delay(2000L)
+        storyAnimationJob = viewModelScope.launch {
+            for (i in segments.indices) {
+                _currentStoryIndex.value = i
+                // Delay between segments for dramatic effect (2 seconds per segment)
+                delay(2000L)
+            }
+
+            // Animation complete, transition to results
+            battleManager.completeBattleAnimation()
         }
+    }
+
+    /**
+     * Skip the battle animation and jump directly to the results
+     * This cancels the ongoing animation and shows the final result
+     */
+    fun skipBattleAnimation() {
+        storyAnimationJob?.cancel()
+        val segments = battleManager.battleStory.value
+        if (segments.isNotEmpty()) {
+            _currentStoryIndex.value = segments.size - 1
+        }
+        // Transition to battle complete state
+        battleManager.completeBattleAnimation()
     }
 
     fun resetStoryAnimation() {
         _currentStoryIndex.value = 0
+        storyAnimationJob?.cancel()
+        storyAnimationJob = null
     }
 
     /**

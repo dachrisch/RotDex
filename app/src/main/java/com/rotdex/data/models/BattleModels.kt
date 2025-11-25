@@ -7,6 +7,7 @@ enum class BattleState {
     WAITING_FOR_OPPONENT,  // Waiting for other player to connect
     CARD_SELECTION,        // Both players selecting their card
     READY_TO_BATTLE,       // Both cards selected, ready to start
+    BATTLE_ANIMATING,      // Battle animation screen showing story progression
     BATTLE_IN_PROGRESS,    // AI story being generated and displayed
     BATTLE_COMPLETE,       // Battle finished, showing result
     DISCONNECTED           // Opponent disconnected

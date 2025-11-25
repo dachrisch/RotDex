@@ -182,7 +182,21 @@ fun BattleArenaScreen(
                     )
                 }
 
-                // Battle in progress or complete
+                // Battle animation - full screen
+                battleState == BattleState.BATTLE_ANIMATING &&
+                localCard != null &&
+                opponentCard != null &&
+                battleStory.isNotEmpty() -> {
+                    BattlePrimaryAnimationScreen(
+                        localCard = localCard!!,
+                        opponentCard = opponentCard!!,
+                        battleStory = battleStory,
+                        currentStoryIndex = currentStoryIndex,
+                        onSkip = { viewModel.skipBattleAnimation() }
+                    )
+                }
+
+                // Battle in progress or complete (legacy/fallback view)
                 battleState == BattleState.READY_TO_BATTLE ||
                 battleState == BattleState.BATTLE_IN_PROGRESS ||
                 battleState == BattleState.BATTLE_COMPLETE -> {
@@ -1103,6 +1117,220 @@ private fun ActivityLogCard(messages: List<String>) {
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * Typewriter text effect composable that displays text character by character
+ * following the Single Responsibility Principle
+ *
+ * @param text The full text to display
+ * @param isAnimating Whether to animate the text or show it immediately
+ * @param delayPerCharMs Delay in milliseconds between each character (default: 30ms)
+ * @param modifier Modifier for the text composable
+ */
+@Composable
+fun TypewriterText(
+    text: String,
+    isAnimating: Boolean,
+    delayPerCharMs: Long = 30L,
+    modifier: Modifier = Modifier
+) {
+    var displayedText by remember(text, isAnimating) { mutableStateOf("") }
+
+    LaunchedEffect(text, isAnimating) {
+        if (!isAnimating) {
+            // Show full text immediately when not animating
+            displayedText = text
+        } else {
+            // Animate character by character
+            displayedText = ""
+            text.forEachIndexed { index, _ ->
+                displayedText = text.substring(0, index + 1)
+                if (index < text.length - 1) {
+                    delay(delayPerCharMs)
+                }
+            }
+        }
+    }
+
+    Text(
+        text = displayedText,
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = modifier,
+        textAlign = TextAlign.Center
+    )
+}
+
+/**
+ * Full-screen battle animation screen that shows the battle unfolding
+ * with progressive story display, card animations, and battle progress
+ *
+ * Design follows:
+ * - Single Responsibility: Focuses solely on battle animation presentation
+ * - Open/Closed: Extensible through parameters without modification
+ * - Dependency Inversion: Depends on abstractions (BattleCard, callbacks)
+ *
+ * @param localCard The player's battle card
+ * @param opponentCard The opponent's battle card
+ * @param battleStory List of story segments to display progressively
+ * @param currentStoryIndex Current segment being displayed (0-based)
+ * @param onSkip Callback when skip button is clicked
+ */
+@Composable
+fun BattlePrimaryAnimationScreen(
+    localCard: BattleCard,
+    opponentCard: BattleCard,
+    battleStory: List<BattleStorySegment>,
+    currentStoryIndex: Int,
+    onSkip: () -> Unit
+) {
+    val currentSegment = battleStory.getOrNull(currentStoryIndex)
+    val totalSegments = battleStory.size
+    val roundNumber = currentStoryIndex + 1
+
+    // Determine which card is attacking/taking damage
+    val isLocalAttacking = currentSegment?.isLocalAction == true && currentSegment.damageDealt != null
+    val isOpponentAttacking = currentSegment?.isLocalAction == false && currentSegment.damageDealt != null
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        // Top: Round header and progress
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "ROUND $roundNumber",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            // Progress indicator
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Round $roundNumber of $totalSegments",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            // Progress bar
+            LinearProgressIndicator(
+                progress = { (roundNumber.toFloat() / totalSegments.toFloat()) },
+                modifier = Modifier
+                    .fillMaxWidth(0.6f)
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Middle: Battle cards facing off
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Local card
+            AnimatedBattleCard(
+                battleCard = localCard,
+                label = "YOU",
+                isAttacking = isLocalAttacking,
+                isTakingDamage = isOpponentAttacking,
+                isWinner = false,
+                isLoser = false,
+                isDraw = false
+            )
+
+            // VS text
+            Text(
+                text = "VS",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.error
+            )
+
+            // Opponent card
+            AnimatedBattleCard(
+                battleCard = opponentCard,
+                label = "FOE",
+                isAttacking = isOpponentAttacking,
+                isTakingDamage = isLocalAttacking,
+                isWinner = false,
+                isLoser = false,
+                isDraw = false
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Bottom: Story text with typewriter effect
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f, fill = false),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Story segment with typewriter effect
+                currentSegment?.let { segment ->
+                    Box(
+                        modifier = Modifier.weight(1f, fill = false),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        TypewriterText(
+                            text = segment.text,
+                            isAnimating = true,
+                            delayPerCharMs = 30L,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    // Damage indicator
+                    segment.damageDealt?.let { damage ->
+                        Text(
+                            text = "💥 $damage damage!",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Skip button
+        OutlinedButton(
+            onClick = onSkip,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "SKIP TO RESULTS ⏭️",
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
