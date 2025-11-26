@@ -114,6 +114,12 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v5
 
+    - name: Setup Debug Keystore
+      if: matrix.variant == 'debug'
+      run: |
+        mkdir -p ~/.android
+        echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > ~/.android/debug.keystore
+
     - name: Build ${{ matrix.variant }} APK
       run: ./gradlew assemble${{ matrix.variant == 'debug' && 'Debug' || 'Release' }}
       continue-on-error: ${{ matrix.variant == 'release' }}
