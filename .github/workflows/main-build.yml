@@ -3,6 +3,7 @@ name: Main Branch Build
 on:
   push:
     branches: [ main, master ]
+  workflow_dispatch:
 
 permissions:
   actions: write
