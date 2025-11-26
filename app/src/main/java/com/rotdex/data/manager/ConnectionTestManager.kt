@@ -222,6 +222,7 @@ sealed class ConnectionState {
     object Idle : ConnectionState()
     object Advertising : ConnectionState()
     object Discovering : ConnectionState()
+    data class AutoDiscovering(val playerName: String) : ConnectionState()
     object Connecting : ConnectionState()
     data class ConnectionInitiated(val opponentName: String) : ConnectionState()
     data class Connected(val endpointId: String) : ConnectionState()

@@ -2,6 +2,7 @@ package com.rotdex.data.models
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlin.random.Random
 
 /**
  * User profile containing progression data, currency, and streak information
@@ -33,5 +34,23 @@ data class UserProfile(
     // Statistics
     val totalSpins: Int = 0,
     val totalLoginDays: Int = 0,
-    val accountCreatedAt: Long = System.currentTimeMillis()
-)
+    val accountCreatedAt: Long = System.currentTimeMillis(),
+
+    // Player Identity (Battle Arena UX)
+    val playerName: String = generateDefaultPlayerName(),
+    val avatarImagePath: String? = null
+) {
+    companion object {
+        /**
+         * Generates a default player name in the format "player-XXXXXXXX"
+         * where XXXXXXXX is a random 8-character alphanumeric string
+         */
+        private fun generateDefaultPlayerName(): String {
+            val chars = ('a'..'z') + ('A'..'Z') + ('0'..'9')
+            val randomString = (1..8)
+                .map { chars[Random.nextInt(chars.size)] }
+                .joinToString("")
+            return "player-$randomString"
+        }
+    }
+}

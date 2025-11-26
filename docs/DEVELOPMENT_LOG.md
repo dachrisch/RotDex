@@ -152,6 +152,69 @@ To continue development:
 
 ---
 
+## Battle Arena Image Transfer Fix - 2025-11-26
+
+### ✅ Completed Tasks
+
+#### 1. Root Cause Analysis
+- ✅ Investigated 64KB image truncation bug using Explore agent
+- ✅ Identified ParcelFileDescriptor pipe buffer limit (Linux kernel 64KB)
+- ✅ Discovered incorrect file reading timing in `onPayloadReceived()`
+
+#### 2. BattleManager.kt Refactoring
+- ✅ Added payload caching system (`payloadCache` map)
+- ✅ Added pending file transfer tracking (`pendingFileTransfers` map)
+- ✅ Modified FILE payload handler to cache instead of reading immediately
+- ✅ Implemented complete file reading in `onPayloadTransferUpdate()` after `Status.SUCCESS`
+- ✅ Updated IMAGE_TRANSFER metadata handler to work with new caching system
+- ✅ Added cleanup in `resetBattleState()` for new data structures
+
+#### 3. Testing & Verification
+- ✅ Built and installed updated APK on Pixel 7 Pro and Samsung Galaxy S7
+- ✅ Tested bidirectional image transfer in Battle Arena
+- ✅ Verified complete file transfer (5.4 MB instead of 64 KB)
+- ✅ Confirmed opponent card images display correctly in UI (no more black rectangles)
+
+### 🐛 Bug Fixed
+
+**Issue**: Battle Arena opponent card images appeared as black rectangles despite protocol-level transfer success.
+
+**Root Cause**:
+- `ParcelFileDescriptor` from Nearby Connections provides a PIPE, not direct file access
+- Linux kernel pipe buffer limit is exactly 64KB (65536 bytes)
+- Reading in `onPayloadReceived()` only captured pipe buffer contents (64KB) while transfer was still in progress
+- `InputStream.readBytes()` relies on `available()` which returns current pipe buffer size, not total file size
+
+**Solution**:
+- Cache payloads in `onPayloadReceived()` without reading
+- Wait for `onPayloadTransferUpdate()` with `Status.SUCCESS` to confirm complete transfer
+- Read complete file using ContentResolver with `filePayload.asUri()`
+- Copy file with proper stream buffering (`copyTo()` with 8192 byte buffer)
+
+**Impact**:
+- Before: 65536 bytes (64 KB) - truncated images appearing black
+- After: 5413197 bytes (5.4 MB) - complete images displaying correctly
+- **83x improvement** in file transfer completeness
+
+### 📊 Files Modified
+
+- `app/src/main/java/com/rotdex/data/manager/BattleManager.kt` (4 key sections refactored)
+
+### 🧪 Testing Results
+
+**Device Setup**:
+- Device A: Pixel 7 Pro (Host)
+- Device B: Samsung Galaxy S7 (Client)
+
+**Test Results**:
+- ✅ FILE payloads transfer completely (5.4 MB)
+- ✅ IMAGE_TRANSFER metadata matches correctly
+- ✅ Bidirectional matching works in both orders (FILE-first and metadata-first)
+- ✅ Opponent card images display in Battle Arena UI
+- ✅ Cache-busting with timestamps works correctly
+
+---
+
 **Project Status**: Foundation Complete ✅
 **Ready For**: Feature Implementation
-**Last Updated**: 2025-11-17
+**Last Updated**: 2025-11-26

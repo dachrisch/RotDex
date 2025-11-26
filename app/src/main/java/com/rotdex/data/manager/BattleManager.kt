@@ -53,10 +53,23 @@ class BattleManager(private val context: Context) {
     private val _discoveredDevices = MutableStateFlow<List<String>>(emptyList())
     val discoveredDevices: StateFlow<List<String>> = _discoveredDevices.asStateFlow()
 
+    // Ready state management
+    private val _localReady = MutableStateFlow(false)
+    val localReady: StateFlow<Boolean> = _localReady.asStateFlow()
+
+    private val _opponentReady = MutableStateFlow(false)
+    val opponentReady: StateFlow<Boolean> = _opponentReady.asStateFlow()
+
+    private val _canClickReady = MutableStateFlow(true)
+    val canClickReady: StateFlow<Boolean> = _canClickReady.asStateFlow()
+
+    private val _opponentIsThinking = MutableStateFlow(false)
+    val opponentIsThinking: StateFlow<Boolean> = _opponentIsThinking.asStateFlow()
+
     private var currentEndpointId: String? = null
     private var isHost: Boolean = false
-    private var opponentReady: Boolean = false
-    private var localReady: Boolean = false
+    private var opponentReadyLegacy: Boolean = false
+    private var localReadyLegacy: Boolean = false
     private var playerName: String = ""
 
     // Connection lifecycle callbacks
@@ -74,6 +87,7 @@ class BattleManager(private val context: Context) {
                     currentEndpointId = endpointId
                     _connectionState.value = ConnectionState.Connected(endpointId)
                     _battleState.value = BattleState.CARD_SELECTION
+                    _opponentIsThinking.value = true  // Opponent is now selecting their card
                     addMessage("Connected! Select your card for battle.")
                 }
                 ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED -> {
@@ -104,6 +118,12 @@ class BattleManager(private val context: Context) {
     // Track FILE payloads that arrived before IMAGE_TRANSFER metadata
     private val orphanedFiles = mutableMapOf<Long, String>()  // payloadId -> temp file path
 
+    // Cache payloads so we can access them after transfer completes
+    private val payloadCache = mutableMapOf<Long, Payload>()
+
+    // Track pending file transfers (waiting for onPayloadTransferUpdate SUCCESS)
+    private val pendingFileTransfers = mutableMapOf<Long, ImageTransferInfo>()  // payloadId -> info
+
     // Payload callback for battle messages
     private val payloadCallback = object : PayloadCallback() {
         override fun onPayloadReceived(endpointId: String, payload: Payload) {
@@ -116,45 +136,25 @@ class BattleManager(private val context: Context) {
                     }
                 }
                 Payload.Type.FILE -> {
-                    // Receive card image file
-                    // IMPORTANT: Can arrive BEFORE or AFTER IMAGE_TRANSFER metadata message
-                    payload.asFile()?.let { filePayload ->
-                        val parcelFileDescriptor = filePayload.asParcelFileDescriptor()
-                        try {
-                            // Read file content from ParcelFileDescriptor
-                            val inputStream = java.io.FileInputStream(parcelFileDescriptor.fileDescriptor)
-                            val imageBytes = inputStream.readBytes()
-                            inputStream.close()
-                            parcelFileDescriptor.close()
+                    // DON'T read the file yet - transfer is still in progress!
+                    // We'll read it in onPayloadTransferUpdate() when Status.SUCCESS
+                    Log.d(TAG, "FILE payload received: payloadId=${payload.id}, caching for transfer completion")
 
-                            // Save to proper location
-                            val imagesDir = java.io.File(context.filesDir, "card_images")
-                            if (!imagesDir.exists()) imagesDir.mkdirs()
+                    // Cache the payload so we can access it after transfer completes
+                    payloadCache[payload.id] = payload
 
-                            val newFileName = "temp_${payload.id}_${System.currentTimeMillis()}.jpg"
-                            val newFile = java.io.File(imagesDir, newFileName)
-                            newFile.writeBytes(imageBytes)
+                    // Check if we already have metadata for this payload
+                    val transferInfo = expectedImageTransfers[payload.id]
 
-                            val imagePath = newFile.absolutePath
-                            Log.d(TAG, "Received FILE payload: payloadId=${payload.id}, path=$imagePath, size=${imageBytes.size}")
-
-                            // Check if we already have metadata for this payload
-                            val transferInfo = expectedImageTransfers[payload.id]
-
-                            if (transferInfo != null) {
-                                // Case 1: IMAGE_TRANSFER arrived FIRST - we can complete immediately
-                                Log.d(TAG, "Metadata already received, completing transfer for card ${transferInfo.cardId}")
-                                receivedImagePaths[transferInfo.cardId] = imagePath
-                                updateCardWithImage(transferInfo.cardId, imagePath)
-                                expectedImageTransfers.remove(payload.id)
-                            } else {
-                                // Case 2: IMAGE_TRANSFER NOT YET arrived - store file temporarily
-                                Log.d(TAG, "Metadata not yet received, storing orphaned file: payloadId=${payload.id}")
-                                orphanedFiles[payload.id] = imagePath
-                            }
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Failed to read file payload: ${e.message}")
-                        }
+                    if (transferInfo != null) {
+                        // Case 1: IMAGE_TRANSFER arrived FIRST
+                        Log.d(TAG, "Metadata already received for payloadId=${payload.id}, card=${transferInfo.cardId}")
+                        pendingFileTransfers[payload.id] = transferInfo
+                        expectedImageTransfers.remove(payload.id)
+                    } else {
+                        // Case 2: IMAGE_TRANSFER NOT YET arrived - mark as orphaned
+                        Log.d(TAG, "Metadata not yet received for payloadId=${payload.id}, marking as orphaned")
+                        // Will be matched when IMAGE_TRANSFER arrives
                     }
                 }
                 else -> {}
@@ -165,10 +165,62 @@ class BattleManager(private val context: Context) {
             when (update.status) {
                 PayloadTransferUpdate.Status.SUCCESS -> {
                     Log.d(TAG, "Payload ${update.payloadId} transferred successfully")
+
+                    // Check if this is a pending file transfer
+                    val transferInfo = pendingFileTransfers[update.payloadId]
+                    if (transferInfo != null) {
+                        // NOW the FILE transfer is complete - read the full file
+                        val payload = payloadCache[update.payloadId]
+                        payload?.asFile()?.let { filePayload ->
+                            try {
+                                Log.d(TAG, "Reading complete file for payloadId=${update.payloadId}, card=${transferInfo.cardId}")
+
+                                // Get URI from the completed file transfer
+                                val uri = filePayload.asUri()
+                                if (uri != null) {
+                                    // Open and copy the complete file
+                                    val inputStream = context.contentResolver.openInputStream(uri)
+                                    if (inputStream != null) {
+                                        val imagesDir = java.io.File(context.filesDir, "card_images")
+                                        if (!imagesDir.exists()) imagesDir.mkdirs()
+
+                                        val newFileName = "temp_${update.payloadId}_${System.currentTimeMillis()}.jpg"
+                                        val newFile = java.io.File(imagesDir, newFileName)
+
+                                        // Copy the complete file
+                                        java.io.FileOutputStream(newFile).use { outputStream ->
+                                            inputStream.copyTo(outputStream, bufferSize = 8192)
+                                        }
+                                        inputStream.close()
+
+                                        val imagePath = newFile.absolutePath
+                                        val fileSize = newFile.length()
+                                        Log.d(TAG, "✅ Complete FILE saved: payloadId=${update.payloadId}, path=$imagePath, size=$fileSize")
+
+                                        // Update card with the complete image
+                                        receivedImagePaths[transferInfo.cardId] = imagePath
+                                        updateCardWithImage(transferInfo.cardId, imagePath)
+
+                                        // Cleanup
+                                        pendingFileTransfers.remove(update.payloadId)
+                                        payloadCache.remove(update.payloadId)
+                                    } else {
+                                        Log.e(TAG, "Failed to open input stream for URI: $uri")
+                                    }
+                                } else {
+                                    Log.e(TAG, "Failed to get URI from file payload: ${update.payloadId}")
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Failed to read complete file: ${e.message}", e)
+                            }
+                        }
+                    }
                 }
                 PayloadTransferUpdate.Status.FAILURE -> {
                     Log.e(TAG, "Payload ${update.payloadId} transfer failed")
                     expectedImageTransfers.remove(update.payloadId)
+                    pendingFileTransfers.remove(update.payloadId)
+                    payloadCache.remove(update.payloadId)
                 }
                 else -> {
                     // IN_PROGRESS or CANCELED
@@ -239,6 +291,46 @@ class BattleManager(private val context: Context) {
     }
 
     /**
+     * Start auto-discovery mode (both advertise AND discover simultaneously)
+     * Enables automatic peer-to-peer connection without manual role selection
+     */
+    fun startAutoDiscovery(name: String) {
+        val effectiveName = name.ifEmpty { "player-${System.currentTimeMillis() % 10000}" }
+        playerName = effectiveName
+        _connectionState.value = ConnectionState.AutoDiscovering(effectiveName)
+        _battleState.value = BattleState.WAITING_FOR_OPPONENT
+        resetBattleState()
+        _discoveredDevices.value = emptyList()
+        addMessage("Finding opponents...")
+
+        val options = AdvertisingOptions.Builder()
+            .setStrategy(Strategy.P2P_POINT_TO_POINT)
+            .build()
+
+        val discoveryOptions = DiscoveryOptions.Builder()
+            .setStrategy(Strategy.P2P_POINT_TO_POINT)
+            .build()
+
+        // Start advertising
+        connectionsClient.startAdvertising(effectiveName, serviceId, connectionLifecycleCallback, options)
+            .addOnSuccessListener {
+                addMessage("Ready for discovery...")
+            }
+            .addOnFailureListener { e ->
+                _connectionState.value = ConnectionState.Error("Advertising failed: ${e.message}")
+            }
+
+        // ALSO start discovery
+        connectionsClient.startDiscovery(serviceId, endpointDiscoveryCallback, discoveryOptions)
+            .addOnSuccessListener {
+                addMessage("Scanning for opponents...")
+            }
+            .addOnFailureListener { e ->
+                _connectionState.value = ConnectionState.Error("Discovery failed: ${e.message}")
+            }
+    }
+
+    /**
      * Connect to a discovered host
      */
     fun connectToHost(endpointId: String) {
@@ -267,10 +359,8 @@ class BattleManager(private val context: Context) {
         localFullCard = card
         addMessage("Selected: ${card.name}")
 
-        // Send card image first
-        sendCardImage(card.imageUrl, card.id)
-
-        // Then send card preview (image will arrive separately)
+        // IMPORTANT: Send CARDPREVIEW first, then image
+        // This ensures opponent creates _opponentCard before image arrives
         // Format: CARDPREVIEW|id|name|rarity
         val previewData = listOf(
             "CARDPREVIEW",
@@ -279,6 +369,10 @@ class BattleManager(private val context: Context) {
             card.rarity.name
         ).joinToString("|")
         sendMessage(previewData)
+        Log.d(TAG, "📤 Sent CARDPREVIEW for card ${card.id} (${card.name})")
+
+        // Then send card image (will arrive separately, possibly before CARDPREVIEW due to payload ordering)
+        sendCardImage(card.imageUrl, card.id)
     }
 
     /**
@@ -288,7 +382,9 @@ class BattleManager(private val context: Context) {
         val card = localFullCard ?: return
         val battleCard = _localCard.value ?: return
 
-        localReady = true
+        _localReady.value = true
+        _canClickReady.value = false  // Disable button after click
+        localReadyLegacy = true
 
         // Send full card data (with stats) for battle
         // Format: CARD|id|name|attack|health|rarity|prompt|biography (image was sent earlier)
@@ -454,15 +550,13 @@ class BattleManager(private val context: Context) {
 
                 Log.d(TAG, "Received IMAGE_TRANSFER metadata: cardId=$cardId, payloadId=$payloadId, fileName=$fileName")
 
-                // Check if FILE already arrived (orphaned)
-                val orphanedPath = orphanedFiles[payloadId]
+                // Check if FILE payload already arrived
+                val cachedPayload = payloadCache[payloadId]
 
-                if (orphanedPath != null) {
-                    // Case 1: FILE arrived FIRST - complete transfer now
-                    Log.d(TAG, "File already received, completing transfer for card $cardId")
-                    receivedImagePaths[cardId] = orphanedPath
-                    updateCardWithImage(cardId, orphanedPath)
-                    orphanedFiles.remove(payloadId)
+                if (cachedPayload != null) {
+                    // Case 1: FILE arrived FIRST - mark as pending transfer completion
+                    Log.d(TAG, "FILE already received for payloadId=$payloadId, waiting for transfer completion")
+                    pendingFileTransfers[payloadId] = ImageTransferInfo(cardId, fileName)
                 } else {
                     // Case 2: FILE NOT YET arrived - register expectation
                     Log.d(TAG, "File not yet received, waiting for payloadId=$payloadId")
@@ -477,6 +571,8 @@ class BattleManager(private val context: Context) {
 
                 // Use received image path if available, otherwise empty (will update when image arrives)
                 val imageUrl = receivedImagePaths[id] ?: ""
+                Log.d(TAG, "📩 Received CARDPREVIEW: id=$id, name=$name, rarity=$rarity, imageUrl=$imageUrl")
+                Log.d(TAG, "Available received images: ${receivedImagePaths.keys}")
 
                 // Create preview card (stats hidden)
                 val previewCard = Card(
@@ -495,6 +591,16 @@ class BattleManager(private val context: Context) {
                     effectiveHealth = 0, // Hidden
                     currentHealth = 0
                 )
+                _opponentIsThinking.value = false  // Opponent finished selecting
+                Log.d(TAG, "✅ Set _opponentCard to card $id (${if (imageUrl.isNotEmpty()) "with image" else "without image"})")
+
+                // If image was already received, apply it now (handles race condition)
+                if (imageUrl.isEmpty() && receivedImagePaths.containsKey(id)) {
+                    val pendingImagePath = receivedImagePaths[id]!!
+                    Log.d(TAG, "🔄 Applying pending image to card $id: $pendingImagePath")
+                    updateCardWithImage(id, pendingImagePath)
+                }
+
                 addMessage("Opponent selected their card")
             }
             "CARD" -> {
@@ -534,7 +640,9 @@ class BattleManager(private val context: Context) {
                 addMessage("Opponent revealed: $name (ATK:$attack HP:$health)")
             }
             "READY" -> {
-                opponentReady = parts[1] == "true"
+                val ready = parts[1] == "true"
+                opponentReadyLegacy = ready
+                _opponentReady.value = ready  // Update StateFlow
                 addMessage("Opponent is ready!")
                 checkBothReady()
             }
@@ -591,7 +699,7 @@ class BattleManager(private val context: Context) {
     }
 
     private fun checkBothReady() {
-        if (localReady && opponentReady && _localCard.value != null && _opponentCard.value != null) {
+        if (localReadyLegacy && opponentReadyLegacy && _localCard.value != null && _opponentCard.value != null) {
             _battleState.value = BattleState.READY_TO_BATTLE
             addMessage("Both players ready!")
 
@@ -642,14 +750,21 @@ class BattleManager(private val context: Context) {
      * Forces UI refresh by updating StateFlow
      */
     private fun updateCardWithImage(cardId: Long, imagePath: String) {
+        Log.d(TAG, "updateCardWithImage called: cardId=$cardId, imagePath=$imagePath")
+        Log.d(TAG, "Current opponent card: ${_opponentCard.value?.card?.id}, expected: $cardId")
+
         _opponentCard.value?.let { battleCard ->
             if (battleCard.card.id == cardId) {
                 // Add timestamp to bust Coil's cache and force reload
                 val cacheBustedPath = "$imagePath?t=${System.currentTimeMillis()}"
                 val updatedCard = battleCard.card.copy(imageUrl = cacheBustedPath)
                 _opponentCard.value = battleCard.copy(card = updatedCard)
-                Log.d(TAG, "Updated opponent card $cardId with image: $cacheBustedPath")
+                Log.d(TAG, "✅ Updated opponent card $cardId with image: $cacheBustedPath")
+            } else {
+                Log.w(TAG, "❌ Card ID mismatch: opponent card is ${battleCard.card.id}, but image is for $cardId")
             }
+        } ?: run {
+            Log.w(TAG, "❌ Cannot update image: _opponentCard.value is null, storing for later")
         }
 
         // Also update opponentFullCard for potential transfer
@@ -666,13 +781,19 @@ class BattleManager(private val context: Context) {
         _battleStory.value = emptyList()
         _battleResult.value = null
         _messages.value = emptyList()
-        localReady = false
-        opponentReady = false
+        localReadyLegacy = false
+        opponentReadyLegacy = false
+        _localReady.value = false
+        _opponentReady.value = false
+        _canClickReady.value = true
+        _opponentIsThinking.value = false
         localFullCard = null
         opponentFullCard = null
         _statsRevealed.value = false
         expectedImageTransfers.clear()
         receivedImagePaths.clear()
+        pendingFileTransfers.clear()
+        payloadCache.clear()
 
         // Clean up orphaned files
         orphanedFiles.forEach { (payloadId, filePath) ->

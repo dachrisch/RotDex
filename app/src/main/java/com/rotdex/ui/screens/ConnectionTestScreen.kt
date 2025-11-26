@@ -171,6 +171,7 @@ fun ConnectionTestScreen(
                             is ConnectionState.Idle -> "Idle"
                             is ConnectionState.Advertising -> "📡 Advertising..."
                             is ConnectionState.Discovering -> "🔍 Discovering..."
+                            is ConnectionState.AutoDiscovering -> "🔄 Auto-Discovering..."
                             is ConnectionState.Connecting -> "🤝 Connecting..."
                             is ConnectionState.ConnectionInitiated -> "⏳ Connection Initiated"
                             is ConnectionState.Connected -> "✅ CONNECTED!"

@@ -176,4 +176,41 @@ class UserRepository(
     suspend fun getTotalLoginDays(): Int = userProfileDao.getTotalLoginDays()
 
     suspend fun getLongestStreak(): Int = userProfileDao.getLongestStreak()
+
+    // MARK: - Player Identity (Battle Arena UX)
+
+    /**
+     * Update player name
+     * Trims whitespace and ignores empty/whitespace-only strings
+     */
+    suspend fun updatePlayerName(name: String) {
+        val trimmedName = name.trim()
+        if (trimmedName.isNotEmpty()) {
+            userProfileDao.updatePlayerName(trimmedName)
+        }
+    }
+
+    /**
+     * Update avatar image path
+     * Can be null to remove avatar
+     */
+    suspend fun updateAvatarImage(imagePath: String?) {
+        userProfileDao.updateAvatarImagePath(imagePath)
+    }
+
+    /**
+     * Get current player name
+     * Returns generated default if profile doesn't exist
+     */
+    suspend fun getPlayerName(): String {
+        return userProfileDao.getPlayerName() ?: UserProfile().playerName
+    }
+
+    /**
+     * Get current avatar image path
+     * Returns null if no avatar is set or profile doesn't exist
+     */
+    suspend fun getAvatarImagePath(): String? {
+        return userProfileDao.getAvatarImagePath()
+    }
 }

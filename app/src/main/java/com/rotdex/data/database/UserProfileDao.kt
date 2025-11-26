@@ -67,4 +67,17 @@ interface UserProfileDao {
 
     @Query("SELECT longestStreak FROM user_profile WHERE userId = :userId")
     suspend fun getLongestStreak(userId: String = "default_user"): Int
+
+    // Player Identity operations (Battle Arena UX)
+    @Query("UPDATE user_profile SET playerName = :name WHERE userId = :userId")
+    suspend fun updatePlayerName(name: String, userId: String = "default_user")
+
+    @Query("UPDATE user_profile SET avatarImagePath = :imagePath WHERE userId = :userId")
+    suspend fun updateAvatarImagePath(imagePath: String?, userId: String = "default_user")
+
+    @Query("SELECT playerName FROM user_profile WHERE userId = :userId")
+    suspend fun getPlayerName(userId: String = "default_user"): String?
+
+    @Query("SELECT avatarImagePath FROM user_profile WHERE userId = :userId")
+    suspend fun getAvatarImagePath(userId: String = "default_user"): String?
 }
