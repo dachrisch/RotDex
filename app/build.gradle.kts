@@ -63,6 +63,8 @@ android {
     kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+            // Opt-in to future annotation behavior for Hilt compatibility
+            freeCompilerArgs.add("-Xannotation-default-target=param-property")
         }
     }
 

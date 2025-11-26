@@ -120,42 +120,40 @@ class BattleManager(private val context: Context) {
                     // IMPORTANT: Can arrive BEFORE or AFTER IMAGE_TRANSFER metadata message
                     payload.asFile()?.let { filePayload ->
                         val parcelFileDescriptor = filePayload.asParcelFileDescriptor()
-                        if (parcelFileDescriptor != null) {
-                            try {
-                                // Read file content from ParcelFileDescriptor
-                                val inputStream = java.io.FileInputStream(parcelFileDescriptor.fileDescriptor)
-                                val imageBytes = inputStream.readBytes()
-                                inputStream.close()
-                                parcelFileDescriptor.close()
+                        try {
+                            // Read file content from ParcelFileDescriptor
+                            val inputStream = java.io.FileInputStream(parcelFileDescriptor.fileDescriptor)
+                            val imageBytes = inputStream.readBytes()
+                            inputStream.close()
+                            parcelFileDescriptor.close()
 
-                                // Save to proper location
-                                val imagesDir = java.io.File(context.filesDir, "card_images")
-                                if (!imagesDir.exists()) imagesDir.mkdirs()
+                            // Save to proper location
+                            val imagesDir = java.io.File(context.filesDir, "card_images")
+                            if (!imagesDir.exists()) imagesDir.mkdirs()
 
-                                val newFileName = "temp_${payload.id}_${System.currentTimeMillis()}.jpg"
-                                val newFile = java.io.File(imagesDir, newFileName)
-                                newFile.writeBytes(imageBytes)
+                            val newFileName = "temp_${payload.id}_${System.currentTimeMillis()}.jpg"
+                            val newFile = java.io.File(imagesDir, newFileName)
+                            newFile.writeBytes(imageBytes)
 
-                                val imagePath = newFile.absolutePath
-                                Log.d(TAG, "Received FILE payload: payloadId=${payload.id}, path=$imagePath, size=${imageBytes.size}")
+                            val imagePath = newFile.absolutePath
+                            Log.d(TAG, "Received FILE payload: payloadId=${payload.id}, path=$imagePath, size=${imageBytes.size}")
 
-                                // Check if we already have metadata for this payload
-                                val transferInfo = expectedImageTransfers[payload.id]
+                            // Check if we already have metadata for this payload
+                            val transferInfo = expectedImageTransfers[payload.id]
 
-                                if (transferInfo != null) {
-                                    // Case 1: IMAGE_TRANSFER arrived FIRST - we can complete immediately
-                                    Log.d(TAG, "Metadata already received, completing transfer for card ${transferInfo.cardId}")
-                                    receivedImagePaths[transferInfo.cardId] = imagePath
-                                    updateCardWithImage(transferInfo.cardId, imagePath)
-                                    expectedImageTransfers.remove(payload.id)
-                                } else {
-                                    // Case 2: IMAGE_TRANSFER NOT YET arrived - store file temporarily
-                                    Log.d(TAG, "Metadata not yet received, storing orphaned file: payloadId=${payload.id}")
-                                    orphanedFiles[payload.id] = imagePath
-                                }
-                            } catch (e: Exception) {
-                                Log.e(TAG, "Failed to read file payload: ${e.message}")
+                            if (transferInfo != null) {
+                                // Case 1: IMAGE_TRANSFER arrived FIRST - we can complete immediately
+                                Log.d(TAG, "Metadata already received, completing transfer for card ${transferInfo.cardId}")
+                                receivedImagePaths[transferInfo.cardId] = imagePath
+                                updateCardWithImage(transferInfo.cardId, imagePath)
+                                expectedImageTransfers.remove(payload.id)
+                            } else {
+                                // Case 2: IMAGE_TRANSFER NOT YET arrived - store file temporarily
+                                Log.d(TAG, "Metadata not yet received, storing orphaned file: payloadId=${payload.id}")
+                                orphanedFiles[payload.id] = imagePath
                             }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to read file payload: ${e.message}")
                         }
                     }
                 }
