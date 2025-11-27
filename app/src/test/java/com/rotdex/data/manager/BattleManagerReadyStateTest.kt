@@ -2,7 +2,6 @@ package com.rotdex.data.manager
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import com.rotdex.data.models.BattleCard
 import com.rotdex.data.models.Card
 import com.rotdex.data.models.CardRarity
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -11,7 +10,6 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.mockito.Mockito.mock
 import org.robolectric.RobolectricTestRunner
 
 /**
