@@ -4,9 +4,6 @@ on:
   pull_request:
     branches: [ main, master ]
   push:
-    branches-ignore:
-      - main
-      - master
   workflow_dispatch:
 
 permissions:
@@ -50,9 +47,6 @@ jobs:
     - name: Compile Kotlin sources
       run: ./gradlew compileDebugKotlin compileDebugAndroidTestKotlin --no-daemon
 
-    - name: Verify compilation success
-      run: echo "✓ Compilation successful - no Kotlin errors found in main or test sources"
-
   lint-and-test:
     name: Lint and Test
     runs-on: ubuntu-latest
@@ -60,38 +54,49 @@ jobs:
     if: needs.pre_job.outputs.should_skip != 'true'
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
+      - name: Checkout code
+        uses: actions/checkout@v6
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v5
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v5
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
 
-    - name: Run Lint
-      run: ./gradlew lintDebug
+      - name: Run Lint
+        id: lint
+        continue-on-error: true
+        run: ./gradlew lintDebug
 
-    - name: Run Unit Tests
-      run: ./gradlew testDebugUnitTest
-      continue-on-error: true
+      - name: Run Unit Tests
+        id: tests
+        continue-on-error: true
+        run: ./gradlew testDebugUnitTest
 
-    - name: Upload Lint Results
-      uses: actions/upload-artifact@v5
-      if: always()
-      with:
-        name: lint-results
-        path: app/build/reports/lint-results-debug.html
+      - name: Upload Lint Results
+        uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: lint-results
+          path: app/build/reports/lint-results-debug.html
 
-    - name: Upload Test Results
-      uses: actions/upload-artifact@v5
-      if: always()
-      with:
-        name: test-results
-        path: app/build/reports/tests/testDebugUnitTest/
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: test-results
+          path: app/build/reports/tests/testDebugUnitTest/
+
+      - name: Fail if Lint Failed
+        if: steps.lint.outcome == 'failure'
+        run: exit 1
+
+      - name: Fail if Tests Failed
+        if: steps.tests.outcome == 'failure'
+        run: exit 1
 
   build-apks:
     name: Build APK (${{ matrix.variant }})
@@ -123,11 +128,9 @@ jobs:
 
     - name: Build ${{ matrix.variant }} APK
       run: ./gradlew assemble${{ matrix.variant == 'debug' && 'Debug' || 'Release' }}
-      continue-on-error: ${{ matrix.variant == 'release' }}
 
     - name: Upload ${{ matrix.variant }} APK
       uses: actions/upload-artifact@v5
-      if: success()
       with:
         name: ${{ matrix.variant }}-apk
         path: app/build/outputs/apk/${{ matrix.variant }}/*.apk
@@ -178,6 +181,7 @@ jobs:
       uses: gradle/actions/setup-gradle@v5
 
     - name: Run detekt
+      id: detekt
       run: ./gradlew detekt
       continue-on-error: true
 
@@ -187,3 +191,7 @@ jobs:
       with:
         name: detekt-report
         path: app/build/reports/detekt/
+
+    - name: Fail if Detekt  Failed
+      if: steps.detekt.outcome == 'failure'
+      run: exit 1

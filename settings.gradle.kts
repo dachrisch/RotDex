@@ -16,4 +16,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "RotDex"
 include(":app")
-include(":mcp-server")
