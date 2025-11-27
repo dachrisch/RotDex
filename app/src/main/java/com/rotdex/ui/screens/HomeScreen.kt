@@ -30,6 +30,7 @@ fun HomeScreen(
     onNavigateToAchievements: () -> Unit = {},
     onNavigateToConnectionTest: () -> Unit = {},
     onNavigateToBattleArena: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     viewModel: DailyRewardsViewModel = hiltViewModel()
 ) {
     val userProfile by viewModel.userProfile.collectAsState()
@@ -37,7 +38,12 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { RotDexLogo() },
+                title = {
+                    RotDexLogo(
+                        userProfile = userProfile,
+                        onAvatarClick = onNavigateToSettings
+                    )
+                },
                 actions = {
                     userProfile?.let { profile ->
                         Row(

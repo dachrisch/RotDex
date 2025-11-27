@@ -13,11 +13,13 @@ import com.rotdex.ui.screens.ConnectionTestScreen
 import com.rotdex.ui.screens.DailyRewardsScreen
 import com.rotdex.ui.screens.FusionScreen
 import com.rotdex.ui.screens.HomeScreen
+import com.rotdex.ui.screens.SettingsScreen
 import com.rotdex.ui.viewmodel.AchievementsViewModel
 import com.rotdex.ui.viewmodel.CardCreateViewModel
 import com.rotdex.ui.viewmodel.CollectionViewModel
 import com.rotdex.ui.viewmodel.DailyRewardsViewModel
 import com.rotdex.ui.viewmodel.FusionViewModel
+import com.rotdex.ui.viewmodel.SettingsViewModel
 
 /**
  * Navigation routes for the app
@@ -31,6 +33,7 @@ sealed class Screen(val route: String) {
     object Achievements : Screen("achievements")
     object ConnectionTest : Screen("connection_test")
     object BattleArena : Screen("battle_arena")
+    object Settings : Screen("settings")
 }
 
 /**
@@ -53,7 +56,8 @@ fun NavGraph(
                 onNavigateToFusion = { navController.navigate(Screen.Fusion.route) },
                 onNavigateToAchievements = { navController.navigate(Screen.Achievements.route) },
                 onNavigateToConnectionTest = { navController.navigate(Screen.ConnectionTest.route) },
-                onNavigateToBattleArena = { navController.navigate(Screen.BattleArena.route) }
+                onNavigateToBattleArena = { navController.navigate(Screen.BattleArena.route) },
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
             )
         }
 
@@ -127,6 +131,14 @@ fun NavGraph(
 
         composable(Screen.BattleArena.route) {
             BattleArenaScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Settings.route) {
+            val viewModel: SettingsViewModel = hiltViewModel()
+            SettingsScreen(
+                viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

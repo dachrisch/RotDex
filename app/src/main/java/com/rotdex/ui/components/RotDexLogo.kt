@@ -11,30 +11,41 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.rotdex.data.models.UserProfile
 
 /**
  * Reusable RotDex logo component for consistent branding
+ *
+ * Displays either:
+ * - User avatar (custom or initials-based) when userProfile is provided
+ * - Brain emoji as fallback
+ *
+ * The avatar is clickable if onAvatarClick is provided.
  */
 @Composable
 fun RotDexLogo(
     modifier: Modifier = Modifier,
-    showEmoji: Boolean = true,
-    fontSize: Int = 20
+    userProfile: UserProfile? = null,
+    onAvatarClick: (() -> Unit)? = null
 ) {
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (showEmoji) {
-            Text(
-                text = "🧠",
-                fontSize = fontSize.sp
+        if (userProfile != null) {
+            AvatarView(
+                playerName = userProfile.playerName,
+                avatarImagePath = userProfile.avatarImagePath,
+                size = 32.dp,
+                onClick = onAvatarClick
             )
-            Spacer(modifier = Modifier.width(8.dp))
+        } else {
+            Text("🧠", fontSize = 20.sp)
         }
+        Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = "RotDex",
-            fontSize = fontSize.sp,
+            fontSize = 20.sp,
             fontWeight = FontWeight.ExtraBold,
             color = MaterialTheme.colorScheme.primary
         )

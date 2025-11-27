@@ -63,6 +63,13 @@ fun BattleArenaScreen(
     val playerCards by viewModel.playerCards.collectAsState()
     val playerName by viewModel.playerName.collectAsState()
 
+    // Ready states for new components
+    val localReady by viewModel.localReady.collectAsState()
+    val opponentReady by viewModel.opponentReady.collectAsState()
+    val canClickReady by viewModel.canClickReady.collectAsState()
+    val opponentIsThinking by viewModel.opponentIsThinking.collectAsState()
+    val shouldRevealCards by viewModel.shouldRevealCards.collectAsState()
+
     // Process card transfer when battle completes
     LaunchedEffect(battleResult) {
         if (battleResult != null && !cardTransferred) {
@@ -147,14 +154,22 @@ fun BattleArenaScreen(
             }
 
             when {
-                // Lobby phase
+                // Lobby phase - Auto-discovery
                 connectionState is ConnectionState.Idle -> {
-                    LobbySection(
-                        playerName = playerName,
-                        onPlayerNameChange = { viewModel.setPlayerName(it) },
-                        onHostBattle = { viewModel.startAsHost() },
-                        onJoinBattle = { viewModel.startAsClient() },
-                        hasPermissions = hasPermissions
+                    // Auto-start discovery when permissions are ready
+                    LaunchedEffect(hasPermissions) {
+                        if (hasPermissions && playerName.isNotEmpty()) {
+                            viewModel.startAutoDiscovery()
+                        }
+                    }
+
+                    // Show discovered devices as bubbles
+                    com.rotdex.ui.components.DiscoveryBubblesSection(
+                        discoveredDevices = discoveredDevices,
+                        onDeviceClick = { device ->
+                            val endpointId = device.split("|").last()
+                            viewModel.connectToDevice(endpointId)
+                        }
                     )
                 }
 
@@ -177,6 +192,11 @@ fun BattleArenaScreen(
                         playerCards = playerCards,
                         selectedCard = localCard,
                         opponentCard = opponentCard,
+                        localReady = localReady,
+                        opponentReady = opponentReady,
+                        canClickReady = canClickReady,
+                        opponentIsThinking = opponentIsThinking,
+                        shouldRevealCards = shouldRevealCards,
                         onCardSelect = { viewModel.selectCard(it) },
                         onReady = { viewModel.setReady() }
                     )
@@ -216,11 +236,6 @@ fun BattleArenaScreen(
                     DisconnectedSection(onRetry = { viewModel.stopAll() })
                 }
             }
-
-            // Activity log
-            if (messages.isNotEmpty()) {
-                ActivityLogCard(messages = messages)
-            }
         }
     }
 }
@@ -246,69 +261,6 @@ private fun PermissionWarningCard() {
                 text = "Please grant Bluetooth and Location permissions",
                 textAlign = TextAlign.Center
             )
-        }
-    }
-}
-
-@Composable
-private fun LobbySection(
-    playerName: String,
-    onPlayerNameChange: (String) -> Unit,
-    onHostBattle: () -> Unit,
-    onJoinBattle: () -> Unit,
-    hasPermissions: Boolean
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "BATTLE ARENA",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Text(
-                text = "Challenge another player to a card battle!",
-                textAlign = TextAlign.Center
-            )
-
-            OutlinedTextField(
-                value = playerName,
-                onValueChange = onPlayerNameChange,
-                label = { Text("Your Name") },
-                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Button(
-                    onClick = onHostBattle,
-                    enabled = hasPermissions,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("HOST BATTLE", fontWeight = FontWeight.Bold)
-                }
-
-                OutlinedButton(
-                    onClick = onJoinBattle,
-                    enabled = hasPermissions,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("JOIN BATTLE", fontWeight = FontWeight.Bold)
-                }
-            }
         }
     }
 }
@@ -370,6 +322,11 @@ private fun CardSelectionSection(
     playerCards: List<Card>,
     selectedCard: BattleCard?,
     opponentCard: BattleCard?,
+    localReady: Boolean,
+    opponentReady: Boolean,
+    canClickReady: Boolean,
+    opponentIsThinking: Boolean,
+    shouldRevealCards: Boolean,
     onCardSelect: (Card) -> Unit,
     onReady: () -> Unit
 ) {
@@ -392,24 +349,27 @@ private fun CardSelectionSection(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold
                 )
-
-                if (opponentCard != null) {
-                    Text(
-                        text = "Opponent has selected their card!",
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
             }
         }
+
+        // Battle Ready Status
+        com.rotdex.ui.components.BattleReadyStatus(
+            localReady = localReady,
+            opponentReady = opponentReady,
+            opponentIsThinking = opponentIsThinking
+        )
 
         // Selected card preview
         if (selectedCard != null) {
             SelectedCardPreview(battleCard = selectedCard)
         }
 
-        // Opponent card preview (image only, no stats)
-        if (opponentCard != null) {
-            OpponentCardPreview(battleCard = opponentCard)
+        // Opponent card preview - Use BlurredCardReveal
+        opponentCard?.let { card ->
+            com.rotdex.ui.components.BlurredCardReveal(
+                battleCard = card,
+                isRevealed = shouldRevealCards
+            )
         }
 
         // Card selection grid
@@ -431,16 +391,14 @@ private fun CardSelectionSection(
             }
         }
 
-        // Ready button
-        Button(
-            onClick = onReady,
-            enabled = selectedCard != null,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(Icons.Default.Check, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text("READY TO BATTLE!", fontWeight = FontWeight.Bold)
-        }
+        // Ready button - Use ReadyButton
+        com.rotdex.ui.components.ReadyButton(
+            localCard = selectedCard,
+            localReady = localReady,
+            opponentReady = opponentReady,
+            canClick = canClickReady,
+            onReady = onReady
+        )
     }
 }
 
@@ -484,52 +442,6 @@ private fun SelectedCardPreview(battleCard: BattleCard) {
             Column(horizontalAlignment = Alignment.End) {
                 Text("ATK: ${battleCard.effectiveAttack}", fontWeight = FontWeight.Bold)
                 Text("HP: ${battleCard.effectiveHealth}", fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}
-
-@Composable
-private fun OpponentCardPreview(battleCard: BattleCard) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(battleCard.card.imageUrl)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = "Opponent's card",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(8.dp))
-            )
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "OPPONENT'S CARD",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.error
-                )
-                Text(
-                    text = battleCard.card.rarity.displayName,
-                    color = getRarityColor(battleCard.card.rarity)
-                )
-            }
-
-            Column(horizontalAlignment = Alignment.End) {
-                Text("ATK: ???", fontWeight = FontWeight.Bold)
-                Text("HP: ???", fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -646,14 +558,6 @@ internal fun BattleSection(
                     isDraw = battleResult?.isDraw == true
                 )
             }
-        }
-
-        // Battle story display with better styling
-        if (battleStory.isNotEmpty()) {
-            BattleLogCard(
-                battleStory = battleStory,
-                currentStoryIndex = currentStoryIndex
-            )
         }
 
         // Result display with animation
@@ -901,73 +805,6 @@ private fun HealthBar(
 }
 
 @Composable
-private fun BattleLogCard(
-    battleStory: List<BattleStorySegment>,
-    currentStoryIndex: Int
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text("⚔️", fontSize = 20.sp)
-                Text(
-                    text = "BATTLE LOG",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-
-            battleStory.take(currentStoryIndex + 1).forEachIndexed { index, segment ->
-                val isLatest = index == currentStoryIndex
-                AnimatedVisibility(
-                    visible = true,
-                    enter = fadeIn() + slideInVertically()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .then(
-                                if (isLatest) Modifier.background(
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                                    RoundedCornerShape(8.dp)
-                                ).padding(8.dp)
-                                else Modifier.padding(8.dp)
-                            ),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Text(
-                            text = if (segment.isLocalAction) "🔵" else "🔴",
-                            fontSize = 14.sp
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = segment.text,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (segment.isLocalAction)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.error,
-                            fontWeight = if (isLatest) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun AnimatedResultCard(
     result: BattleResult,
     cardTransferred: Boolean,
@@ -1088,34 +925,6 @@ private fun DisconnectedSection(onRetry: () -> Unit) {
 
             Button(onClick = onRetry) {
                 Text("Return to Lobby")
-            }
-        }
-    }
-}
-
-@Composable
-private fun ActivityLogCard(messages: List<String>) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(max = 150.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = "Activity Log",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold
-            )
-            LazyColumn {
-                items(messages) { message ->
-                    Text(
-                        text = message,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
             }
         }
     }

@@ -5,9 +5,13 @@ import android.util.Log
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.*
 import com.rotdex.data.models.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlin.random.Random
 
 /**
@@ -21,6 +25,9 @@ class BattleManager(private val context: Context) {
 
     private val connectionsClient = Nearby.getConnectionsClient(context)
     private val serviceId = "com.rotdex.battle.arena"
+
+    // Coroutine scope for async operations
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     // Connection state
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Idle)
@@ -350,6 +357,10 @@ class BattleManager(private val context: Context) {
     private val _statsRevealed = MutableStateFlow(false)
     val statsRevealed: StateFlow<Boolean> = _statsRevealed.asStateFlow()
 
+    // Track if cards should be revealed (blur animation)
+    private val _shouldRevealCards = MutableStateFlow(false)
+    val shouldRevealCards: StateFlow<Boolean> = _shouldRevealCards.asStateFlow()
+
     /**
      * Select a card for battle
      */
@@ -404,6 +415,39 @@ class BattleManager(private val context: Context) {
         addMessage("Ready to battle!")
 
         checkBothReady()
+    }
+
+    /**
+     * Start the dramatic card reveal sequence
+     *
+     * Sequence:
+     * 1. Dramatic pause (2 seconds)
+     * 2. Trigger blur reveal animation (shouldRevealCards = true)
+     * 3. Wait for blur animation to complete (500ms)
+     * 4. Reveal stats (statsRevealed = true)
+     * 5. Short pause before battle (500ms)
+     * 6. Execute battle (host only)
+     */
+    private suspend fun startRevealSequence() {
+        // Dramatic pause before reveal
+        kotlinx.coroutines.delay(2000)
+
+        // Trigger reveal animation
+        _shouldRevealCards.value = true
+
+        // Wait for animation to complete
+        kotlinx.coroutines.delay(500)
+
+        // Now reveal stats
+        _statsRevealed.value = true
+
+        // Short pause before battle
+        kotlinx.coroutines.delay(500)
+
+        // Start battle (only host executes)
+        if (isHost) {
+            executeBattle()
+        }
     }
 
     /**
@@ -703,9 +747,9 @@ class BattleManager(private val context: Context) {
             _battleState.value = BattleState.READY_TO_BATTLE
             addMessage("Both players ready!")
 
-            // Host executes battle
-            if (isHost) {
-                executeBattle()
+            // Start reveal sequence
+            scope.launch {
+                startRevealSequence()
             }
         }
     }
@@ -790,6 +834,7 @@ class BattleManager(private val context: Context) {
         localFullCard = null
         opponentFullCard = null
         _statsRevealed.value = false
+        _shouldRevealCards.value = false
         expectedImageTransfers.clear()
         receivedImagePaths.clear()
         pendingFileTransfers.clear()

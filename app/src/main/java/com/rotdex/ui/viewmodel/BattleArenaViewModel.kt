@@ -46,6 +46,13 @@ class BattleArenaViewModel @Inject constructor(
     // Battle story for progressive display
     val battleStory: StateFlow<List<BattleStorySegment>> = battleManager.battleStory
 
+    // Ready states
+    val localReady: StateFlow<Boolean> = battleManager.localReady
+    val opponentReady: StateFlow<Boolean> = battleManager.opponentReady
+    val canClickReady: StateFlow<Boolean> = battleManager.canClickReady
+    val opponentIsThinking: StateFlow<Boolean> = battleManager.opponentIsThinking
+    val shouldRevealCards: StateFlow<Boolean> = battleManager.shouldRevealCards
+
     // Currently displayed story segment index
     private val _currentStoryIndex = MutableStateFlow(0)
     val currentStoryIndex: StateFlow<Int> = _currentStoryIndex.asStateFlow()
@@ -87,6 +94,15 @@ class BattleArenaViewModel @Inject constructor(
 
     fun startAsClient() {
         battleManager.startAsClient(_playerName.value)
+    }
+
+    fun startAutoDiscovery() {
+        val name = _playerName.value
+        battleManager.startAutoDiscovery(name)
+    }
+
+    fun connectToDevice(endpointId: String) {
+        battleManager.connectToHost(endpointId)
     }
 
     fun connectToHost(deviceInfo: String) {
