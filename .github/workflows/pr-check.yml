@@ -208,7 +208,7 @@ jobs:
       if: always()
       with:
         name: detekt-report
-        path: app/build/reports/detekt/
+        path: build/reports/problems/
 
     - name: Fail if Detekt  Failed
       if: steps.detekt.outcome == 'failure'
