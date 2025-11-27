@@ -1,12 +1,18 @@
 package com.rotdex.data.manager
 
 import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import com.rotdex.data.models.BattleCard
+import com.rotdex.data.models.Card
+import com.rotdex.data.models.CardRarity
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
 import org.mockito.Mockito.mock
+import org.robolectric.RobolectricTestRunner
 
 /**
  * Test suite for BattleManager ready state management functionality.
@@ -21,15 +27,29 @@ import org.mockito.Mockito.mock
  * - Opponent thinking indicator
  */
 @OptIn(ExperimentalCoroutinesApi::class)
+@RunWith(RobolectricTestRunner::class)
 class BattleManagerReadyStateTest {
 
-    private lateinit var context: Context
     private lateinit var battleManager: BattleManager
 
     @Before
     fun setUp() {
-        context = mock(Context::class.java)
+        // Use Robolectric-provided application context
+        val context = ApplicationProvider.getApplicationContext<Context>()
         battleManager = BattleManager(context)
+
+    }
+    private fun createTestCard(): Card {
+        return Card(
+            id = 1,
+            name = "TestCard",
+            attack = 5,
+            health = 5,
+            rarity = CardRarity.COMMON,
+            prompt = "Test prompt",
+            biography = "Test bio",
+            imageUrl = "localhost"
+        )
     }
 
     // ==================== Initialization Tests ====================
@@ -95,6 +115,7 @@ class BattleManagerReadyStateTest {
     fun setReady_disablesReadyButton() = runTest {
         // GIVEN: Initial state where canClickReady is true
         assertTrue("Initial state should allow clicking", battleManager.canClickReady.value)
+        battleManager.selectCard(createTestCard())
 
         // WHEN: setReady is called
         battleManager.setReady()
@@ -126,6 +147,7 @@ class BattleManagerReadyStateTest {
     fun multipleSetReadyCalls_keepButtonDisabled() = runTest {
         // GIVEN: Initial state
         assertTrue("Initial state should allow clicking", battleManager.canClickReady.value)
+        battleManager.selectCard(createTestCard())
 
         // WHEN: setReady is called multiple times
         battleManager.setReady()
@@ -139,6 +161,8 @@ class BattleManagerReadyStateTest {
     @Test
     fun readyStatesIndependent() = runTest {
         // GIVEN: Initial state
+        battleManager.selectCard(createTestCard())
+
         // WHEN: Only local ready is set
         battleManager.setReady()
 
@@ -191,6 +215,7 @@ class BattleManagerReadyStateTest {
     @Test
     fun resetAfterBattle_restoresInitialState() = runTest {
         // GIVEN: BattleManager with modified ready states
+        battleManager.selectCard(createTestCard())
         battleManager.setReady()
         assertFalse("Precondition: button should be disabled", battleManager.canClickReady.value)
 

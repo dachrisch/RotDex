@@ -102,6 +102,7 @@ dependencies {
     // Room Database for card collection
     implementation("androidx.room:room-runtime:2.8.4")
     implementation("androidx.room:room-ktx:2.8.4")
+    implementation("androidx.test:core-ktx:1.7.0")
     ksp("androidx.room:room-compiler:2.8.4")
 
     // Retrofit for AI API calls
@@ -134,6 +135,7 @@ dependencies {
     testImplementation("androidx.arch.core:core-testing:2.2.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
     testImplementation("io.mockk:mockk:1.14.6")
+    testImplementation("org.robolectric:robolectric:4.16")
 
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
