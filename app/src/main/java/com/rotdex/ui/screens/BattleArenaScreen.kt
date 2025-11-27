@@ -155,10 +155,11 @@ fun BattleArenaScreen(
 
             when {
                 // Lobby phase - Auto-discovery
-                connectionState is ConnectionState.Idle -> {
+                connectionState is ConnectionState.Idle ||
+                connectionState is ConnectionState.AutoDiscovering -> {
                     // Auto-start discovery when permissions are ready
                     LaunchedEffect(hasPermissions) {
-                        if (hasPermissions && playerName.isNotEmpty()) {
+                        if (hasPermissions && playerName.isNotEmpty() && connectionState is ConnectionState.Idle) {
                             viewModel.startAutoDiscovery()
                         }
                     }
