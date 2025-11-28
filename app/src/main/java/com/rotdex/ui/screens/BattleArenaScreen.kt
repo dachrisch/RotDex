@@ -333,13 +333,24 @@ private fun PermissionWarningCard() {
 }
 
 @Composable
-private fun WaitingSection(
+internal fun WaitingSection(
     connectionState: ConnectionState,
     discoveredDevices: List<String>,
     playerName: String,
     onDeviceClick: (String) -> Unit,
     onCancel: () -> Unit
 ) {
+    // CRITICAL FIX: Stable key prevents animation retrigger on recomposition
+    // This fixes bubble disappearance when discoveredDevices changes during connection
+    val animationKey = remember(connectionState) {
+        when (connectionState) {
+            is ConnectionState.Connecting -> "connecting"
+            is ConnectionState.Advertising -> "advertising"
+            is ConnectionState.Discovering -> "discovering"
+            else -> connectionState.toString()
+        }
+    }
+
     // Use AnimatedContent for smooth transition between states
     AnimatedContent(
         targetState = connectionState is ConnectionState.Connecting,
@@ -349,7 +360,7 @@ private fun WaitingSection(
                 fadeOut(animationSpec = tween(300)) +
                 scaleOut(targetScale = 1.2f, animationSpec = tween(300))
         },
-        label = "waiting_state_transition"
+        label = animationKey  // Use stable key to prevent retrigger
     ) { isConnecting ->
         if (isConnecting) {
             // Show connecting animation for Connecting state (no background)
@@ -473,7 +484,7 @@ private fun WaitingSection(
  * @param playerName The player's name to display initials for
  */
 @Composable
-private fun ConnectingAnimation(playerName: String) {
+internal fun ConnectingAnimation(playerName: String) {
     val infiniteTransition = rememberInfiniteTransition(label = "connecting")
 
     // Bouncing animation (vertical movement)

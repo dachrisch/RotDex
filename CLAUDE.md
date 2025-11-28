@@ -221,3 +221,4 @@ The Freepik API key must be configured in `NetworkModule.kt`. Look for the API k
 - Baseline: `config/detekt/baseline.xml`
 - Run `./gradlew detekt` before committing
 - **Use `qa-verification-engineer` agent** for comprehensive quality checks
+- do not use adb, prefer to use android mcp

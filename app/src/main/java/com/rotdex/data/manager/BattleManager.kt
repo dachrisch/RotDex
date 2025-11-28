@@ -100,10 +100,17 @@ class BattleManager(private val context: Context) {
     private var localReadyLegacy: Boolean = false
     private var playerName: String = ""
 
+    // Connection collision prevention with retry mechanism
+    private var localEndpointId: String = ""  // Our generated endpoint ID for collision resolution
+    private val outgoingConnectionRequests = mutableSetOf<String>()  // Track endpoints we requested connection to
+    private val connectionRetryAttempts = mutableMapOf<String, Int>()  // Track retry attempts per endpoint
+    private val maxRetryAttempts = 3
+    private var retryJob: kotlinx.coroutines.Job? = null
+
     // Connection lifecycle callbacks
     private val connectionLifecycleCallback = object : ConnectionLifecycleCallback() {
         override fun onConnectionInitiated(endpointId: String, info: ConnectionInfo) {
-            Log.d(TAG, "Connection initiated with: ${info.endpointName}")
+            Log.d(TAG, "Connection initiated with: ${info.endpointName}, endpointId: $endpointId")
             addMessage("Connection initiated with ${info.endpointName}")
             connectionsClient.acceptConnection(endpointId, payloadCallback)
         }
@@ -111,20 +118,30 @@ class BattleManager(private val context: Context) {
         override fun onConnectionResult(endpointId: String, result: ConnectionResolution) {
             when (result.status.statusCode) {
                 ConnectionsStatusCodes.STATUS_OK -> {
-                    Log.d(TAG, "Connection successful!")
+                    Log.d(TAG, "✅ Connection successful!")
                     currentEndpointId = endpointId
+                    outgoingConnectionRequests.clear()
+                    connectionRetryAttempts.clear()
+                    retryJob?.cancel()
+
+                    // CRITICAL FIX: Stop advertising and discovery to prevent endpoint churn
+                    // When in auto-discovery mode, both are running and cause "endpoint lost" events
+                    connectionsClient.stopAdvertising()
+                    connectionsClient.stopDiscovery()
+                    Log.d(TAG, "✅ Stopped advertising and discovery after successful connection")
+
                     _connectionState.value = ConnectionState.Connected(endpointId)
                     _battleState.value = BattleState.CARD_SELECTION
                     _opponentIsThinking.value = true  // Opponent is now selecting their card
                     addMessage("Connected! Select your card for battle.")
                 }
                 ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED -> {
-                    _connectionState.value = ConnectionState.Error("Connection rejected")
-                    addMessage("Connection rejected")
+                    Log.w(TAG, "⚠️ Connection rejected by $endpointId")
+                    handleConnectionFailure(endpointId, "rejected")
                 }
                 else -> {
-                    _connectionState.value = ConnectionState.Error("Connection failed")
-                    addMessage("Connection failed")
+                    Log.w(TAG, "⚠️ Connection failed with $endpointId, status=${result.status.statusCode}")
+                    handleConnectionFailure(endpointId, "failed")
                 }
             }
         }
@@ -277,8 +294,17 @@ class BattleManager(private val context: Context) {
         }
 
         override fun onEndpointLost(endpointId: String) {
+            // CRITICAL FIX: Don't remove endpoint if we're actively connecting to it
+            // This prevents UI recomposition that causes bubble disappearance during collision retry
+            if (outgoingConnectionRequests.contains(endpointId)) {
+                Log.d(TAG, "⏸️ Keeping endpoint $endpointId in list (active connection in progress)")
+                return
+            }
+
             val devices = _discoveredDevices.value.filterNot { it.contains(endpointId) }
             _discoveredDevices.value = devices
+            connectionRetryAttempts.remove(endpointId)
+
             Log.d(TAG, "🔴 Endpoint lost, discoveredDevices now: ${_discoveredDevices.value.size} devices")
         }
     }
@@ -331,10 +357,18 @@ class BattleManager(private val context: Context) {
     /**
      * Start auto-discovery mode (both advertise AND discover simultaneously)
      * Enables automatic peer-to-peer connection without manual role selection
+     *
+     * COLLISION PREVENTION: Generates unique local endpoint ID for comparison
      */
     fun startAutoDiscovery(name: String) {
         val effectiveName = name.ifEmpty { "player-${System.currentTimeMillis() % 10000}" }
         playerName = effectiveName
+
+        // Generate unique session ID for collision resolution
+        // This ID is used to determine connection priority when both devices connect simultaneously
+        localEndpointId = generateSessionId()
+        Log.d(TAG, "🆔 Generated local session ID for collision resolution: $localEndpointId")
+
         _connectionState.value = ConnectionState.AutoDiscovering(effectiveName)
         _battleState.value = BattleState.WAITING_FOR_OPPONENT
         resetBattleState()
@@ -369,15 +403,118 @@ class BattleManager(private val context: Context) {
     }
 
     /**
-     * Connect to a discovered host
+     * Generate random 4-character session ID for collision resolution
+     * Uses the same format as Nearby Connections endpoint IDs (alphanumeric)
+     */
+    private fun generateSessionId(): String {
+        val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        return (1..4)
+            .map { chars.random() }
+            .joinToString("")
+    }
+
+    /**
+     * Handle connection failure with retry logic to resolve collisions
+     * Uses session ID comparison to stagger retries:
+     * - Lower session ID: Retry immediately (0ms delay)
+     * - Higher session ID: Retry after 2 seconds
+     *
+     * IMPORTANT: Keeps UI in "Connecting" state - user should never see an error during retry
+     */
+    private fun handleConnectionFailure(endpointId: String, reason: String) {
+        // Check if this was an outgoing connection request (potential collision)
+        if (!outgoingConnectionRequests.contains(endpointId)) {
+            Log.d(TAG, "Not retrying $endpointId - was not our outgoing request")
+            _connectionState.value = ConnectionState.Error("Connection $reason")
+            addMessage("Connection $reason")
+            return
+        }
+
+        // Check retry count
+        val currentAttempts = connectionRetryAttempts.getOrDefault(endpointId, 0)
+        if (currentAttempts >= maxRetryAttempts) {
+            Log.w(TAG, "⛔ Max retry attempts ($maxRetryAttempts) reached for $endpointId")
+            outgoingConnectionRequests.remove(endpointId)
+            connectionRetryAttempts.remove(endpointId)
+            _connectionState.value = ConnectionState.Error("Connection failed after $maxRetryAttempts attempts")
+            addMessage("Connection failed - please try again")
+            return
+        }
+
+        // Increment retry count
+        connectionRetryAttempts[endpointId] = currentAttempts + 1
+        val attemptNum = currentAttempts + 1
+
+        // Calculate retry delay based on session ID comparison
+        // Lower ID retries immediately, higher ID waits to avoid re-collision
+        val retryDelay = if (localEndpointId < endpointId) {
+            0L  // We have priority - retry immediately
+        } else {
+            2000L  // They have priority - wait 2 seconds
+        }
+
+        Log.d(TAG, """
+            🔄 Retry attempt $attemptNum/$maxRetryAttempts for $endpointId
+            Reason: $reason
+            Session IDs: local=$localEndpointId, remote=$endpointId
+            Retry delay: ${retryDelay}ms (${if (retryDelay == 0L) "immediate" else "delayed"})
+        """.trimIndent())
+
+        // CRITICAL: Keep UI in "Connecting" state - no error messages visible to user
+        // The retry happens silently in the background
+        if (attemptNum == 1) {
+            // First retry - don't spam user with messages, keep "Connecting..." visible
+            Log.d(TAG, "Silent retry - keeping UI in connecting state")
+        }
+        // Always stay in Connecting state during retries
+        _connectionState.value = ConnectionState.Connecting
+
+        // Schedule retry with appropriate delay
+        retryJob?.cancel()
+        retryJob = scope.launch {
+            kotlinx.coroutines.delay(retryDelay)
+            Log.d(TAG, "🔁 Executing retry for $endpointId")
+            connectToHostInternal(endpointId)
+        }
+    }
+
+    /**
+     * Connect to a discovered host (public API - initiates first attempt)
+     * Clears any previous retry state for this endpoint
      */
     fun connectToHost(endpointId: String) {
+        // Clear any previous retry state for fresh start
+        connectionRetryAttempts.remove(endpointId)
+        retryJob?.cancel()
+
+        Log.d(TAG, "📤 User initiated connection to $endpointId")
+        connectToHostInternal(endpointId)
+    }
+
+    /**
+     * Internal connection method used by both initial connection and retries
+     * Tracks outgoing connection for collision detection
+     */
+    private fun connectToHostInternal(endpointId: String) {
         _connectionState.value = ConnectionState.Connecting
-        addMessage("Connecting...")
+
+        // Only add message on first attempt to avoid spam
+        val attemptNum = connectionRetryAttempts.getOrDefault(endpointId, 0)
+        if (attemptNum == 0) {
+            addMessage("Connecting...")
+        }
+
+        // Track this outgoing connection request for collision detection
+        outgoingConnectionRequests.add(endpointId)
+
+        val attemptLabel = if (attemptNum > 0) " (attempt ${attemptNum + 1})" else ""
+        Log.d(TAG, "📤 Requesting connection to $endpointId$attemptLabel")
 
         connectionsClient.requestConnection(playerName, endpointId, connectionLifecycleCallback)
             .addOnFailureListener { e ->
-                _connectionState.value = ConnectionState.Error("Failed: ${e.message}")
+                Log.e(TAG, "❌ requestConnection failed: ${e.message}")
+                // Trigger retry logic for IO errors (likely collision)
+                handleConnectionFailure(endpointId, "io_error")
             }
     }
 
@@ -1037,6 +1174,13 @@ class BattleManager(private val context: Context) {
         revealInitiated = false
         imageTransferRetryCount = 0
         readyTimeoutJob?.cancel()
+
+        // Reset collision prevention and retry tracking
+        outgoingConnectionRequests.clear()
+        connectionRetryAttempts.clear()
+        retryJob?.cancel()
+        retryJob = null
+        // Note: Don't reset localEndpointId - it stays constant for the session
     }
 
     fun stopAll() {
