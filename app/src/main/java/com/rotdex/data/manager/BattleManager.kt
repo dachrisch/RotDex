@@ -67,11 +67,32 @@ class BattleManager(private val context: Context) {
     private val _opponentReady = MutableStateFlow(false)
     val opponentReady: StateFlow<Boolean> = _opponentReady.asStateFlow()
 
-    private val _canClickReady = MutableStateFlow(true)
+    // CRITICAL FIX: Start with false - only enable after opponent data is complete
+    private val _canClickReady = MutableStateFlow(false)
     val canClickReady: StateFlow<Boolean> = _canClickReady.asStateFlow()
 
     private val _opponentIsThinking = MutableStateFlow(false)
     val opponentIsThinking: StateFlow<Boolean> = _opponentIsThinking.asStateFlow()
+
+    // Data completeness tracking (for synchronization)
+    private val _localDataComplete = MutableStateFlow(false)
+    val localDataComplete: StateFlow<Boolean> = _localDataComplete.asStateFlow()
+
+    private val _opponentDataComplete = MutableStateFlow(false)
+    val opponentDataComplete: StateFlow<Boolean> = _opponentDataComplete.asStateFlow()
+
+    private val _waitingForOpponentReady = MutableStateFlow(false)
+    val waitingForOpponentReady: StateFlow<Boolean> = _waitingForOpponentReady.asStateFlow()
+
+    // Image transfer status tracking
+    private val _opponentImageTransferComplete = MutableStateFlow(false)
+    val opponentImageTransferComplete: StateFlow<Boolean> = _opponentImageTransferComplete.asStateFlow()
+
+    private var localImageTransferComplete = false
+    private var readyTimeoutJob: kotlinx.coroutines.Job? = null
+    private var revealInitiated = false
+    private var imageTransferRetryCount = 0
+    private val maxImageTransferRetries = 3
 
     private var currentEndpointId: String? = null
     private var isHost: Boolean = false
@@ -208,6 +229,14 @@ class BattleManager(private val context: Context) {
                                         receivedImagePaths[transferInfo.cardId] = imagePath
                                         updateCardWithImage(transferInfo.cardId, imagePath)
 
+                                        // Mark image transfer complete and check if all data received
+                                        // CRITICAL FIX: Update StateFlow so UI can react
+                                        _opponentImageTransferComplete.value = true
+                                        Log.d(TAG, "✅ CRITICAL: Opponent image transfer complete for card ${transferInfo.cardId}")
+                                        Log.d(TAG, "✅ CRITICAL: Setting _opponentImageTransferComplete = true")
+                                        Log.d(TAG, "✅ CRITICAL: Now calling checkOpponentDataComplete()")
+                                        checkOpponentDataComplete()
+
                                         // Cleanup
                                         pendingFileTransfers.remove(update.payloadId)
                                         payloadCache.remove(update.payloadId)
@@ -243,12 +272,14 @@ class BattleManager(private val context: Context) {
             val devices = _discoveredDevices.value.toMutableList()
             devices.add("${info.endpointName}|$endpointId")
             _discoveredDevices.value = devices
+            Log.d(TAG, "✅ discoveredDevices updated: ${_discoveredDevices.value.size} devices")
             addMessage("Found: ${info.endpointName}")
         }
 
         override fun onEndpointLost(endpointId: String) {
             val devices = _discoveredDevices.value.filterNot { it.contains(endpointId) }
             _discoveredDevices.value = devices
+            Log.d(TAG, "🔴 Endpoint lost, discoveredDevices now: ${_discoveredDevices.value.size} devices")
         }
     }
 
@@ -384,6 +415,10 @@ class BattleManager(private val context: Context) {
 
         // Then send card image (will arrive separately, possibly before CARDPREVIEW due to payload ordering)
         sendCardImage(card.imageUrl, card.id)
+
+        // Mark that we've sent our image
+        localImageTransferComplete = true
+        Log.d(TAG, "✅ Marked local image transfer as initiated")
     }
 
     /**
@@ -414,7 +449,18 @@ class BattleManager(private val context: Context) {
         sendMessage("READY|true")
         addMessage("Ready to battle!")
 
-        checkBothReady()
+        // NEW: Enter waiting state with timeout
+        _waitingForOpponentReady.value = true
+        startReadyTimeout()
+
+        // If we already have all opponent data, send ACK immediately
+        if (_localDataComplete.value) {
+            sendMessage("READY_ACK")
+            Log.d(TAG, "📤 Sent READY_ACK (already had all data)")
+            checkBothReadyForReveal()
+        } else {
+            Log.d(TAG, "⏳ Waiting to receive opponent's data...")
+        }
     }
 
     /**
@@ -446,6 +492,8 @@ class BattleManager(private val context: Context) {
 
         // Start battle (only host executes)
         if (isHost) {
+            sendMessage("BATTLE_START")  // NEW: Explicit state transition
+            kotlinx.coroutines.delay(500)
             executeBattle()
         }
     }
@@ -613,37 +661,44 @@ class BattleManager(private val context: Context) {
                 val name = parts[2]
                 val rarity = try { CardRarity.valueOf(parts[3]) } catch (e: Exception) { CardRarity.COMMON }
 
-                // Use received image path if available, otherwise empty (will update when image arrives)
-                val imageUrl = receivedImagePaths[id] ?: ""
-                Log.d(TAG, "📩 Received CARDPREVIEW: id=$id, name=$name, rarity=$rarity, imageUrl=$imageUrl")
+                Log.d(TAG, "📩 Received CARDPREVIEW: id=$id, name=$name, rarity=$rarity")
+
+                // Check if we already have the full CARD data - don't overwrite with preview
+                if (_opponentCard.value != null && _opponentCard.value!!.effectiveAttack > 0) {
+                    Log.d(TAG, "Ignoring CARDPREVIEW - already have full CARD data with stats")
+                    return
+                }
+
+                // Check if we already have a received image for this card
+                val existingImagePath = receivedImagePaths[id]
                 Log.d(TAG, "Available received images: ${receivedImagePaths.keys}")
 
-                // Create preview card (stats hidden)
-                val previewCard = Card(
-                    id = id,
-                    prompt = "",
-                    imageUrl = imageUrl,
-                    rarity = rarity,
-                    name = name,
-                    attack = 0, // Hidden
-                    health = 0, // Hidden
-                    biography = ""
-                )
-                _opponentCard.value = BattleCard(
-                    card = previewCard,
-                    effectiveAttack = 0, // Hidden
-                    effectiveHealth = 0, // Hidden
+                // Create preview card with placeholder stats (will be updated by CARD message)
+                val imageUrl = if (existingImagePath != null) {
+                    Log.d(TAG, "✅ Received CARDPREVIEW with existing image: $existingImagePath")
+                    "$existingImagePath?t=${System.currentTimeMillis()}"
+                } else {
+                    ""
+                }
+
+                val previewCard = BattleCard(
+                    card = Card(
+                        id = id,
+                        name = name,
+                        imageUrl = imageUrl,
+                        rarity = rarity,
+                        prompt = "",
+                        biography = "",
+                        createdAt = System.currentTimeMillis()
+                    ),
+                    effectiveAttack = 0,
+                    effectiveHealth = 0,
                     currentHealth = 0
                 )
-                _opponentIsThinking.value = false  // Opponent finished selecting
-                Log.d(TAG, "✅ Set _opponentCard to card $id (${if (imageUrl.isNotEmpty()) "with image" else "without image"})")
 
-                // If image was already received, apply it now (handles race condition)
-                if (imageUrl.isEmpty() && receivedImagePaths.containsKey(id)) {
-                    val pendingImagePath = receivedImagePaths[id]!!
-                    Log.d(TAG, "🔄 Applying pending image to card $id: $pendingImagePath")
-                    updateCardWithImage(id, pendingImagePath)
-                }
+                _opponentCard.value = previewCard
+                _opponentIsThinking.value = false
+                Log.d(TAG, "✅ Set _opponentCard to card $id (without stats yet)")
 
                 addMessage("Opponent selected their card")
             }
@@ -688,13 +743,33 @@ class BattleManager(private val context: Context) {
                 opponentReadyLegacy = ready
                 _opponentReady.value = ready  // Update StateFlow
                 addMessage("Opponent is ready!")
-                checkBothReady()
+                checkBothReadyForReveal()
+            }
+            "READY_ACK" -> {
+                Log.d(TAG, "📩 Received READY_ACK from opponent")
+                _opponentDataComplete.value = true
+                _waitingForOpponentReady.value = false
+                addMessage("Opponent confirmed ready!")
+                checkBothReadyForReveal()
+            }
+            "REVEAL_START" -> {
+                Log.d(TAG, "📩 NON-HOST: Received REVEAL_START from host")
+                if (_battleState.value == BattleState.READY_TO_BATTLE) {
+                    scope.launch { startRevealSequence() }
+                } else {
+                    Log.w(TAG, "⚠️ Received REVEAL_START in wrong state: ${_battleState.value}")
+                }
+            }
+            "BATTLE_START" -> {
+                Log.d(TAG, "📩 NON-HOST: Received BATTLE_START, entering BATTLE_ANIMATING")
+                _battleState.value = BattleState.BATTLE_ANIMATING
             }
             "STORY" -> {
                 // Receive story segment from host
                 // STORY|index|text|isLocalAction|damage
-                // First story segment triggers animation state
-                if (_battleStory.value.isEmpty()) {
+                // State should already be BATTLE_ANIMATING from BATTLE_START
+                if (_battleState.value != BattleState.BATTLE_ANIMATING) {
+                    Log.w(TAG, "⚠️ Received STORY in wrong state: ${_battleState.value}, forcing BATTLE_ANIMATING")
                     _battleState.value = BattleState.BATTLE_ANIMATING
                 }
 
@@ -742,14 +817,63 @@ class BattleManager(private val context: Context) {
         }
     }
 
-    private fun checkBothReady() {
-        if (localReadyLegacy && opponentReadyLegacy && _localCard.value != null && _opponentCard.value != null) {
+    /**
+     * Check if both players are truly ready for reveal (not just button press)
+     * Requires: both ready + both have complete opponent data
+     */
+    private fun checkBothReadyForReveal() {
+        if (revealInitiated) {
+            Log.d(TAG, "checkBothReadyForReveal: Already initiated, skipping")
+            return
+        }
+
+        Log.d(TAG, """
+            checkBothReadyForReveal:
+              localReady=$localReadyLegacy, opponentReady=$opponentReadyLegacy
+              localDataComplete=${_localDataComplete.value}, opponentDataComplete=${_opponentDataComplete.value}
+              cards: local=${_localCard.value != null}, opponent=${_opponentCard.value != null}
+        """.trimIndent())
+
+        val bothReady = localReadyLegacy && opponentReadyLegacy
+        val bothHaveData = _localDataComplete.value && _opponentDataComplete.value
+        val bothHaveCards = _localCard.value != null && _opponentCard.value != null
+
+        if (bothReady && bothHaveData && bothHaveCards) {
+            revealInitiated = true  // Set flag BEFORE any async operations
+            Log.d(TAG, "✅ BOTH PLAYERS READY FOR REVEAL!")
             _battleState.value = BattleState.READY_TO_BATTLE
+            _waitingForOpponentReady.value = false
+            readyTimeoutJob?.cancel()
             addMessage("Both players ready!")
 
-            // Start reveal sequence
-            scope.launch {
-                startRevealSequence()
+            // Only host initiates reveal
+            if (isHost) {
+                Log.d(TAG, "🎮 HOST: Sending REVEAL_START")
+                sendMessage("REVEAL_START")
+                scope.launch { startRevealSequence() }
+            } else {
+                Log.d(TAG, "⏳ NON-HOST: Waiting for REVEAL_START from host")
+            }
+        }
+    }
+
+    /**
+     * Start timeout protection for ready state
+     * Prevents infinite waiting if opponent disconnects or encounters error
+     *
+     * CRITICAL FIX: Increased timeout from 30s to 45s to account for image transfer time
+     */
+    private fun startReadyTimeout() {
+        readyTimeoutJob?.cancel()
+        readyTimeoutJob = scope.launch {
+            kotlinx.coroutines.delay(45000)  // 45 seconds (increased from 30s)
+
+            // Only timeout if still waiting (not if battle has started)
+            if (_waitingForOpponentReady.value) {
+                Log.w(TAG, "⏱️ TIMEOUT: Battle didn't start in time (45s)")
+                addMessage("⏱️ Connection timeout. Please retry.")
+                _battleState.value = BattleState.DISCONNECTED
+                _waitingForOpponentReady.value = false
             }
         }
     }
@@ -819,6 +943,59 @@ class BattleManager(private val context: Context) {
         }
     }
 
+    /**
+     * Check if all opponent data has been received (CARDPREVIEW + CARD + image)
+     * If complete and we're ready, send READY_ACK to opponent
+     *
+     * CRITICAL FIX: Now checks _opponentImageTransferComplete StateFlow
+     * This ensures ready button only enables AFTER image transfer completes
+     */
+    private fun checkOpponentDataComplete() {
+        Log.d(TAG, "🔍 CRITICAL: checkOpponentDataComplete() called")
+
+        val opponentCard = _opponentCard.value
+        if (opponentCard == null) {
+            Log.d(TAG, "❌ CRITICAL: No opponent card yet (_opponentCard.value is null)")
+            return
+        }
+        Log.d(TAG, "✅ CRITICAL: Opponent card exists: ${opponentCard.card.name} (id=${opponentCard.card.id})")
+
+        // CRITICAL FIX: Check StateFlow instead of private var
+        if (!_opponentImageTransferComplete.value) {
+            Log.d(TAG, "❌ CRITICAL: Image transfer not complete yet (_opponentImageTransferComplete = false)")
+            return
+        }
+        Log.d(TAG, "✅ CRITICAL: Image transfer complete (_opponentImageTransferComplete = true)")
+
+        if (opponentCard.effectiveAttack == 0) {
+            Log.d(TAG, "❌ CRITICAL: Waiting for CARD with full stats (effectiveAttack = 0)")
+            return
+        }
+        Log.d(TAG, "✅ CRITICAL: Full stats received (ATK=${opponentCard.effectiveAttack}, HP=${opponentCard.effectiveHealth})")
+
+        // All data received!
+        _localDataComplete.value = true
+        Log.d(TAG, "✅✅✅ CRITICAL: ALL OPPONENT DATA COMPLETE!")
+        Log.d(TAG, "✅✅✅ CRITICAL: Setting _localDataComplete = true")
+
+        // CRITICAL FIX: Now enable the ready button since all opponent data is received
+        if (!localReadyLegacy) {
+            _canClickReady.value = true
+            Log.d(TAG, "✅✅✅ CRITICAL: ENABLING READY BUTTON (_canClickReady = true)")
+        } else {
+            Log.d(TAG, "⏭️ CRITICAL: Already ready (localReadyLegacy = true), skipping button enable")
+        }
+
+        // If we already clicked ready, now send acknowledgment
+        if (localReadyLegacy) {
+            sendMessage("READY_ACK")
+            Log.d(TAG, "📤 CRITICAL: Sent READY_ACK (all data received)")
+            checkBothReadyForReveal()
+        } else {
+            Log.d(TAG, "⏭️ CRITICAL: Not ready yet, waiting for user to click ready button")
+        }
+    }
+
     private fun resetBattleState() {
         _localCard.value = null
         _opponentCard.value = null
@@ -829,7 +1006,7 @@ class BattleManager(private val context: Context) {
         opponentReadyLegacy = false
         _localReady.value = false
         _opponentReady.value = false
-        _canClickReady.value = true
+        _canClickReady.value = false  // CRITICAL FIX: Reset to false, enabled when opponent data complete
         _opponentIsThinking.value = false
         localFullCard = null
         opponentFullCard = null
@@ -850,6 +1027,16 @@ class BattleManager(private val context: Context) {
             }
         }
         orphanedFiles.clear()
+
+        // Reset new state tracking fields
+        _localDataComplete.value = false
+        _opponentDataComplete.value = false
+        _waitingForOpponentReady.value = false
+        _opponentImageTransferComplete.value = false
+        localImageTransferComplete = false
+        revealInitiated = false
+        imageTransferRetryCount = 0
+        readyTimeoutJob?.cancel()
     }
 
     fun stopAll() {

@@ -149,6 +149,44 @@ All costs and limits centralized in `GameConfig.kt` and `UserProfile.kt`:
 
 ## Development Guidelines
 
+### Workflow with Agents
+**ALWAYS use specialized agents for tasks instead of executing them directly:**
+- Use `tdd-engineer` agent for feature implementation with test-driven development
+- Use `qa-verification-engineer` agent for running tests, coverage, linting, and QA checks
+- Use `architecture-designer` agent for planning new features or major refactors
+- Use `documentation-specialist` agent for creating or updating documentation
+- Use `cleanup-coordinator` agent before creating PRs to ensure only relevant changes
+- Use `requirements-analyst` agent to transform vague requests into detailed specs
+- Use agents in parallel when possible for maximum efficiency
+
+### Testing with Android MCP
+**IMPORTANT: Use Android MCP for all device testing - DO NOT use adb directly**
+
+When testing features on Android devices:
+1. **Always use Android MCP tools** (`mcp__mobile-mcp__*`) instead of raw adb commands
+2. **Test each feature individually** after implementation
+3. **Run full test suite** using `qa-verification-engineer` agent before deployment
+4. **Never deploy or create PRs** until ALL tests are passing
+
+Example testing workflow:
+```
+1. Implement feature using tdd-engineer agent
+2. Test on devices using Android MCP tools:
+   - mcp__mobile-mcp__mobile_install_app
+   - mcp__mobile-mcp__mobile_launch_app
+   - mcp__mobile-mcp__mobile_take_screenshot
+   - mcp__mobile-mcp__mobile_list_elements_on_screen
+3. Run automated tests using qa-verification-engineer agent
+4. Only after ALL tests pass: create PR using git-commit-manager agent
+```
+
+### Build and Deployment Rules
+**CRITICAL: Build cache can cause issues**
+- If build succeeds but APK is broken (missing classes, crashes), the build cache may be corrupted
+- Always use `--no-build-cache --rerun-tasks` when debugging build issues
+- Full clean rebuild command: `./gradlew clean assembleDebug --no-build-cache --rerun-tasks`
+- Regular build: `./gradlew assembleDebug` (uses cache for speed)
+
 ### API Key Setup
 The Freepik API key must be configured in `NetworkModule.kt`. Look for the API key injection or configuration in the Hilt module.
 
@@ -175,9 +213,11 @@ The Freepik API key must be configured in `NetworkModule.kt`. Look for the API k
 - Instrumented tests (UI tests) in `app/src/androidTest/`
 - Compose UI tests use `ui-test-junit4` dependency
 - API integration tests in `FreepikApiIntegrationTest.kt`
+- **Use `qa-verification-engineer` agent** to run all tests before deployment
 
 ### Code Quality
 - Detekt is configured for static analysis
 - Configuration: `config/detekt/detekt.yml`
 - Baseline: `config/detekt/baseline.xml`
 - Run `./gradlew detekt` before committing
+- **Use `qa-verification-engineer` agent** for comprehensive quality checks

@@ -20,6 +20,8 @@ import com.rotdex.data.models.BattleCard
 enum class ReadyButtonState {
     /** Card not selected yet - button is disabled */
     DISABLED,
+    /** Card selected but waiting for opponent data to complete */
+    WAITING_FOR_DATA,
     /** Card selected and ready to click */
     ENABLED,
     /** Waiting for opponent after clicking ready */
@@ -61,9 +63,10 @@ fun ReadyButton(
     // Determine button state based on inputs
     val buttonState = when {
         localCard == null -> ReadyButtonState.DISABLED
-        !canClick && !localReady -> ReadyButtonState.DISABLED
-        localReady && !opponentReady -> ReadyButtonState.WAITING
         localReady && opponentReady -> ReadyButtonState.BOTH_READY
+        localReady && !opponentReady -> ReadyButtonState.WAITING
+        // FIX: Show WAITING_FOR_DATA when card is selected but opponent data isn't ready (canClick = false)
+        !canClick -> ReadyButtonState.WAITING_FOR_DATA
         else -> ReadyButtonState.ENABLED
     }
 
@@ -89,6 +92,14 @@ fun ReadyButton(
                     Icon(Icons.Default.Check, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text("SELECT A CARD FIRST", fontWeight = FontWeight.Bold)
+                }
+                ReadyButtonState.WAITING_FOR_DATA -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text("MOVING TO ARENA...", fontWeight = FontWeight.Bold)
                 }
                 ReadyButtonState.ENABLED -> {
                     Icon(Icons.Default.Check, contentDescription = null)

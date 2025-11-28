@@ -23,11 +23,9 @@ import com.rotdex.utils.BlurUtils
  *
  * When [isRevealed] is false:
  * - Card image is blurred (on API 31+) or shows frosted glass overlay (API < 31)
- * - Large question mark is displayed over the card
  *
  * When [isRevealed] changes to true:
  * - Triggers 500ms animation to gradually remove blur
- * - Fades out the question mark overlay
  * - Reveals the clear card image
  *
  * @param battleCard The battle card to display
@@ -113,19 +111,6 @@ fun BlurredCardReveal(
             )
         }
 
-        // Question mark overlay when not revealed
-        if (!isRevealed) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "?",
-                    fontSize = 72.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                )
-            }
-        }
+        // Question mark removed per user request - card will just be blurred
     }
 }

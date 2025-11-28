@@ -52,4 +52,11 @@ object GameConfig {
      */
     const val DAILY_REWARD_BASE_COINS = 50
     const val DAILY_REWARD_BASE_ENERGY = 3
+
+    /**
+     * Image Compression Settings (for Battle Arena image transfers)
+     */
+    const val CARD_IMAGE_MAX_SIZE = 512           // Max dimension in pixels (512x512)
+    const val CARD_IMAGE_QUALITY = 85             // JPEG quality (0-100)
+    const val CARD_IMAGE_MAX_FILE_SIZE_KB = 200   // Target max file size in KB
 }

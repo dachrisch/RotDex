@@ -1,6 +1,8 @@
 package com.rotdex.data.repository
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Base64
 import android.util.Log
 import com.rotdex.data.api.AiApiService
@@ -365,6 +367,7 @@ class CardRepository(
     /**
      * Downloads image from URL and saves to local storage
      * Uses IO dispatcher to avoid NetworkOnMainThreadException
+     * Applies compression to reduce file size for faster Battle Arena transfers
      * @param imageUrl URL of the image to download
      * @return File object or null if download/save failed
      */
@@ -379,9 +382,19 @@ class CardRepository(
                 val imageBytes = inputStream.readBytes()
                 inputStream.close()
 
+                // Decode bytes to Bitmap for compression
+                val originalBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                if (originalBitmap == null) {
+                    Log.e(TAG, "Failed to decode image from URL: $imageUrl")
+                    return@withContext null
+                }
+
+                // Compress image to reduce file size
+                val compressedBitmap = compressImage(originalBitmap)
+
                 // Create unique filename
                 val timestamp = System.currentTimeMillis()
-                val filename = "card_${timestamp}.png"
+                val filename = "card_${timestamp}.jpg"  // Use .jpg for compressed images
 
                 // Get app's private storage directory
                 val imagesDir = File(context.filesDir, "card_images")
@@ -389,18 +402,62 @@ class CardRepository(
                     imagesDir.mkdirs()
                 }
 
-                // Save to file
+                // Save compressed bitmap to file
                 val imageFile = File(imagesDir, filename)
                 FileOutputStream(imageFile).use { outputStream ->
-                    outputStream.write(imageBytes)
+                    compressedBitmap.compress(
+                        Bitmap.CompressFormat.JPEG,
+                        GameConfig.CARD_IMAGE_QUALITY,
+                        outputStream
+                    )
                 }
+
+                // Clean up bitmaps
+                originalBitmap.recycle()
+                compressedBitmap.recycle()
+
+                val fileSizeKB = imageFile.length() / 1024
+                Log.d(TAG, "Compressed image saved: ${imageFile.absolutePath}, size: ${fileSizeKB}KB")
 
                 imageFile
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, "Failed to download and compress image: ${e.message}", e)
                 null
             }
         }
+    }
+
+    /**
+     * Compresses a bitmap image to reduce file size for faster transfers
+     * Resizes to maximum 512x512 pixels while maintaining aspect ratio
+     * @param bitmap Original bitmap to compress
+     * @return Compressed bitmap
+     */
+    private fun compressImage(bitmap: Bitmap): Bitmap {
+        val maxSize = GameConfig.CARD_IMAGE_MAX_SIZE
+
+        // Calculate scaling factor to fit within maxSize x maxSize
+        val width = bitmap.width
+        val height = bitmap.height
+        val scale = minOf(
+            maxSize.toFloat() / width,
+            maxSize.toFloat() / height
+        )
+
+        // If image is already smaller than max size, return as-is
+        if (scale >= 1.0f) {
+            Log.d(TAG, "Image already small enough (${width}x${height}), no resize needed")
+            return bitmap
+        }
+
+        // Calculate new dimensions
+        val newWidth = (width * scale).toInt()
+        val newHeight = (height * scale).toInt()
+
+        Log.d(TAG, "Compressing image from ${width}x${height} to ${newWidth}x${newHeight}")
+
+        // Create scaled bitmap
+        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
     }
 
     /**

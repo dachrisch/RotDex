@@ -1,6 +1,7 @@
 package com.rotdex.ui.viewmodel
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rotdex.data.manager.BattleManager
@@ -52,6 +53,12 @@ class BattleArenaViewModel @Inject constructor(
     val canClickReady: StateFlow<Boolean> = battleManager.canClickReady
     val opponentIsThinking: StateFlow<Boolean> = battleManager.opponentIsThinking
     val shouldRevealCards: StateFlow<Boolean> = battleManager.shouldRevealCards
+
+    // Data synchronization states
+    val waitingForOpponentReady: StateFlow<Boolean> = battleManager.waitingForOpponentReady
+    val localDataComplete: StateFlow<Boolean> = battleManager.localDataComplete
+    val opponentDataComplete: StateFlow<Boolean> = battleManager.opponentDataComplete
+    val opponentImageTransferComplete: StateFlow<Boolean> = battleManager.opponentImageTransferComplete
 
     // Currently displayed story segment index
     private val _currentStoryIndex = MutableStateFlow(0)
@@ -123,6 +130,13 @@ class BattleArenaViewModel @Inject constructor(
                 if (state == BattleState.BATTLE_ANIMATING && battleManager.battleStory.value.isNotEmpty()) {
                     animateStory()
                 }
+            }
+        }
+
+        // Log discovered devices updates for debugging
+        viewModelScope.launch {
+            discoveredDevices.collect { devices ->
+                Log.d("BattleArenaViewModel", "📱 discoveredDevices updated in ViewModel: ${devices.size} devices - $devices")
             }
         }
     }

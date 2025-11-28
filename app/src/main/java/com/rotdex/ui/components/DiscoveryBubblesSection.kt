@@ -67,7 +67,7 @@ fun DiscoveryBubblesSection(
         } else {
             LazyRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                 contentPadding = PaddingValues(horizontal = 16.dp)
             ) {
                 items(discoveredDevices) { deviceInfo ->
