@@ -91,3 +91,7 @@ lint/tmp/
 # API Keys (IMPORTANT!)
 **/api_keys.properties
 **/secrets.properties
+
+# Test Results and QA Reports
+qa-test-results/
+test-results/
