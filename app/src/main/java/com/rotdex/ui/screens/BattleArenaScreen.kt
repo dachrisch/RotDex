@@ -2,6 +2,7 @@ package com.rotdex.ui.screens
 
 import android.Manifest
 import android.os.Build
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -14,12 +15,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -63,12 +65,23 @@ fun BattleArenaScreen(
     val playerCards by viewModel.playerCards.collectAsState()
     val playerName by viewModel.playerName.collectAsState()
 
+    // Log UI state for debugging
+    LaunchedEffect(discoveredDevices) {
+        Log.d("BattleArenaScreen", "🖥️ UI recomposed with discoveredDevices: ${discoveredDevices.size} devices - $discoveredDevices")
+    }
+
     // Ready states for new components
     val localReady by viewModel.localReady.collectAsState()
     val opponentReady by viewModel.opponentReady.collectAsState()
     val canClickReady by viewModel.canClickReady.collectAsState()
     val opponentIsThinking by viewModel.opponentIsThinking.collectAsState()
     val shouldRevealCards by viewModel.shouldRevealCards.collectAsState()
+
+    // Data synchronization states
+    val waitingForOpponentReady by viewModel.waitingForOpponentReady.collectAsState()
+    val localDataComplete by viewModel.localDataComplete.collectAsState()
+    val opponentDataComplete by viewModel.opponentDataComplete.collectAsState()
+    val opponentImageTransferComplete by viewModel.opponentImageTransferComplete.collectAsState()
 
     // Process card transfer when battle completes
     LaunchedEffect(battleResult) {
@@ -139,15 +152,27 @@ fun BattleArenaScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        // Use Box to enable full-screen layouts for certain states
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+                    .then(
+                        // Only scroll for card selection state, not for discovery/connecting
+                        if (battleState == BattleState.CARD_SELECTION) {
+                            Modifier.verticalScroll(rememberScrollState())
+                        } else {
+                            Modifier
+                        }
+                    ),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
             // Permission warning
             if (!hasPermissions) {
                 PermissionWarningCard()
@@ -164,14 +189,49 @@ fun BattleArenaScreen(
                         }
                     }
 
-                    // Show discovered devices as bubbles
-                    com.rotdex.ui.components.DiscoveryBubblesSection(
-                        discoveredDevices = discoveredDevices,
-                        onDeviceClick = { device ->
-                            val endpointId = device.split("|").last()
-                            viewModel.connectToDevice(endpointId)
+                    // Show battle arena background with discovery bubbles
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .weight(1f)  // Take all available space in Column
+                    ) {
+                        // Battle arena background - vertically centered
+                        Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy((-20).dp)
+                        ) {
+                            Text(
+                                text = "⚔️  🏛️  ⚔️",
+                                fontSize = 60.sp,
+                                modifier = Modifier.alpha(0.3f)
+                            )
+                            Text(
+                                text = "🔥 BATTLE ARENA 🔥",
+                                fontSize = 40.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.alpha(0.25f),
+                                style = MaterialTheme.typography.displaySmall
+                            )
+                            Text(
+                                text = "⚡  💥  ⚡",
+                                fontSize = 50.sp,
+                                modifier = Modifier.alpha(0.3f)
+                            )
                         }
-                    )
+
+                        // Discovery bubbles overlay at top
+                        com.rotdex.ui.components.DiscoveryBubblesSection(
+                            discoveredDevices = discoveredDevices,
+                            onDeviceClick = { device ->
+                                val endpointId = device.split("|").last()
+                                viewModel.connectToDevice(endpointId)
+                            },
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = 16.dp)
+                        )
+                    }
                 }
 
                 // Waiting/Discovering
@@ -181,6 +241,7 @@ fun BattleArenaScreen(
                     WaitingSection(
                         connectionState = connectionState,
                         discoveredDevices = discoveredDevices,
+                        playerName = playerName,
                         onDeviceClick = { viewModel.connectToHost(it) },
                         onCancel = { viewModel.stopAll() }
                     )
@@ -198,6 +259,10 @@ fun BattleArenaScreen(
                         canClickReady = canClickReady,
                         opponentIsThinking = opponentIsThinking,
                         shouldRevealCards = shouldRevealCards,
+                        waitingForOpponentReady = waitingForOpponentReady,
+                        localDataComplete = localDataComplete,
+                        opponentDataComplete = opponentDataComplete,
+                        opponentImageTransferComplete = opponentImageTransferComplete,
                         onCardSelect = { viewModel.selectCard(it) },
                         onReady = { viewModel.setReady() }
                     )
@@ -238,6 +303,7 @@ fun BattleArenaScreen(
                 }
             }
         }
+        }  // Close Box
     }
 }
 
@@ -270,49 +336,218 @@ private fun PermissionWarningCard() {
 private fun WaitingSection(
     connectionState: ConnectionState,
     discoveredDevices: List<String>,
+    playerName: String,
     onDeviceClick: (String) -> Unit,
     onCancel: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+    // Use AnimatedContent for smooth transition between states
+    AnimatedContent(
+        targetState = connectionState is ConnectionState.Connecting,
+        transitionSpec = {
+            fadeIn(animationSpec = tween(600)) +
+                scaleIn(initialScale = 0.8f, animationSpec = tween(600)) togetherWith
+                fadeOut(animationSpec = tween(300)) +
+                scaleOut(targetScale = 1.2f, animationSpec = tween(300))
+        },
+        label = "waiting_state_transition"
+    ) { isConnecting ->
+        if (isConnecting) {
+            // Show connecting animation for Connecting state (no background)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(),  // Fill available height
+                contentAlignment = Alignment.Center
+            ) {
+                ConnectingAnimation(playerName = playerName)
+            }
+        } else {
+        // Show waiting UI with background for Advertising/Discovering states
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFF7E57C2), // Purple
+                            Color(0xFF5C6BC0), // Indigo
+                            Color(0xFF1A237E)  // Dark Blue
+                        ),
+                        radius = 800f  // Larger radius for better coverage
+                    )
+                )
         ) {
-            CircularProgressIndicator()
+            // Add battle arena visual in the background
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.Center)
+                    .padding(vertical = 32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                // Battle arena composition with multiple emojis
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy((-20).dp)
+                ) {
+                    Text(
+                        text = "⚔️  🏛️  ⚔️",
+                        fontSize = 60.sp,
+                        modifier = Modifier.alpha(0.3f)
+                    )
+                    Text(
+                        text = "🔥 BATTLE ARENA 🔥",
+                        fontSize = 40.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.alpha(0.25f),
+                        style = MaterialTheme.typography.displaySmall
+                    )
+                    Text(
+                        text = "⚡  💥  ⚡",
+                        fontSize = 50.sp,
+                        modifier = Modifier.alpha(0.3f)
+                    )
+                }
+            }
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.Center),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.95f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator()
 
-            Text(
-                text = when (connectionState) {
-                    is ConnectionState.Advertising -> "Waiting for opponent..."
-                    is ConnectionState.Discovering -> "Scanning for battles..."
-                    is ConnectionState.Connecting -> "Connecting..."
-                    else -> "Please wait..."
-                },
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+                    Text(
+                        text = when (connectionState) {
+                            is ConnectionState.Advertising -> "Waiting for opponent..."
+                            is ConnectionState.Discovering -> "Scanning for battles..."
+                            else -> "Please wait..."
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
 
-            // Show discovered devices
-            if (discoveredDevices.isNotEmpty()) {
-                Text("Available Battles:", fontWeight = FontWeight.Bold)
-                discoveredDevices.forEach { device ->
-                    val name = device.split("|").firstOrNull() ?: device
-                    Button(
-                        onClick = { onDeviceClick(device) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Join: $name")
+                    // Show discovered devices
+                    if (discoveredDevices.isNotEmpty()) {
+                        Text("Available Battles:", fontWeight = FontWeight.Bold)
+                        discoveredDevices.forEach { device ->
+                            val name = device.split("|").firstOrNull() ?: device
+                            Button(
+                                onClick = { onDeviceClick(device) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Join: $name")
+                            }
+                        }
+                    }
+
+                    OutlinedButton(onClick = onCancel) {
+                        Text("Cancel")
                     }
                 }
             }
+        }
+        }  // Close else block
+    }  // Close AnimatedContent
+}
 
-            OutlinedButton(onClick = onCancel) {
-                Text("Cancel")
+/**
+ * Connecting animation composable that shows the player's bouncing bubble
+ * with smooth size transitions between normal (100.dp) and large (150.dp)
+ *
+ * Shows the player's actual initials/avatar instead of "?"
+ * Removes background and "Connecting..." label for clean animation
+ *
+ * Design follows:
+ * - Single Responsibility: Displays connecting animation only
+ * - Open/Closed: Self-contained with no external dependencies
+ * - Dependency Inversion: Uses Compose primitives
+ *
+ * @param playerName The player's name to display initials for
+ */
+@Composable
+private fun ConnectingAnimation(playerName: String) {
+    val infiniteTransition = rememberInfiniteTransition(label = "connecting")
+
+    // Bouncing animation (vertical movement)
+    val bounceOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = -20f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "bounce"
+    )
+
+    // Smooth scale transition from 1.0x to 1.5x (100.dp to 150.dp)
+    val bubbleScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = EaseInOut),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "size_pulse"
+    )
+
+    // Get player's initials
+    val initials = com.rotdex.utils.AvatarUtils.getInitials(playerName)
+
+    // Player's bubble centered, no labels
+    Card(
+        modifier = Modifier
+            .size(100.dp)  // Base size
+            .scale(bubbleScale)  // Smooth size transition
+            .offset(y = bounceOffset.dp),  // Bouncing animation
+        shape = CircleShape,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            // Inner content with avatar-style initials
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                // Avatar circle with player's initials
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .padding(4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Card(
+                        modifier = Modifier.fillMaxSize(),
+                        shape = CircleShape,
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = initials,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -328,6 +563,10 @@ private fun CardSelectionSection(
     canClickReady: Boolean,
     opponentIsThinking: Boolean,
     shouldRevealCards: Boolean,
+    waitingForOpponentReady: Boolean,
+    localDataComplete: Boolean,
+    opponentDataComplete: Boolean,
+    opponentImageTransferComplete: Boolean,
     onCardSelect: (Card) -> Unit,
     onReady: () -> Unit
 ) {
@@ -355,9 +594,14 @@ private fun CardSelectionSection(
 
         // Battle Ready Status
         com.rotdex.ui.components.BattleReadyStatus(
+            localCardSelected = selectedCard != null,
             localReady = localReady,
             opponentReady = opponentReady,
-            opponentIsThinking = opponentIsThinking
+            opponentIsThinking = opponentIsThinking,
+            waitingForOpponentReady = waitingForOpponentReady,
+            localDataComplete = localDataComplete,
+            opponentDataComplete = opponentDataComplete,
+            opponentImageTransferComplete = opponentImageTransferComplete
         )
 
         // Selected card preview
@@ -365,12 +609,54 @@ private fun CardSelectionSection(
             SelectedCardPreview(battleCard = selectedCard)
         }
 
-        // Opponent card preview - Use BlurredCardReveal
+        // Opponent card preview - Use same style as player's selected card but with blur
         opponentCard?.let { card ->
-            com.rotdex.ui.components.BlurredCardReveal(
-                battleCard = card,
-                isRevealed = shouldRevealCards
-            )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = getRarityColor(card.card.rarity).copy(alpha = 0.2f)
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Card image with blur effect until both ready
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        com.rotdex.ui.components.BlurredCardReveal(
+                            battleCard = card,
+                            isRevealed = shouldRevealCards,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = card.card.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = card.card.rarity.displayName,
+                            color = getRarityColor(card.card.rarity)
+                        )
+                    }
+
+                    // Show stats ONLY after reveal
+                    if (shouldRevealCards && card.effectiveAttack > 0) {
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("ATK: ${card.effectiveAttack}", fontWeight = FontWeight.Bold)
+                            Text("HP: ${card.effectiveHealth}", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
         }
 
         // Card selection grid
@@ -416,16 +702,20 @@ private fun SelectedCardPreview(battleCard: BattleCard) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Local player's card - NO loading spinner, NO crossfade
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(battleCard.card.imageUrl)
-                    .crossfade(true)
+                    .crossfade(false)  // No crossfade animation
                     .build(),
                 contentDescription = battleCard.card.name,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(80.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(8.dp)),
+                // No placeholder or loading indicator - instant display
+                placeholder = null,
+                error = null
             )
 
             Column(modifier = Modifier.weight(1f)) {
@@ -473,7 +763,9 @@ private fun SelectableCardItem(
         )
     ) {
         Column(
-            modifier = Modifier.padding(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             AsyncImage(
