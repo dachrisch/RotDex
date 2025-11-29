@@ -24,6 +24,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
@@ -77,6 +81,9 @@ fun FusionScreen(
     // State for falling icon animations
     var fallingIcons by remember { mutableStateOf<List<FallingIconData>>(emptyList()) }
 
+    // State for coin stat position (to position animation next to header)
+    var coinStatX by remember { mutableStateOf(0.dp) }
+
     Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         topBar = {
@@ -88,6 +95,7 @@ fun FusionScreen(
                     }
                 },
                 actions = {
+                    val density = LocalDensity.current
                     userProfile?.let { profile ->
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -95,7 +103,13 @@ fun FusionScreen(
                             modifier = Modifier.padding(end = 8.dp)
                         ) {
                             CompactStatItem(icon = "⚡", value = "${profile.currentEnergy}")
-                            CompactStatItem(icon = "🪙", value = "${profile.brainrotCoins}")
+                            CompactStatItem(
+                                icon = "🪙",
+                                value = "${profile.brainrotCoins}",
+                                onPositionChanged = { offset ->
+                                    coinStatX = with(density) { offset.x.toDp() }
+                                }
+                            )
                             CompactStatItem(icon = "💎", value = "${profile.gems}")
                         }
                     }
@@ -123,13 +137,13 @@ fun FusionScreen(
                         fusionCost = fusionCost,
                         onCardClick = { viewModel.toggleCardSelection(it) },
                         onFuse = {
-                            // Trigger falling coin icon animation
+                            // Trigger falling coin icon animation - positioned next to 🪙 stat
                             fallingIcons = fallingIcons + FallingIconData(
                                 id = UUID.randomUUID().toString(),
                                 icon = "🪙",
                                 amount = -fusionCost,
                                 startOffset = 0.dp,
-                                startX = null
+                                startX = coinStatX
                             )
                             viewModel.performFusion()
                         },
@@ -970,10 +984,19 @@ private fun ErrorScreen(
 }
 
 @Composable
-private fun CompactStatItem(icon: String, value: String) {
+private fun CompactStatItem(
+    icon: String,
+    value: String,
+    onPositionChanged: (IntOffset) -> Unit = {}
+) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.onGloballyPositioned { coordinates ->
+            onPositionChanged(coordinates.positionInWindow().let {
+                IntOffset(it.x.toInt(), it.y.toInt())
+            })
+        }
     ) {
         Text(
             text = icon,

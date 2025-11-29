@@ -19,6 +19,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
@@ -62,6 +66,10 @@ fun CardCreateScreen(
     // State for falling icon animations
     var fallingIcons by remember { mutableStateOf<List<FallingIconData>>(emptyList()) }
 
+    // State for stat positions (to position animations next to headers)
+    var energyStatX by remember { mutableStateOf(0.dp) }
+    var coinStatX by remember { mutableStateOf(0.dp) }
+
     Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         topBar = {
@@ -73,14 +81,27 @@ fun CardCreateScreen(
                     }
                 },
                 actions = {
+                    val density = LocalDensity.current
                     userProfile?.let { profile ->
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(end = 8.dp)
                         ) {
-                            CompactStatItem(icon = "⚡", value = "${profile.currentEnergy}")
-                            CompactStatItem(icon = "🪙", value = "${profile.brainrotCoins}")
+                            CompactStatItem(
+                                icon = "⚡",
+                                value = "${profile.currentEnergy}",
+                                onPositionChanged = { offset ->
+                                    energyStatX = with(density) { offset.x.toDp() }
+                                }
+                            )
+                            CompactStatItem(
+                                icon = "🪙",
+                                value = "${profile.brainrotCoins}",
+                                onPositionChanged = { offset ->
+                                    coinStatX = with(density) { offset.x.toDp() }
+                                }
+                            )
                             CompactStatItem(icon = "💎", value = "${profile.gems}")
                         }
                     }
@@ -278,23 +299,23 @@ fun CardCreateScreen(
                 // Generate Button
                 Button(
                     onClick = {
-                        // Trigger falling energy icon animation
+                        // Trigger falling energy icon animation - positioned next to ⚡ stat
                         fallingIcons = fallingIcons + FallingIconData(
                             id = UUID.randomUUID().toString(),
                             icon = "⚡",
                             amount = -GameConfig.CARD_GENERATION_ENERGY_COST,
                             startOffset = 0.dp,
-                            startX = null
+                            startX = energyStatX
                         )
 
-                        // Trigger falling coin icon animation for long prompts
+                        // Trigger falling coin icon animation for long prompts - positioned next to 🪙 stat
                         if (coinCost > 0) {
                             fallingIcons = fallingIcons + FallingIconData(
                                 id = UUID.randomUUID().toString(),
                                 icon = "🪙",
                                 amount = -coinCost,
-                                startOffset = 2.dp,
-                                startX = (-40).dp
+                                startOffset = 0.dp,
+                                startX = coinStatX
                             )
                         }
 
@@ -893,10 +914,19 @@ fun FullScreenCardReveal(
 }
 
 @Composable
-private fun CompactStatItem(icon: String, value: String) {
+private fun CompactStatItem(
+    icon: String,
+    value: String,
+    onPositionChanged: (IntOffset) -> Unit = {}
+) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.onGloballyPositioned { coordinates ->
+            onPositionChanged(coordinates.positionInWindow().let {
+                IntOffset(it.x.toInt(), it.y.toInt())
+            })
+        }
     ) {
         Text(
             text = icon,
