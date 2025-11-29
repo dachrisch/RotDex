@@ -282,8 +282,22 @@ fun CardCreateScreen(
                         fallingIcons = fallingIcons + FallingIconData(
                             id = UUID.randomUUID().toString(),
                             icon = "⚡",
-                            startOffset = 0.dp
+                            amount = -GameConfig.CARD_GENERATION_ENERGY_COST,
+                            startOffset = 0.dp,
+                            startX = null
                         )
+
+                        // Trigger falling coin icon animation for long prompts
+                        if (coinCost > 0) {
+                            fallingIcons = fallingIcons + FallingIconData(
+                                id = UUID.randomUUID().toString(),
+                                icon = "🪙",
+                                amount = -coinCost,
+                                startOffset = 2.dp,
+                                startX = (-40).dp
+                            )
+                        }
+
                         viewModel.generateCard(promptText, coinCost)
                     },
                     modifier = Modifier.fillMaxWidth(),

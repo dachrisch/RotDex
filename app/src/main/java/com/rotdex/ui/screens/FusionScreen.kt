@@ -127,7 +127,9 @@ fun FusionScreen(
                             fallingIcons = fallingIcons + FallingIconData(
                                 id = UUID.randomUUID().toString(),
                                 icon = "🪙",
-                                startOffset = 0.dp
+                                amount = -fusionCost,
+                                startOffset = 0.dp,
+                                startX = null
                             )
                             viewModel.performFusion()
                         },

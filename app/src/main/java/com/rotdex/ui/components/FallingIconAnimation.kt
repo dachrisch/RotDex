@@ -1,9 +1,13 @@
 package com.rotdex.ui.components
 
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -16,18 +20,22 @@ import kotlinx.coroutines.delay
 import kotlin.random.Random
 
 /**
- * A falling icon animation component that shows an icon falling from a starting position
+ * A falling icon animation component that shows an icon and amount falling from a starting position
  * Used for visual feedback when spending resources (coins, energy, etc.)
  *
  * @param icon The emoji/text to animate
+ * @param amount The amount to display (e.g., -1, -50)
  * @param startOffset The starting position offset from the top-right of the screen
+ * @param startX Optional horizontal start position
  * @param onAnimationComplete Callback when animation finishes
  * @param modifier Modifier for the animation container
  */
 @Composable
 fun FallingIconAnimation(
     icon: String,
+    amount: Int,
     startOffset: Dp = 0.dp,
+    startX: Dp? = null,
     onAnimationComplete: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -38,11 +46,11 @@ fun FallingIconAnimation(
     // Random horizontal drift for variety
     val horizontalDrift = remember { Random.nextInt(-30, 30).dp }
 
-    // Falling animation (from top to bottom)
+    // Falling animation (from top to bottom) - short distance near stats
     val infiniteTransition = rememberInfiniteTransition(label = "falling")
     val offsetY by infiniteTransition.animateFloat(
         initialValue = 0f,
-        targetValue = with(density) { 400.dp.toPx() },
+        targetValue = with(density) { 80.dp.toPx() },  // Reduced from 400dp to 80dp
         animationSpec = infiniteRepeatable(
             animation = tween(
                 durationMillis = 1500,
@@ -92,16 +100,27 @@ fun FallingIconAnimation(
         Box(
             modifier = modifier
                 .offset(
-                    x = horizontalDrift,
+                    x = (startX ?: 0.dp) + horizontalDrift,
                     y = with(density) { offsetY.toDp() } + startOffset
                 )
                 .alpha(alpha)
                 .scale(scale)
         ) {
-            Text(
-                text = icon,
-                fontSize = 24.sp
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Text(
+                    text = icon,
+                    fontSize = 24.sp
+                )
+                Text(
+                    text = if (amount < 0) "$amount" else "+$amount",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f)
+                )
+            }
         }
     }
 }
@@ -121,7 +140,9 @@ fun FallingIconsContainer(
             key(data.id) {
                 FallingIconAnimation(
                     icon = data.icon,
+                    amount = data.amount,
                     startOffset = data.startOffset,
+                    startX = data.startX,
                     onAnimationComplete = { onAnimationComplete(data.id) }
                 )
             }
@@ -135,5 +156,7 @@ fun FallingIconsContainer(
 data class FallingIconData(
     val id: String,
     val icon: String,
-    val startOffset: Dp = 0.dp
+    val amount: Int,                    // Amount to display (e.g., -1, -50)
+    val startOffset: Dp = 0.dp,
+    val startX: Dp? = null              // Optional horizontal start position
 )
