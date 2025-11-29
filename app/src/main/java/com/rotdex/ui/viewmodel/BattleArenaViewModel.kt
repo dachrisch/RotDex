@@ -40,6 +40,7 @@ class BattleArenaViewModel @Inject constructor(
     // Cards
     val localCard: StateFlow<BattleCard?> = battleManager.localCard
     val opponentCard: StateFlow<BattleCard?> = battleManager.opponentCard
+    val opponentHasSelectedCard: StateFlow<Boolean> = battleManager.opponentHasSelectedCard
 
     // Stats revealed (after both ready)
     val statsRevealed: StateFlow<Boolean> = battleManager.statsRevealed
@@ -59,6 +60,7 @@ class BattleArenaViewModel @Inject constructor(
     val localDataComplete: StateFlow<Boolean> = battleManager.localDataComplete
     val opponentDataComplete: StateFlow<Boolean> = battleManager.opponentDataComplete
     val opponentImageTransferComplete: StateFlow<Boolean> = battleManager.opponentImageTransferComplete
+    val localImageSent: StateFlow<Boolean> = battleManager.localImageSent
 
     // Currently displayed story segment index
     private val _currentStoryIndex = MutableStateFlow(0)

@@ -44,6 +44,10 @@ class BattleManager(private val context: Context) {
     private val _opponentCard = MutableStateFlow<BattleCard?>(null)
     val opponentCard: StateFlow<BattleCard?> = _opponentCard.asStateFlow()
 
+    // Play state: Has opponent selected a card? (separate from technical data status)
+    private val _opponentHasSelectedCard = MutableStateFlow(false)
+    val opponentHasSelectedCard: StateFlow<Boolean> = _opponentHasSelectedCard.asStateFlow()
+
     // Battle story segments for progressive display
     private val _battleStory = MutableStateFlow<List<BattleStorySegment>>(emptyList())
     val battleStory: StateFlow<List<BattleStorySegment>> = _battleStory.asStateFlow()
@@ -87,6 +91,9 @@ class BattleManager(private val context: Context) {
     // Image transfer status tracking
     private val _opponentImageTransferComplete = MutableStateFlow(false)
     val opponentImageTransferComplete: StateFlow<Boolean> = _opponentImageTransferComplete.asStateFlow()
+
+    private val _localImageSent = MutableStateFlow(false)
+    val localImageSent: StateFlow<Boolean> = _localImageSent.asStateFlow()
 
     private var localImageTransferComplete = false
     private var readyTimeoutJob: kotlinx.coroutines.Job? = null
@@ -169,6 +176,9 @@ class BattleManager(private val context: Context) {
     // Track pending file transfers (waiting for onPayloadTransferUpdate SUCCESS)
     private val pendingFileTransfers = mutableMapOf<Long, ImageTransferInfo>()  // payloadId -> info
 
+    // Track outgoing file transfers (our image being sent to opponent)
+    private val outgoingFileTransfers = mutableSetOf<Long>()  // payloadIds of files we're sending
+
     // Payload callback for battle messages
     private val payloadCallback = object : PayloadCallback() {
         override fun onPayloadReceived(endpointId: String, payload: Payload) {
@@ -210,6 +220,13 @@ class BattleManager(private val context: Context) {
             when (update.status) {
                 PayloadTransferUpdate.Status.SUCCESS -> {
                     Log.d(TAG, "Payload ${update.payloadId} transferred successfully")
+
+                    // Check if this is one of our OUTGOING file transfers
+                    if (outgoingFileTransfers.contains(update.payloadId)) {
+                        Log.d(TAG, "✅ OUTGOING image transfer complete: payloadId=${update.payloadId}")
+                        _localImageSent.value = true
+                        outgoingFileTransfers.remove(update.payloadId)
+                    }
 
                     // Check if this is a pending file transfer
                     val transferInfo = pendingFileTransfers[update.payloadId]
@@ -538,17 +555,26 @@ class BattleManager(private val context: Context) {
         localFullCard = card
         addMessage("Selected: ${card.name}")
 
+        // Enable ready button as soon as local player selects a card
+        _canClickReady.value = true
+        Log.d(TAG, "✅ Ready button enabled after card selection")
+
         // IMPORTANT: Send CARDPREVIEW first, then image
         // This ensures opponent creates _opponentCard before image arrives
-        // Format: CARDPREVIEW|id|name|rarity
+        // Format: CARDPREVIEW|id|name|rarity|attack|health|prompt|biography
+        // Send all data immediately - UI will hide stats until reveal moment
         val previewData = listOf(
             "CARDPREVIEW",
             card.id.toString(),
             card.name,
-            card.rarity.name
+            card.rarity.name,
+            battleCard.effectiveAttack.toString(),
+            battleCard.effectiveHealth.toString(),
+            card.prompt.replace("|", "~"),
+            card.biography.replace("|", "~")
         ).joinToString("|")
         sendMessage(previewData)
-        Log.d(TAG, "📤 Sent CARDPREVIEW for card ${card.id} (${card.name})")
+        Log.d(TAG, "📤 Sent CARDPREVIEW for card ${card.id} (${card.name}) with stats ATK=${battleCard.effectiveAttack} HP=${battleCard.effectiveHealth}")
 
         // Then send card image (will arrive separately, possibly before CARDPREVIEW due to payload ordering)
         sendCardImage(card.imageUrl, card.id)
@@ -569,19 +595,9 @@ class BattleManager(private val context: Context) {
         _canClickReady.value = false  // Disable button after click
         localReadyLegacy = true
 
-        // Send full card data (with stats) for battle
-        // Format: CARD|id|name|attack|health|rarity|prompt|biography (image was sent earlier)
-        val cardData = listOf(
-            "CARD",
-            card.id.toString(),
-            card.name,
-            battleCard.effectiveAttack.toString(),
-            battleCard.effectiveHealth.toString(),
-            card.rarity.name,
-            card.prompt.replace("|", "~"),
-            card.biography.replace("|", "~")
-        ).joinToString("|")
-        sendMessage(cardData)
+        // REMOVED: CARD data sending (now sent in CARDPREVIEW immediately when card is selected)
+        // All card data (name, rarity, attack, health, prompt, biography) already sent
+        // UI layer controls visibility with reveal logic (_statsRevealed, _shouldRevealCards)
 
         sendMessage("READY|true")
         addMessage("Ready to battle!")
@@ -772,12 +788,41 @@ class BattleManager(private val context: Context) {
         when (parts[0]) {
             "IMAGE_TRANSFER" -> {
                 // IMAGE_TRANSFER|cardId|fileName|size|payloadId
-                // IMPORTANT: Can arrive BEFORE or AFTER FILE payload
+                // IMPORTANT: Can arrive BEFORE or AFTER FILE payload or CARDPREVIEW
                 val cardId = parts[1].toLongOrNull() ?: 0
                 val fileName = parts[2]
                 val payloadId = parts.getOrNull(4)?.toLongOrNull() ?: 0
 
                 Log.d(TAG, "Received IMAGE_TRANSFER metadata: cardId=$cardId, payloadId=$payloadId, fileName=$fileName")
+
+                // UPDATE-or-CREATE: Handle async message ordering
+                val existingCard = _opponentCard.value
+
+                if (existingCard != null && existingCard.card.id == cardId) {
+                    // Card already exists from CARDPREVIEW - keep it, image will update later
+                    Log.d(TAG, "IMAGE_TRANSFER for existing card, image will update when FILE completes")
+                } else if (existingCard == null) {
+                    // IMAGE_TRANSFER arrived FIRST - create placeholder
+                    val placeholderCard = BattleCard(
+                        card = Card(
+                            id = cardId,
+                            name = "Loading...",
+                            imageUrl = "",
+                            rarity = CardRarity.COMMON,
+                            prompt = "",
+                            biography = "",
+                            createdAt = System.currentTimeMillis()
+                        ),
+                        effectiveAttack = 0,
+                        effectiveHealth = 0,
+                        currentHealth = 0
+                    )
+                    _opponentCard.value = placeholderCard
+                    Log.d(TAG, "✅ Created placeholder card from IMAGE_TRANSFER")
+                }
+
+                // ALWAYS set play state (opponent has selected a card)
+                _opponentHasSelectedCard.value = true
 
                 // Check if FILE payload already arrived
                 val cachedPayload = payloadCache[payloadId]
@@ -793,50 +838,63 @@ class BattleManager(private val context: Context) {
                 }
             }
             "CARDPREVIEW" -> {
-                // CARDPREVIEW|id|name|rarity - no stats yet, image will arrive separately
+                // CARDPREVIEW|id|name|rarity|attack|health|prompt|biography - full data now
                 val id = parts[1].toLongOrNull() ?: 0
                 val name = parts[2]
                 val rarity = try { CardRarity.valueOf(parts[3]) } catch (e: Exception) { CardRarity.COMMON }
+                val attack = parts.getOrNull(4)?.toIntOrNull() ?: 0
+                val health = parts.getOrNull(5)?.toIntOrNull() ?: 0
+                val prompt = parts.getOrNull(6)?.replace("~", "|") ?: ""
+                val biography = parts.getOrNull(7)?.replace("~", "|") ?: ""
 
-                Log.d(TAG, "📩 Received CARDPREVIEW: id=$id, name=$name, rarity=$rarity")
+                Log.d(TAG, "📩 Received CARDPREVIEW: id=$id, name=$name, rarity=$rarity, ATK=$attack, HP=$health")
 
-                // Check if we already have the full CARD data - don't overwrite with preview
-                if (_opponentCard.value != null && _opponentCard.value!!.effectiveAttack > 0) {
-                    Log.d(TAG, "Ignoring CARDPREVIEW - already have full CARD data with stats")
-                    return
-                }
+                // UPDATE-or-CREATE: Handle async message ordering
+                val existingCard = _opponentCard.value
 
-                // Check if we already have a received image for this card
-                val existingImagePath = receivedImagePaths[id]
-                Log.d(TAG, "Available received images: ${receivedImagePaths.keys}")
-
-                // Create preview card with placeholder stats (will be updated by CARD message)
-                val imageUrl = if (existingImagePath != null) {
-                    Log.d(TAG, "✅ Received CARDPREVIEW with existing image: $existingImagePath")
-                    "$existingImagePath?t=${System.currentTimeMillis()}"
+                if (existingCard != null && existingCard.card.id == id) {
+                    // Card already exists from IMAGE_TRANSFER - UPDATE with stats
+                    val updatedCard = existingCard.copy(
+                        card = existingCard.card.copy(
+                            name = name,
+                            rarity = rarity,
+                            prompt = prompt,
+                            biography = biography
+                            // Keep existing imageUrl from placeholder
+                        ),
+                        effectiveAttack = attack,
+                        effectiveHealth = health,
+                        currentHealth = health
+                    )
+                    _opponentCard.value = updatedCard
+                    Log.d(TAG, "✅ Updated placeholder card with stats from CARDPREVIEW")
                 } else {
-                    ""
+                    // CARDPREVIEW arrived FIRST - CREATE with stats
+                    val imageUrl = receivedImagePaths[id] ?: ""
+
+                    val previewCard = BattleCard(
+                        card = Card(
+                            id = id,
+                            name = name,
+                            imageUrl = imageUrl,
+                            rarity = rarity,
+                            prompt = prompt,
+                            biography = biography,
+                            createdAt = System.currentTimeMillis()
+                        ),
+                        effectiveAttack = attack,
+                        effectiveHealth = health,
+                        currentHealth = health
+                    )
+                    _opponentCard.value = previewCard
+                    Log.d(TAG, "✅ Created card with stats from CARDPREVIEW")
                 }
 
-                val previewCard = BattleCard(
-                    card = Card(
-                        id = id,
-                        name = name,
-                        imageUrl = imageUrl,
-                        rarity = rarity,
-                        prompt = "",
-                        biography = "",
-                        createdAt = System.currentTimeMillis()
-                    ),
-                    effectiveAttack = 0,
-                    effectiveHealth = 0,
-                    currentHealth = 0
-                )
-
-                _opponentCard.value = previewCard
+                // ALWAYS set play state
+                _opponentHasSelectedCard.value = true
                 _opponentIsThinking.value = false
-                Log.d(TAG, "✅ Set _opponentCard to card $id (without stats yet)")
 
+                checkOpponentDataComplete()
                 addMessage("Opponent selected their card")
             }
             "CARD" -> {
@@ -1035,6 +1093,10 @@ class BattleManager(private val context: Context) {
                     val filePayload = Payload.fromFile(imageFile)
                     val payloadId = filePayload.id
 
+                    // Track this outgoing file transfer
+                    outgoingFileTransfers.add(payloadId)
+                    Log.d(TAG, "📤 Tracking outgoing image transfer: payloadId=$payloadId")
+
                     // Send metadata message first so receiver knows what's coming
                     sendMessage("IMAGE_TRANSFER|$cardId|${imageFile.name}|${imageFile.length()}|$payloadId")
 
@@ -1097,39 +1159,23 @@ class BattleManager(private val context: Context) {
         }
         Log.d(TAG, "✅ CRITICAL: Opponent card exists: ${opponentCard.card.name} (id=${opponentCard.card.id})")
 
-        // CRITICAL FIX: Check StateFlow instead of private var
-        if (!_opponentImageTransferComplete.value) {
-            Log.d(TAG, "❌ CRITICAL: Image transfer not complete yet (_opponentImageTransferComplete = false)")
-            return
-        }
-        Log.d(TAG, "✅ CRITICAL: Image transfer complete (_opponentImageTransferComplete = true)")
-
+        // Check if opponent card has valid stats
+        // Image transfer is optional - it can load in background
         if (opponentCard.effectiveAttack == 0) {
-            Log.d(TAG, "❌ CRITICAL: Waiting for CARD with full stats (effectiveAttack = 0)")
+            Log.d(TAG, "❌ Waiting for opponent card stats (effectiveAttack = 0)")
             return
         }
-        Log.d(TAG, "✅ CRITICAL: Full stats received (ATK=${opponentCard.effectiveAttack}, HP=${opponentCard.effectiveHealth})")
+        Log.d(TAG, "✅ Opponent card stats received (ATK=${opponentCard.effectiveAttack}, HP=${opponentCard.effectiveHealth})")
 
-        // All data received!
+        // All opponent data received!
         _localDataComplete.value = true
-        Log.d(TAG, "✅✅✅ CRITICAL: ALL OPPONENT DATA COMPLETE!")
-        Log.d(TAG, "✅✅✅ CRITICAL: Setting _localDataComplete = true")
+        Log.d(TAG, "✅ All opponent data complete (stats received)")
 
-        // CRITICAL FIX: Now enable the ready button since all opponent data is received
-        if (!localReadyLegacy) {
-            _canClickReady.value = true
-            Log.d(TAG, "✅✅✅ CRITICAL: ENABLING READY BUTTON (_canClickReady = true)")
-        } else {
-            Log.d(TAG, "⏭️ CRITICAL: Already ready (localReadyLegacy = true), skipping button enable")
-        }
-
-        // If we already clicked ready, now send acknowledgment
+        // If we already clicked ready, now send acknowledgment since opponent data is complete
         if (localReadyLegacy) {
             sendMessage("READY_ACK")
-            Log.d(TAG, "📤 CRITICAL: Sent READY_ACK (all data received)")
+            Log.d(TAG, "📤 Sent READY_ACK (all data received)")
             checkBothReadyForReveal()
-        } else {
-            Log.d(TAG, "⏭️ CRITICAL: Not ready yet, waiting for user to click ready button")
         }
     }
 
@@ -1145,6 +1191,7 @@ class BattleManager(private val context: Context) {
         _opponentReady.value = false
         _canClickReady.value = false  // CRITICAL FIX: Reset to false, enabled when opponent data complete
         _opponentIsThinking.value = false
+        _opponentHasSelectedCard.value = false  // Reset play state
         localFullCard = null
         opponentFullCard = null
         _statsRevealed.value = false
@@ -1170,6 +1217,8 @@ class BattleManager(private val context: Context) {
         _opponentDataComplete.value = false
         _waitingForOpponentReady.value = false
         _opponentImageTransferComplete.value = false
+        _localImageSent.value = false
+        outgoingFileTransfers.clear()
         localImageTransferComplete = false
         revealInitiated = false
         imageTransferRetryCount = 0

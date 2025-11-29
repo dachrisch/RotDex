@@ -56,6 +56,7 @@ fun BattleArenaScreen(
     val battleState by viewModel.battleState.collectAsState()
     val localCard by viewModel.localCard.collectAsState()
     val opponentCard by viewModel.opponentCard.collectAsState()
+    val opponentHasSelectedCard by viewModel.opponentHasSelectedCard.collectAsState()
     val battleStory by viewModel.battleStory.collectAsState()
     val currentStoryIndex by viewModel.currentStoryIndex.collectAsState()
     val battleResult by viewModel.battleResult.collectAsState()
@@ -258,6 +259,7 @@ fun BattleArenaScreen(
                         opponentReady = opponentReady,
                         canClickReady = canClickReady,
                         opponentIsThinking = opponentIsThinking,
+                        opponentHasSelectedCard = opponentHasSelectedCard,
                         shouldRevealCards = shouldRevealCards,
                         waitingForOpponentReady = waitingForOpponentReady,
                         localDataComplete = localDataComplete,
@@ -573,6 +575,7 @@ private fun CardSelectionSection(
     opponentReady: Boolean,
     canClickReady: Boolean,
     opponentIsThinking: Boolean,
+    opponentHasSelectedCard: Boolean,
     shouldRevealCards: Boolean,
     waitingForOpponentReady: Boolean,
     localDataComplete: Boolean,
@@ -608,11 +611,9 @@ private fun CardSelectionSection(
             localCardSelected = selectedCard != null,
             localReady = localReady,
             opponentReady = opponentReady,
-            opponentIsThinking = opponentIsThinking,
-            waitingForOpponentReady = waitingForOpponentReady,
+            opponentHasSelectedCard = opponentHasSelectedCard,
             localDataComplete = localDataComplete,
-            opponentDataComplete = opponentDataComplete,
-            opponentImageTransferComplete = opponentImageTransferComplete
+            opponentDataComplete = opponentDataComplete
         )
 
         // Selected card preview

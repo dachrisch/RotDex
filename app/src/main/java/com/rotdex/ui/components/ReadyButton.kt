@@ -62,12 +62,18 @@ fun ReadyButton(
 ) {
     // Determine button state based on inputs
     val buttonState = when {
-        localCard == null -> ReadyButtonState.DISABLED
+        // If already ready
         localReady && opponentReady -> ReadyButtonState.BOTH_READY
         localReady && !opponentReady -> ReadyButtonState.WAITING
-        // FIX: Show WAITING_FOR_DATA when card is selected but opponent data isn't ready (canClick = false)
-        !canClick -> ReadyButtonState.WAITING_FOR_DATA
-        else -> ReadyButtonState.ENABLED
+
+        // If card selected but waiting for opponent data (canClick controls this)
+        localCard != null && !canClick -> ReadyButtonState.WAITING_FOR_DATA
+
+        // If card selected and can click ready
+        localCard != null && canClick -> ReadyButtonState.ENABLED
+
+        // No card selected yet
+        else -> ReadyButtonState.DISABLED
     }
 
     Button(
