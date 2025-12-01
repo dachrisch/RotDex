@@ -202,7 +202,7 @@ class BattleArenaAutoDiscoveryUITest {
                     localCardSelected = true,
                     localReady = false,
                     opponentReady = false,
-                    opponentIsThinking = false
+                    opponentHasSelectedCard = false
                 )
             }
         }
@@ -219,7 +219,7 @@ class BattleArenaAutoDiscoveryUITest {
                     localCardSelected = true,
                     localReady = true,
                     opponentReady = false,
-                    opponentIsThinking = false,
+                    opponentHasSelectedCard = false,
                     opponentDataComplete = true // Data is complete
                 )
             }
@@ -241,10 +241,9 @@ class BattleArenaAutoDiscoveryUITest {
                     localCardSelected = true,
                     localReady = true,
                     opponentReady = true,
-                    opponentIsThinking = false,
+                    opponentHasSelectedCard = true,
                     localDataComplete = true, // All data synced
-                    opponentDataComplete = true,
-                    opponentImageTransferComplete = true
+                    opponentDataComplete = true
                 )
             }
         }
@@ -264,7 +263,7 @@ class BattleArenaAutoDiscoveryUITest {
                     localCardSelected = true,
                     localReady = true,
                     opponentReady = false,
-                    opponentIsThinking = true
+                    opponentHasSelectedCard = true
                 )
             }
         }
@@ -281,10 +280,9 @@ class BattleArenaAutoDiscoveryUITest {
                     localCardSelected = true,
                     localReady = true,
                     opponentReady = true,
-                    opponentIsThinking = false,
+                    opponentHasSelectedCard = true,
                     localDataComplete = false, // Still transferring data
-                    opponentDataComplete = false,
-                    opponentImageTransferComplete = false
+                    opponentDataComplete = false
                 )
             }
         }
@@ -302,7 +300,7 @@ class BattleArenaAutoDiscoveryUITest {
                     localCardSelected = false,
                     localReady = false,
                     opponentReady = false,
-                    opponentIsThinking = false
+                    opponentHasSelectedCard = false
                 )
             }
         }
@@ -326,7 +324,7 @@ class BattleArenaAutoDiscoveryUITest {
                         localCardSelected = true,
                         localReady = isReady,
                         opponentReady = false,
-                        opponentIsThinking = false,
+                        opponentHasSelectedCard = false,
                         opponentDataComplete = true
                     )
 
@@ -358,11 +356,9 @@ class BattleArenaAutoDiscoveryUITest {
                     localCardSelected = true,
                     localReady = true,
                     opponentReady = true,
-                    opponentIsThinking = false,
-                    waitingForOpponentReady = false,
+                    opponentHasSelectedCard = true,
                     localDataComplete = true,
-                    opponentDataComplete = true,
-                    opponentImageTransferComplete = true
+                    opponentDataComplete = true
                 )
             }
         }
@@ -384,10 +380,9 @@ class BattleArenaAutoDiscoveryUITest {
                     localCardSelected = true,
                     localReady = false,
                     opponentReady = true,
-                    opponentIsThinking = false,
+                    opponentHasSelectedCard = true,
                     localDataComplete = false,
-                    opponentDataComplete = false,
-                    opponentImageTransferComplete = false // Image still transferring
+                    opponentDataComplete = false // Data still transferring
                 )
             }
         }
@@ -420,7 +415,7 @@ class BattleArenaAutoDiscoveryUITest {
                         localCardSelected = true,
                         localReady = false,
                         opponentReady = false,
-                        opponentIsThinking = true
+                        opponentHasSelectedCard = true
                     )
                 }
             }

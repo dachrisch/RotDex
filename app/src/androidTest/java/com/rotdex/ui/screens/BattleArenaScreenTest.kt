@@ -89,6 +89,7 @@ class BattleArenaScreenTest {
                     opponentCard = testBattleCard2,
                     battleStory = testBattleStory,
                     currentStoryIndex = 0,
+                    opponentName = "Opponent",
                     onSkip = {}
                 )
             }
@@ -112,6 +113,7 @@ class BattleArenaScreenTest {
                     opponentCard = testBattleCard2,
                     battleStory = testBattleStory,
                     currentStoryIndex = 0,
+                    opponentName = "Opponent",
                     onSkip = {}
                 )
             }
@@ -130,6 +132,7 @@ class BattleArenaScreenTest {
                     opponentCard = testBattleCard2,
                     battleStory = testBattleStory,
                     currentStoryIndex = 1,
+                    opponentName = "Opponent",
                     onSkip = {}
                 )
             }
@@ -148,6 +151,7 @@ class BattleArenaScreenTest {
                     opponentCard = testBattleCard2,
                     battleStory = testBattleStory,
                     currentStoryIndex = 0,
+                    opponentName = "Opponent",
                     onSkip = {}
                 )
             }
@@ -166,6 +170,7 @@ class BattleArenaScreenTest {
                     opponentCard = testBattleCard2,
                     battleStory = testBattleStory,
                     currentStoryIndex = 0,
+                    opponentName = "Opponent",
                     onSkip = {}
                 )
             }
@@ -188,6 +193,7 @@ class BattleArenaScreenTest {
                     opponentCard = testBattleCard2,
                     battleStory = testBattleStory,
                     currentStoryIndex = 0,
+                    opponentName = "Opponent",
                     onSkip = {}
                 )
             }
@@ -208,6 +214,7 @@ class BattleArenaScreenTest {
                     opponentCard = testBattleCard2,
                     battleStory = testBattleStory,
                     currentStoryIndex = 0,
+                    opponentName = "Opponent",
                     onSkip = { skipCalled = true }
                 )
             }
@@ -231,6 +238,7 @@ class BattleArenaScreenTest {
                     opponentCard = testBattleCard2,
                     battleStory = testBattleStory,
                     currentStoryIndex = currentIndex.value,
+                    opponentName = "Opponent",
                     onSkip = {}
                 )
             }
@@ -458,6 +466,7 @@ class BattleArenaScreenTest {
                     currentStoryIndex = 0,
                     battleResult = null,
                     cardTransferred = false,
+                    opponentName = "Opponent",
                     onPlayAgain = {}
                 )
             }
@@ -482,6 +491,7 @@ class BattleArenaScreenTest {
                     currentStoryIndex = currentIndex.value,
                     battleResult = null,
                     cardTransferred = false,
+                    opponentName = "Opponent",
                     onPlayAgain = {}
                 )
             }
@@ -517,6 +527,7 @@ class BattleArenaScreenTest {
                     currentStoryIndex = 0,
                     battleResult = null,
                     cardTransferred = false,
+                    opponentName = "Opponent",
                     onPlayAgain = {}
                 )
             }
