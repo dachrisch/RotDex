@@ -73,13 +73,14 @@ class BattleManagerReadyStateTest {
     }
 
     @Test
-    fun canClickReady_initiallyTrue() = runTest {
+    fun canClickReady_initiallyFalse() = runTest {
         // GIVEN: New BattleManager instance
         // WHEN: Checking initial state
         val canClick = battleManager.canClickReady.value
 
-        // THEN: Can click ready should be true
-        assertTrue("Can click ready should initially be true", canClick)
+        // THEN: Can click ready should be false (enabled after card selection)
+        // PHASE 2: Fixed to match unified state - ready button starts disabled
+        assertFalse("Can click ready should initially be false", canClick)
     }
 
     @Test
@@ -111,9 +112,11 @@ class BattleManagerReadyStateTest {
 
     @Test
     fun setReady_disablesReadyButton() = runTest {
-        // GIVEN: Initial state where canClickReady is true
-        assertTrue("Initial state should allow clicking", battleManager.canClickReady.value)
+        // GIVEN: Card selected (which enables ready button)
+        // PHASE 2: canClickReady starts false, becomes true after card selection
+        assertFalse("Initial state should not allow clicking", battleManager.canClickReady.value)
         battleManager.selectCard(createTestCard())
+        assertTrue("Ready button enabled after card selection", battleManager.canClickReady.value)
 
         // WHEN: setReady is called
         battleManager.setReady()
@@ -126,16 +129,18 @@ class BattleManagerReadyStateTest {
 
     @Test
     fun stopAll_resetsReadyStates() = runTest {
-        // GIVEN: BattleManager with ready states set
+        // GIVEN: BattleManager with card selected and ready state set
+        battleManager.selectCard(createTestCard())
         battleManager.setReady()
 
         // WHEN: stopAll is called
         battleManager.stopAll()
 
         // THEN: All ready states should be reset
+        // PHASE 2: canClickReady resets to false (not true)
         assertFalse("Local ready should be reset", battleManager.localReady.value)
         assertFalse("Opponent ready should be reset", battleManager.opponentReady.value)
-        assertTrue("Can click ready should be reset", battleManager.canClickReady.value)
+        assertFalse("Can click ready should be reset to false", battleManager.canClickReady.value)
         assertFalse("Opponent thinking should be reset", battleManager.opponentIsThinking.value)
     }
 
@@ -143,9 +148,11 @@ class BattleManagerReadyStateTest {
 
     @Test
     fun multipleSetReadyCalls_keepButtonDisabled() = runTest {
-        // GIVEN: Initial state
-        assertTrue("Initial state should allow clicking", battleManager.canClickReady.value)
+        // GIVEN: Card selected
+        // PHASE 2: canClickReady starts false, becomes true after card selection
+        assertFalse("Initial state should not allow clicking", battleManager.canClickReady.value)
         battleManager.selectCard(createTestCard())
+        assertTrue("Ready button enabled after card selection", battleManager.canClickReady.value)
 
         // WHEN: setReady is called multiple times
         battleManager.setReady()
@@ -204,9 +211,10 @@ class BattleManagerReadyStateTest {
         val thinking = battleManager.opponentIsThinking.value
 
         // THEN: All initial values should be as expected
+        // PHASE 2: canClickReady now correctly starts as false
         assertFalse("localReady initial value", localReady)
         assertFalse("opponentReady initial value", opponentReady)
-        assertTrue("canClickReady initial value", canClick)
+        assertFalse("canClickReady initial value (PHASE 2 fix)", canClick)
         assertFalse("opponentIsThinking initial value", thinking)
     }
 
@@ -221,9 +229,10 @@ class BattleManagerReadyStateTest {
         battleManager.stopAll()
 
         // THEN: Ready states should return to initial values
+        // PHASE 2: canClickReady correctly resets to false (not true)
         assertFalse("localReady should reset", battleManager.localReady.value)
         assertFalse("opponentReady should reset", battleManager.opponentReady.value)
-        assertTrue("canClickReady should reset", battleManager.canClickReady.value)
+        assertFalse("canClickReady should reset to false (PHASE 2 fix)", battleManager.canClickReady.value)
         assertFalse("opponentIsThinking should reset", battleManager.opponentIsThinking.value)
     }
 }

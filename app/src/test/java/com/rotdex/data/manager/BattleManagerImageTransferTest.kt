@@ -143,8 +143,8 @@ class BattleManagerImageTransferTest {
 
         // Then: Should be false because image is missing
         assertFalse(
-            dataComplete,
-            "Opponent data should not be complete without image transfer"
+            "Opponent data should not be complete without image transfer",
+            dataComplete
         )
     }
 
@@ -187,8 +187,8 @@ class BattleManagerImageTransferTest {
         // Note: Actual timeout verification requires coroutine time control
         // This is a placeholder for the timeout duration check
         assertTrue(
-            expectedTimeoutMs == 45000L,
-            "Ready timeout should be 45 seconds"
+            "Ready timeout should be 45 seconds",
+            expectedTimeoutMs == 45000L
         )
     }
 
@@ -232,8 +232,8 @@ class BattleManagerImageTransferTest {
         // (This would be tested in UI test, but we verify state here)
         if (hasOpponentCard && !imageTransferComplete) {
             assertTrue(
-                showTransferring,
-                "Should indicate image transfer in progress"
+                "Should indicate image transfer in progress",
+                showTransferring
             )
         }
     }

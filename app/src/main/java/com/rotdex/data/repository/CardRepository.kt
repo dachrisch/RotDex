@@ -146,9 +146,9 @@ class CardRepository(
                     return Result.failure(Exception("API returned empty task ID. Unable to track image generation."))
                 }
 
-                // Poll for completion (max 30 seconds, check every 2 seconds)
+                // Poll for completion (max 60 seconds, check every 2 seconds)
                 var attempts = 0
-                val maxAttempts = 15
+                val maxAttempts = 30
                 var imageUrl: String? = null
 
                 Log.d(TAG, "Starting polling loop (max $maxAttempts attempts)")
@@ -291,9 +291,9 @@ class CardRepository(
                     return Result.failure(Exception("API returned empty task ID"))
                 }
 
-                // Poll for completion
+                // Poll for completion (max 60 seconds, check every 2 seconds)
                 var attempts = 0
-                val maxAttempts = 15
+                val maxAttempts = 30
                 var imageUrl: String? = null
 
                 while (attempts < maxAttempts) {

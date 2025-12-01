@@ -1,5 +1,6 @@
 package com.rotdex.data.models
 
+
 /**
  * Battle state machine states
  */
@@ -10,6 +11,7 @@ enum class BattleState {
     BATTLE_ANIMATING,      // Battle animation screen showing story progression
     BATTLE_IN_PROGRESS,    // AI story being generated and displayed
     BATTLE_COMPLETE,       // Battle finished, showing result
+    READY_TIMEOUT,         // Timeout while connection still active
     DISCONNECTED           // Opponent disconnected
 }
 

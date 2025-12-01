@@ -28,8 +28,8 @@ fun HomeScreen(
     onNavigateToCardCreate: () -> Unit,
     onNavigateToFusion: () -> Unit = {},
     onNavigateToAchievements: () -> Unit = {},
-    onNavigateToConnectionTest: () -> Unit = {},
     onNavigateToBattleArena: () -> Unit = {},
+    onNavigateToAdmin: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
     viewModel: DailyRewardsViewModel = hiltViewModel()
 ) {
@@ -131,12 +131,11 @@ fun HomeScreen(
                 onClick = onNavigateToBattleArena
             )
 
-            // Temporary connection test button
             NavigationButton(
-                icon = Icons.Default.Bluetooth,
-                emoji = "🧪",
-                title = "CONNECTION TEST",
-                onClick = onNavigateToConnectionTest
+                icon = Icons.Default.Build,
+                emoji = "🔧",
+                title = "ADMIN",
+                onClick = onNavigateToAdmin
             )
         }
     }

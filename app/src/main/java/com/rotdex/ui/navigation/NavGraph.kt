@@ -9,7 +9,7 @@ import com.rotdex.ui.screens.AchievementsScreen
 import com.rotdex.ui.screens.BattleArenaScreen
 import com.rotdex.ui.screens.CardCreateScreen
 import com.rotdex.ui.screens.CollectionScreen
-import com.rotdex.ui.screens.ConnectionTestScreen
+import com.rotdex.ui.screens.AdminScreen
 import com.rotdex.ui.screens.DailyRewardsScreen
 import com.rotdex.ui.screens.FusionScreen
 import com.rotdex.ui.screens.HomeScreen
@@ -31,7 +31,7 @@ sealed class Screen(val route: String) {
     object CardCreate : Screen("card_create")
     object Fusion : Screen("fusion")
     object Achievements : Screen("achievements")
-    object ConnectionTest : Screen("connection_test")
+    object Admin : Screen("admin")
     object BattleArena : Screen("battle_arena")
     object Settings : Screen("settings")
 }
@@ -55,8 +55,8 @@ fun NavGraph(
                 onNavigateToCardCreate = { navController.navigate(Screen.CardCreate.route) },
                 onNavigateToFusion = { navController.navigate(Screen.Fusion.route) },
                 onNavigateToAchievements = { navController.navigate(Screen.Achievements.route) },
-                onNavigateToConnectionTest = { navController.navigate(Screen.ConnectionTest.route) },
                 onNavigateToBattleArena = { navController.navigate(Screen.BattleArena.route) },
+                onNavigateToAdmin = { navController.navigate(Screen.Admin.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
             )
         }
@@ -123,8 +123,8 @@ fun NavGraph(
             )
         }
 
-        composable(Screen.ConnectionTest.route) {
-            ConnectionTestScreen(
+        composable(Screen.Admin.route) {
+            AdminScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

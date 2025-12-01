@@ -122,7 +122,10 @@ fun SettingsScreen(
 
             // Save name button
             Button(
-                onClick = { viewModel.updatePlayerName(playerName) },
+                onClick = {
+                    viewModel.updatePlayerName(playerName)
+                    onNavigateBack()
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Save Name")
