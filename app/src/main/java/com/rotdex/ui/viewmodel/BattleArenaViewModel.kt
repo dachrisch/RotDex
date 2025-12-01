@@ -12,6 +12,7 @@ import com.rotdex.data.models.BattleState
 import com.rotdex.data.models.BattleStorySegment
 import com.rotdex.data.models.Card
 import com.rotdex.data.repository.CardRepository
+import com.rotdex.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
@@ -26,7 +27,8 @@ import javax.inject.Inject
 @HiltViewModel
 class BattleArenaViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val cardRepository: CardRepository
+    private val cardRepository: CardRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     private val battleManager = BattleManager(context)
@@ -41,6 +43,9 @@ class BattleArenaViewModel @Inject constructor(
     val localCard: StateFlow<BattleCard?> = battleManager.localCard
     val opponentCard: StateFlow<BattleCard?> = battleManager.opponentCard
     val opponentHasSelectedCard: StateFlow<Boolean> = battleManager.opponentHasSelectedCard
+
+    // Opponent player name
+    val opponentName: StateFlow<String> = battleManager.opponentName
 
     // Stats revealed (after both ready)
     val statsRevealed: StateFlow<Boolean> = battleManager.statsRevealed
@@ -126,10 +131,52 @@ class BattleArenaViewModel @Inject constructor(
     }
 
     init {
-        // Observe battle state and start animation when BATTLE_ANIMATING state is entered
+        // Load player name from UserProfile
+        viewModelScope.launch {
+            userRepository.userProfile.collect { profile ->
+                _playerName.value = profile.playerName
+                Log.d("BattleArenaViewModel", "👤 Loaded player name: ${profile.playerName}")
+            }
+        }
+
+        // Observe battle state and story to start animation when both are ready
+        // Animation starts when: state is BATTLE_ANIMATING AND story is not empty AND result received AND animation not already running
+        // CRITICAL: Must wait for battleResult to ensure CLIENT has received ALL story segments
+        // (HOST sends RESULT after all STORY messages, so result arrival = story complete)
         viewModelScope.launch {
             battleManager.battleState.collect { state ->
-                if (state == BattleState.BATTLE_ANIMATING && battleManager.battleStory.value.isNotEmpty()) {
+                if (state == BattleState.BATTLE_ANIMATING &&
+                    battleManager.battleStory.value.isNotEmpty() &&
+                    battleManager.battleResult.value != null &&
+                    storyAnimationJob?.isActive != true) {
+                    Log.d("BattleArenaViewModel", "🎬 Starting animation from state change")
+                    animateStory()
+                }
+            }
+        }
+
+        // Also watch story changes - for CLIENT who receives story after state change
+        viewModelScope.launch {
+            battleManager.battleStory.collect { story ->
+                if (battleManager.battleState.value == BattleState.BATTLE_ANIMATING &&
+                    story.isNotEmpty() &&
+                    battleManager.battleResult.value != null &&
+                    storyAnimationJob?.isActive != true) {
+                    Log.d("BattleArenaViewModel", "🎬 Starting animation from story update")
+                    animateStory()
+                }
+            }
+        }
+
+        // Also watch result changes - CLIENT receives result AFTER all story segments
+        // This is the reliable trigger point for CLIENT animation
+        viewModelScope.launch {
+            battleManager.battleResult.collect { result ->
+                if (battleManager.battleState.value == BattleState.BATTLE_ANIMATING &&
+                    battleManager.battleStory.value.isNotEmpty() &&
+                    result != null &&
+                    storyAnimationJob?.isActive != true) {
+                    Log.d("BattleArenaViewModel", "🎬 Starting animation from result received (CLIENT sync point)")
                     animateStory()
                 }
             }

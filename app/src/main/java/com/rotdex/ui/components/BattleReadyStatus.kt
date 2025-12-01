@@ -43,6 +43,7 @@ fun BattleReadyStatus(
     opponentHasSelectedCard: Boolean = false,
     localDataComplete: Boolean = false,
     opponentDataComplete: Boolean = false,
+    opponentName: String = "Opponent",
     modifier: Modifier = Modifier
 ) {
     // Derive status from minimal state - single source of truth
@@ -59,6 +60,15 @@ fun BattleReadyStatus(
         opponentHasSelectedCard -> PlayerStatus.MOVING_TO_ARENA  // Play state: opponent has selected a card
         else -> PlayerStatus.WAITING
     }
+
+    // Debug logging for state diagnosis
+    android.util.Log.d("BattleReadyStatus", """
+        🎯 Status calculation:
+          Opponent state: opponentReady=$opponentReady, opponentHasSelectedCard=$opponentHasSelectedCard
+          Local state: localReady=$localReady, localCardSelected=$localCardSelected
+          Calculated opponent status: $opponentStatus
+          Calculated local status: $localStatus
+    """.trimIndent())
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -80,7 +90,7 @@ fun BattleReadyStatus(
         )
 
         StatusChip(
-            label = "OPPONENT",
+            label = opponentName.uppercase(),
             status = opponentStatus,
             isLocalPlayer = false,
             showDataTransfer = opponentReady && !localDataComplete,

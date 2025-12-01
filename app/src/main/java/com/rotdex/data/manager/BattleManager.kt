@@ -7,7 +7,9 @@ import com.google.android.gms.nearby.connection.*
 import com.rotdex.data.models.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +31,74 @@ class BattleManager(private val context: Context) {
     // Coroutine scope for async operations
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+    // Keep-alive heartbeat to prevent connection timeout
+    private var heartbeatJob: Job? = null
+
+    // ============================================================
+    // PHASE 1: Message Reliability Layer
+    // ============================================================
+    /**
+     * Message reliability layer with ACK/retry protocol
+     * Ensures no messages are lost during connection transitions
+     */
+    private val messageReliability = MessageReliabilityLayer(
+        sendRaw = { rawMessage ->
+            currentEndpointId?.let { endpointId ->
+                val payload = Payload.fromBytes(rawMessage.toByteArray(Charsets.UTF_8))
+                connectionsClient.sendPayload(endpointId, payload)
+            }
+        },
+        scope = scope
+    )
+
+    // ============================================================
+    // PHASE 2: Unified State (Single Source of Truth)
+    // ============================================================
+    /**
+     * Unified battle session state - replaces 13 separate StateFlows
+     * Version tracking enables state synchronization on reconnection (Phase 4)
+     */
+    private val _battleSessionState = MutableStateFlow(BattleSessionState())
+    val battleSessionState: StateFlow<BattleSessionState> = _battleSessionState.asStateFlow()
+
+    // ============================================================
+    // PHASE 3: Connection Lifecycle Management
+    // ============================================================
+    /**
+     * Connection lifecycle state - tracks connection history and reconnections
+     * Enables automatic state resynchronization when endpoint changes (Phase 4)
+     */
+    private val _connectionLifecycle = MutableStateFlow<ConnectionLifecycle>(ConnectionLifecycle.Idle)
+    val connectionLifecycle: StateFlow<ConnectionLifecycle> = _connectionLifecycle.asStateFlow()
+
+    /**
+     * Connection event history for debugging and analytics
+     * Records all connection lifecycle transitions
+     */
+    private val connectionEvents = mutableListOf<ConnectionEvent>()
+
+    /**
+     * Sequential connection counter - increments on each successful connection
+     * Helps track connection history and identify reconnections
+     */
+    private var connectionNumber = 0
+
+    /**
+     * History of all successful connections in this session
+     * Useful for debugging connection issues and analyzing patterns
+     */
+    private val connectionHistory = mutableListOf<ConnectionLifecycle.Connected>()
+
+    /**
+     * Callback invoked when reconnection is detected (endpoint ID changed)
+     * Phase 4 will use this to trigger state resynchronization
+     */
+    private var reconnectionCallback: ((oldEndpoint: String, newEndpoint: String) -> Unit)? = null
+
+    // ============================================================
+    // LEGACY: Backward Compatibility StateFlows (Phase 2)
+    // These will be removed in Phase 3 when UI is refactored
+    // ============================================================
     // Connection state
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Idle)
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
@@ -43,6 +113,10 @@ class BattleManager(private val context: Context) {
 
     private val _opponentCard = MutableStateFlow<BattleCard?>(null)
     val opponentCard: StateFlow<BattleCard?> = _opponentCard.asStateFlow()
+
+    // Opponent player name (captured from connection)
+    private val _opponentName = MutableStateFlow("Opponent")
+    val opponentName: StateFlow<String> = _opponentName.asStateFlow()
 
     // Play state: Has opponent selected a card? (separate from technical data status)
     private val _opponentHasSelectedCard = MutableStateFlow(false)
@@ -106,6 +180,7 @@ class BattleManager(private val context: Context) {
     private var opponentReadyLegacy: Boolean = false
     private var localReadyLegacy: Boolean = false
     private var playerName: String = ""
+    private var connectingToName: String = ""  // Name of device we're connecting to (for UI display)
 
     // Connection collision prevention with retry mechanism
     private var localEndpointId: String = ""  // Our generated endpoint ID for collision resolution
@@ -119,6 +194,17 @@ class BattleManager(private val context: Context) {
         override fun onConnectionInitiated(endpointId: String, info: ConnectionInfo) {
             Log.d(TAG, "Connection initiated with: ${info.endpointName}, endpointId: $endpointId")
             addMessage("Connection initiated with ${info.endpointName}")
+
+            // Capture opponent's player name from their advertised endpoint name
+            _opponentName.value = info.endpointName
+            Log.d(TAG, "👤 Captured opponent name: ${info.endpointName}")
+
+            // FIX: Determine host based on connection direction
+            // isIncomingConnection = true means someone connected to US → we are HOST
+            // isIncomingConnection = false means WE connected to them → we are CLIENT
+            isHost = info.isIncomingConnection
+            Log.d(TAG, "🔑 Host determination: isIncomingConnection=${info.isIncomingConnection} → isHost=$isHost")
+
             connectionsClient.acceptConnection(endpointId, payloadCallback)
         }
 
@@ -126,7 +212,35 @@ class BattleManager(private val context: Context) {
             when (result.status.statusCode) {
                 ConnectionsStatusCodes.STATUS_OK -> {
                     Log.d(TAG, "✅ Connection successful!")
+
+                    // PHASE 3: Track connection lifecycle and detect reconnections
+                    val previousEndpoint = currentEndpointId
                     currentEndpointId = endpointId
+
+                    val isReconnection = previousEndpoint != null && previousEndpoint != endpointId
+                    connectionNumber++
+
+                    val lifecycle = ConnectionLifecycle.Connected(
+                        endpointId = endpointId,
+                        connectionNumber = connectionNumber,
+                        connectedAt = System.currentTimeMillis(),
+                        previousEndpointId = previousEndpoint
+                    )
+
+                    _connectionLifecycle.value = lifecycle
+                    connectionHistory.add(lifecycle)
+
+                    // Record connection success event
+                    connectionEvents.add(ConnectionEvent.ConnectionSuccess(endpointId, isReconnection))
+
+                    if (isReconnection) {
+                        Log.d(TAG, "🔄 Reconnection detected: $previousEndpoint -> $endpointId (connection #$connectionNumber)")
+                        connectionEvents.add(ConnectionEvent.ReconnectionDetected(previousEndpoint, endpointId))
+                        onReconnectionDetected(previousEndpoint, endpointId)
+                    } else {
+                        Log.d(TAG, "✅ Initial connection established: $endpointId (connection #$connectionNumber)")
+                    }
+
                     outgoingConnectionRequests.clear()
                     connectionRetryAttempts.clear()
                     retryJob?.cancel()
@@ -136,6 +250,9 @@ class BattleManager(private val context: Context) {
                     connectionsClient.stopAdvertising()
                     connectionsClient.stopDiscovery()
                     Log.d(TAG, "✅ Stopped advertising and discovery after successful connection")
+
+                    // Start keep-alive heartbeat to prevent connection timeout
+                    startHeartbeat()
 
                     _connectionState.value = ConnectionState.Connected(endpointId)
                     _battleState.value = BattleState.CARD_SELECTION
@@ -155,9 +272,25 @@ class BattleManager(private val context: Context) {
 
         override fun onDisconnected(endpointId: String) {
             Log.d(TAG, "Disconnected from: $endpointId")
+
+            // Stop keep-alive heartbeat
+            stopHeartbeat()
+
+            // PHASE 3: Track disconnection lifecycle
+            _connectionLifecycle.value = ConnectionLifecycle.Disconnected
+            connectionEvents.add(ConnectionEvent.Disconnected(endpointId, "connection_lost"))
+
             _connectionState.value = ConnectionState.Disconnected
-            _battleState.value = BattleState.DISCONNECTED
-            currentEndpointId = null
+            setBattleState(BattleState.DISCONNECTED, "connection_lost")
+
+            // PHASE 4: Clear pending messages from reliability layer
+            messageReliability.clearPendingMessages()
+
+            // PHASE 3: Keep currentEndpointId so we can detect reconnection
+            // Only set to null in stopAll() or resetBattleState()
+            // This allows reconnection detection when endpoint ID changes
+            Log.d(TAG, "   Keeping currentEndpointId=$currentEndpointId for reconnection detection")
+
             addMessage("Opponent disconnected")
         }
     }
@@ -303,6 +436,13 @@ class BattleManager(private val context: Context) {
     private val endpointDiscoveryCallback = object : EndpointDiscoveryCallback() {
         override fun onEndpointFound(endpointId: String, info: DiscoveredEndpointInfo) {
             Log.d(TAG, "Endpoint found: ${info.endpointName}")
+
+            // Filter out self-discovery (same name as local player)
+            if (info.endpointName == playerName) {
+                Log.d(TAG, "🔄 Ignoring self-discovery: ${info.endpointName}")
+                return
+            }
+
             val devices = _discoveredDevices.value.toMutableList()
             devices.add("${info.endpointName}|$endpointId")
             _discoveredDevices.value = devices
@@ -326,12 +466,93 @@ class BattleManager(private val context: Context) {
         }
     }
 
+    // ============================================================
+    // PHASE 2: State Synchronization Helpers
+    // ============================================================
+
+    /**
+     * Update unified session state and increment version
+     * Automatically syncs to legacy StateFlows for backward compatibility
+     *
+     * @param update Lambda that transforms current state to new state
+     */
+    private fun updateSessionState(update: (BattleSessionState) -> BattleSessionState) {
+        _battleSessionState.value = update(_battleSessionState.value).nextVersion()
+        syncLegacyState()
+        Log.d(TAG, "📊 Session state updated: version=${_battleSessionState.value.version}, phase=${_battleSessionState.value.phase}")
+    }
+
+    /**
+     * Sync unified state to legacy StateFlows for backward compatibility
+     * This ensures existing UI code continues to work during Phase 2
+     * Will be removed in Phase 3 when UI is refactored to use unified state
+     */
+    private fun syncLegacyState() {
+        val state = _battleSessionState.value
+
+        // Sync player card selections
+        // FIX: Defensive null check - don't overwrite existing data with null
+        if (state.localPlayer.card != null) {
+            _localCard.value = state.localPlayer.card
+        } else if (_localCard.value != null) {
+            Log.w(TAG, "⚠️ syncLegacyState: Preserving existing _localCard (unified state has null)")
+        }
+
+        if (state.opponentPlayer.card != null) {
+            _opponentCard.value = state.opponentPlayer.card
+        } else if (_opponentCard.value != null) {
+            Log.w(TAG, "⚠️ syncLegacyState: Preserving existing _opponentCard (unified state has null)")
+        }
+
+        // Sync ready states
+        _localReady.value = state.localPlayer.isReady
+        _opponentReady.value = state.opponentPlayer.isReady
+
+        // Sync opponent selection status
+        _opponentHasSelectedCard.value = state.opponentPlayer.hasSelectedCard
+
+        // Sync data completeness
+        // FIX: Defensive check - don't overwrite true with false
+        if (state.localPlayer.dataReceivedFromOpponent) {
+            _localDataComplete.value = true
+        } else if (_localDataComplete.value) {
+            Log.w(TAG, "⚠️ syncLegacyState: Preserving _localDataComplete=true (unified state has false)")
+        }
+
+        if (state.opponentPlayer.dataReceivedFromOpponent) {
+            _opponentDataComplete.value = true
+        } else if (_opponentDataComplete.value) {
+            Log.w(TAG, "⚠️ syncLegacyState: Preserving _opponentDataComplete=true (unified state has false)")
+        }
+
+        // Sync UI control states
+        _canClickReady.value = state.canClickReady
+        _waitingForOpponentReady.value = state.waitingForOpponentReady
+
+        // Sync image transfer status
+        _opponentImageTransferComplete.value = state.opponentPlayer.imageTransferComplete
+
+        // Sync reveal and battle state (if applicable)
+        if (state.reveal != null) {
+            _statsRevealed.value = state.reveal.statsRevealed
+            _shouldRevealCards.value = state.reveal.cardsRevealed
+        }
+
+        if (state.battle != null) {
+            _battleStory.value = state.battle.storySegments
+            _battleResult.value = state.battle.result
+        }
+
+        Log.d(TAG, "🔄 Legacy state synchronized from unified state")
+    }
+
     /**
      * Start as host (advertise)
      */
     fun startAsHost(name: String) {
         playerName = name
         isHost = true
+        Log.d(TAG, "🏠 Starting as HOST (isHost=true, name=$name)")
         _connectionState.value = ConnectionState.Advertising
         _battleState.value = BattleState.WAITING_FOR_OPPONENT
         resetBattleState()
@@ -354,6 +575,7 @@ class BattleManager(private val context: Context) {
     fun startAsClient(name: String) {
         playerName = name
         isHost = false
+        Log.d(TAG, "🔍 Starting as CLIENT (isHost=false, name=$name)")
         _connectionState.value = ConnectionState.Discovering
         _battleState.value = BattleState.WAITING_FOR_OPPONENT
         resetBattleState()
@@ -385,6 +607,11 @@ class BattleManager(private val context: Context) {
         // This ID is used to determine connection priority when both devices connect simultaneously
         localEndpointId = generateSessionId()
         Log.d(TAG, "🆔 Generated local session ID for collision resolution: $localEndpointId")
+
+        // PHASE 3: Track discovery lifecycle
+        val discoveringState = ConnectionLifecycle.Discovering()
+        _connectionLifecycle.value = discoveringState
+        connectionEvents.add(ConnectionEvent.DiscoveryStarted(discoveringState.startedAt))
 
         _connectionState.value = ConnectionState.AutoDiscovering(effectiveName)
         _battleState.value = BattleState.WAITING_FOR_OPPONENT
@@ -439,6 +666,9 @@ class BattleManager(private val context: Context) {
      * IMPORTANT: Keeps UI in "Connecting" state - user should never see an error during retry
      */
     private fun handleConnectionFailure(endpointId: String, reason: String) {
+        // PHASE 3: Record connection failure event
+        connectionEvents.add(ConnectionEvent.ConnectionFailed(endpointId, reason))
+
         // Check if this was an outgoing connection request (potential collision)
         if (!outgoingConnectionRequests.contains(endpointId)) {
             Log.d(TAG, "Not retrying $endpointId - was not our outgoing request")
@@ -484,7 +714,7 @@ class BattleManager(private val context: Context) {
             Log.d(TAG, "Silent retry - keeping UI in connecting state")
         }
         // Always stay in Connecting state during retries
-        _connectionState.value = ConnectionState.Connecting
+        _connectionState.value = ConnectionState.Connecting(connectingToName)
 
         // Schedule retry with appropriate delay
         retryJob?.cancel()
@@ -504,7 +734,11 @@ class BattleManager(private val context: Context) {
         connectionRetryAttempts.remove(endpointId)
         retryJob?.cancel()
 
-        Log.d(TAG, "📤 User initiated connection to $endpointId")
+        // Look up device name from discovered devices (format: "name|endpointId")
+        val deviceEntry = _discoveredDevices.value.find { it.endsWith("|$endpointId") }
+        connectingToName = deviceEntry?.split("|")?.firstOrNull() ?: "Opponent"
+        Log.d(TAG, "📤 User initiated connection to $endpointId (name: $connectingToName)")
+
         connectToHostInternal(endpointId)
     }
 
@@ -513,10 +747,19 @@ class BattleManager(private val context: Context) {
      * Tracks outgoing connection for collision detection
      */
     private fun connectToHostInternal(endpointId: String) {
-        _connectionState.value = ConnectionState.Connecting
-
         // Only add message on first attempt to avoid spam
         val attemptNum = connectionRetryAttempts.getOrDefault(endpointId, 0)
+
+        // PHASE 3: Track connecting lifecycle
+        val connectingState = ConnectionLifecycle.Connecting(
+            endpointId = endpointId,
+            attempt = attemptNum + 1
+        )
+        _connectionLifecycle.value = connectingState
+        connectionEvents.add(ConnectionEvent.ConnectionAttempt(endpointId, attemptNum + 1))
+
+        _connectionState.value = ConnectionState.Connecting(connectingToName)
+
         if (attemptNum == 0) {
             addMessage("Connecting...")
         }
@@ -548,16 +791,28 @@ class BattleManager(private val context: Context) {
 
     /**
      * Select a card for battle
+     * PHASE 2: Updates unified state + syncs to legacy StateFlows
      */
     fun selectCard(card: Card) {
         val battleCard = BattleCard.fromCard(card)
-        _localCard.value = battleCard
+
+        // PHASE 2: Update unified state
+        updateSessionState { state ->
+            state.copy(
+                localPlayer = state.localPlayer.copy(
+                    hasSelectedCard = true,
+                    card = battleCard,
+                    fullCard = card
+                ),
+                canClickReady = true  // Enable ready button after card selection
+            )
+        }
+
+        // LEGACY: Keep for network message sending
         localFullCard = card
         addMessage("Selected: ${card.name}")
 
-        // Enable ready button as soon as local player selects a card
-        _canClickReady.value = true
-        Log.d(TAG, "✅ Ready button enabled after card selection")
+        Log.d(TAG, "✅ Ready button enabled after card selection (v${_battleSessionState.value.version})")
 
         // IMPORTANT: Send CARDPREVIEW first, then image
         // This ensures opponent creates _opponentCard before image arrives
@@ -586,14 +841,29 @@ class BattleManager(private val context: Context) {
 
     /**
      * Mark ready to battle
+     * PHASE 2: Updates unified state + syncs to legacy StateFlows
      */
     fun setReady() {
         val card = localFullCard ?: return
         val battleCard = _localCard.value ?: return
 
-        _localReady.value = true
-        _canClickReady.value = false  // Disable button after click
+        // PHASE 2: Update unified state
+        updateSessionState { state ->
+            state.copy(
+                localPlayer = state.localPlayer.copy(isReady = true),
+                canClickReady = false,  // Disable button after click
+                waitingForOpponentReady = true
+            )
+        }
+
+        // LEGACY: Keep for compatibility
         localReadyLegacy = true
+
+        // FIX: Check if opponent data is already complete and send READY_ACK if so
+        // This ensures symmetric READY_ACK exchange even when opponent data arrived before click
+        checkOpponentDataComplete()
+
+        Log.d(TAG, "✅ Local player ready (v${_battleSessionState.value.version})")
 
         // REMOVED: CARD data sending (now sent in CARDPREVIEW immediately when card is selected)
         // All card data (name, rarity, attack, health, prompt, biography) already sent
@@ -603,7 +873,6 @@ class BattleManager(private val context: Context) {
         addMessage("Ready to battle!")
 
         // NEW: Enter waiting state with timeout
-        _waitingForOpponentReady.value = true
         startReadyTimeout()
 
         // If we already have all opponent data, send ACK immediately
@@ -683,8 +952,10 @@ class BattleManager(private val context: Context) {
         val resultMsg = "RESULT|${if (finalResult.isDraw) "DRAW" else if (finalResult.winnerIsLocal == true) "LOCAL" else "OPPONENT"}"
         sendMessage(resultMsg)
 
-        // Note: State will transition to BATTLE_COMPLETE when animation finishes
-        // or when user skips (controlled by ViewModel)
+        // NOTE: Don't transition to BATTLE_COMPLETE here!
+        // Let the ViewModel's animateStory() handle the animation, then call completeBattleAnimation()
+        // This allows the battle animation (pulsing glow, impact effects) to play out
+        Log.d(TAG, "⚔️ HOST: Battle started, animation will run via ViewModel")
     }
 
     /**
@@ -784,8 +1055,139 @@ class BattleManager(private val context: Context) {
     private var opponentFullCard: Card? = null
 
     private fun handleReceivedMessage(message: String) {
+        // PHASE 4: Process through MessageReliabilityLayer
+        val reliableMessage = messageReliability.handleReceivedMessage(message) {
+            // Callback for non-duplicate messages
+        }
+
+        // If this is a reliable message (JSON format), handle it
+        if (reliableMessage != null) {
+            // Handle infrastructure messages
+            when (reliableMessage.type) {
+            MessageType.ACK -> {
+                // ACK messages are handled internally by MessageReliabilityLayer
+                return
+            }
+            MessageType.STATE_SYNC_REQUEST -> {
+                // Opponent is requesting state sync (they detected reconnection)
+                Log.d(TAG, "📩 Received STATE_SYNC_REQUEST (opponent version=${reliableMessage.version})")
+
+                val opponentState = BattleSessionState.fromJson(reliableMessage.payload)
+                if (opponentState == null) {
+                    Log.w(TAG, "⚠️ Failed to parse opponent state from STATE_SYNC_REQUEST")
+                    return
+                }
+
+                // Merge states (host-authoritative)
+                val currentState = _battleSessionState.value
+                val mergedState = currentState.merge(opponentState, isHost = isHost)
+
+                Log.d(TAG, "🔄 Merged state: local v${currentState.version} + opponent v${opponentState.version} → v${mergedState.version}")
+
+                // Update our state
+                _battleSessionState.value = mergedState
+                syncLegacyState()
+
+                // Send our state back as STATE_SYNC_RESPONSE
+                val syncResponse = ReliableMessage(
+                    messageId = java.util.UUID.randomUUID().toString(),
+                    type = MessageType.STATE_SYNC_RESPONSE,
+                    payload = mergedState.toJson(),
+                    version = mergedState.version
+                )
+                messageReliability.sendReliableMessage(syncResponse)
+                Log.d(TAG, "📤 Sent STATE_SYNC_RESPONSE (version=${mergedState.version})")
+
+                return
+            }
+            MessageType.STATE_SYNC_RESPONSE -> {
+                // Opponent sent their state in response to our sync request
+                Log.d(TAG, "📩 Received STATE_SYNC_RESPONSE (opponent version=${reliableMessage.version})")
+
+                val opponentState = BattleSessionState.fromJson(reliableMessage.payload)
+                if (opponentState == null) {
+                    Log.w(TAG, "⚠️ Failed to parse opponent state from STATE_SYNC_RESPONSE")
+                    return
+                }
+
+                // Merge states (host-authoritative)
+                val currentState = _battleSessionState.value
+                val mergedState = currentState.merge(opponentState, isHost = isHost)
+
+                Log.d(TAG, "🔄 Merged state: local v${currentState.version} + opponent v${opponentState.version} → v${mergedState.version}")
+                Log.d(TAG, "✅ State resynchronization complete!")
+
+                // Update our state
+                _battleSessionState.value = mergedState
+                syncLegacyState()
+
+                // PHASE 5: Check for missing images after state sync
+                if (mergedState.hasMissingOpponentImage()) {
+                    Log.d(TAG, "🖼️ Opponent's image is marked COMPLETE but we're missing the file - requesting re-send")
+                    requestMissingImage()
+                }
+
+                if (mergedState.shouldResendLocalImage()) {
+                    Log.d(TAG, "🖼️ Opponent is missing our image - re-sending")
+                    localFullCard?.let { card ->
+                        sendCardImage(card.imageUrl, card.id)
+                    }
+                }
+
+                return
+            }
+            MessageType.IMAGE_REQUEST -> {
+                // Opponent is requesting our card image (they're missing it after reconnection)
+                Log.d(TAG, "📩 Received IMAGE_REQUEST - opponent is missing our image")
+
+                val requestedCardId = reliableMessage.payload.toLongOrNull()
+                if (requestedCardId == null) {
+                    Log.w(TAG, "⚠️ Invalid IMAGE_REQUEST - bad card ID: ${reliableMessage.payload}")
+                    return
+                }
+
+                // Re-send our card image
+                localFullCard?.let { card ->
+                    if (card.id == requestedCardId) {
+                        Log.d(TAG, "📤 Re-sending image for card ${card.id} as requested")
+                        sendCardImage(card.imageUrl, card.id)
+                    } else {
+                        Log.w(TAG, "⚠️ IMAGE_REQUEST for card $requestedCardId but our card is ${card.id}")
+                    }
+                } ?: run {
+                    Log.w(TAG, "⚠️ Cannot resend image - no local card data")
+                }
+
+                return
+            }
+            MessageType.READY_TIMEOUT -> {
+                Log.d(TAG, "📩 Received READY_TIMEOUT from opponent")
+                addMessage("⏱️ Opponent timed out waiting for you")
+
+                // If we're also waiting, cancel our timeout
+                readyTimeoutJob?.cancel()
+                _waitingForOpponentReady.value = false
+
+                // Offer to retry
+                setBattleState(BattleState.READY_TIMEOUT, "opponent_timeout_notification")
+                return
+            }
+            else -> {
+                // Not a Phase 4 infrastructure message, continue to legacy handling
+            }
+            }
+        }
+        // If reliableMessage == null, it's a legacy message - handle below
+
+        // Legacy message handling (for backward compatibility during transition)
         val parts = message.split("|")
         when (parts[0]) {
+            "PING" -> {
+                // Keep-alive heartbeat - silently ignore
+                // This message is sent periodically to prevent connection timeout
+                // No action needed, just receiving it keeps the connection alive
+                return
+            }
             "IMAGE_TRANSFER" -> {
                 // IMAGE_TRANSFER|cardId|fileName|size|payloadId
                 // IMPORTANT: Can arrive BEFORE or AFTER FILE payload or CARDPREVIEW
@@ -819,6 +1221,15 @@ class BattleManager(private val context: Context) {
                     )
                     _opponentCard.value = placeholderCard
                     Log.d(TAG, "✅ Created placeholder card from IMAGE_TRANSFER")
+
+                    // FIX: Sync placeholder card to unified state
+                    _battleSessionState.value = _battleSessionState.value.copy(
+                        opponentPlayer = _battleSessionState.value.opponentPlayer.copy(
+                            hasSelectedCard = true,
+                            card = placeholderCard
+                        )
+                    ).nextVersion()
+                    Log.d(TAG, "📊 Synced placeholder card to unified state (v${_battleSessionState.value.version})")
                 }
 
                 // ALWAYS set play state (opponent has selected a card)
@@ -868,6 +1279,10 @@ class BattleManager(private val context: Context) {
                     )
                     _opponentCard.value = updatedCard
                     Log.d(TAG, "✅ Updated placeholder card with stats from CARDPREVIEW")
+
+                    // FIX: Set opponentFullCard for card transfer when winner claims card
+                    opponentFullCard = updatedCard.card
+                    Log.d(TAG, "📦 Set opponentFullCard from CARDPREVIEW (update): ${updatedCard.card.name}")
                 } else {
                     // CARDPREVIEW arrived FIRST - CREATE with stats
                     val imageUrl = receivedImagePaths[id] ?: ""
@@ -888,7 +1303,21 @@ class BattleManager(private val context: Context) {
                     )
                     _opponentCard.value = previewCard
                     Log.d(TAG, "✅ Created card with stats from CARDPREVIEW")
+
+                    // FIX: Set opponentFullCard for card transfer when winner claims card
+                    opponentFullCard = previewCard.card
+                    Log.d(TAG, "📦 Set opponentFullCard from CARDPREVIEW (create): ${previewCard.card.name}")
                 }
+
+                // FIX: Sync opponent card to unified state to prevent data loss
+                // This ensures syncLegacyState() won't overwrite with null
+                _battleSessionState.value = _battleSessionState.value.copy(
+                    opponentPlayer = _battleSessionState.value.opponentPlayer.copy(
+                        hasSelectedCard = true,
+                        card = _opponentCard.value
+                    )
+                ).nextVersion()
+                Log.d(TAG, "📊 Synced opponent card to unified state (v${_battleSessionState.value.version})")
 
                 // ALWAYS set play state
                 _opponentHasSelectedCard.value = true
@@ -924,19 +1353,36 @@ class BattleManager(private val context: Context) {
                     biography = biography
                 )
                 opponentFullCard = opponentCardData
-                _opponentCard.value = BattleCard(
+                val battleCard = BattleCard(
                     card = opponentCardData,
                     effectiveAttack = attack,
                     effectiveHealth = health,
                     currentHealth = health
                 )
+                _opponentCard.value = battleCard
+
+                // FIX: Sync opponent card to unified state
+                _battleSessionState.value = _battleSessionState.value.copy(
+                    opponentPlayer = _battleSessionState.value.opponentPlayer.copy(
+                        hasSelectedCard = true,
+                        card = battleCard
+                    )
+                ).nextVersion()
+                Log.d(TAG, "📊 Synced opponent card from CARD message to unified state (v${_battleSessionState.value.version})")
+
                 _statsRevealed.value = true
                 addMessage("Opponent revealed: $name (ATK:$attack HP:$health)")
+
+                // Check if we now have all opponent data to send READY_ACK
+                checkOpponentDataComplete()
             }
             "READY" -> {
                 val ready = parts[1] == "true"
+                Log.d(TAG, "📩 RECEIVED READY MESSAGE: ready=$ready")
+                Log.d(TAG, "   Before: opponentReadyLegacy=$opponentReadyLegacy, _opponentReady=${_opponentReady.value}")
                 opponentReadyLegacy = ready
                 _opponentReady.value = ready  // Update StateFlow
+                Log.d(TAG, "   After: opponentReadyLegacy=$opponentReadyLegacy, _opponentReady=${_opponentReady.value}")
                 addMessage("Opponent is ready!")
                 checkBothReadyForReveal()
             }
@@ -944,6 +1390,15 @@ class BattleManager(private val context: Context) {
                 Log.d(TAG, "📩 Received READY_ACK from opponent")
                 _opponentDataComplete.value = true
                 _waitingForOpponentReady.value = false
+
+                // FIX: Sync to unified state so syncLegacyState() won't reset to false
+                _battleSessionState.value = _battleSessionState.value.copy(
+                    opponentPlayer = _battleSessionState.value.opponentPlayer.copy(
+                        dataReceivedFromOpponent = true
+                    )
+                ).nextVersion()
+                Log.d(TAG, "📊 Synced opponentDataComplete to unified state (v${_battleSessionState.value.version})")
+
                 addMessage("Opponent confirmed ready!")
                 checkBothReadyForReveal()
             }
@@ -1007,7 +1462,9 @@ class BattleManager(private val context: Context) {
                     battleStory = fullStory,
                     cardWon = if (!isDraw && localWins) opponentFullCard else null
                 )
-                _battleState.value = BattleState.BATTLE_COMPLETE
+                // NOTE: Don't transition to BATTLE_COMPLETE here!
+                // Let the ViewModel's animateStory() finish, then call completeBattleAnimation()
+                Log.d(TAG, "📩 NON-HOST: Result received, animation will complete via ViewModel")
             }
         }
     }
@@ -1035,7 +1492,7 @@ class BattleManager(private val context: Context) {
 
         if (bothReady && bothHaveData && bothHaveCards) {
             revealInitiated = true  // Set flag BEFORE any async operations
-            Log.d(TAG, "✅ BOTH PLAYERS READY FOR REVEAL!")
+            Log.d(TAG, "✅ BOTH PLAYERS READY FOR REVEAL! (isHost=$isHost)")
             _battleState.value = BattleState.READY_TO_BATTLE
             _waitingForOpponentReady.value = false
             readyTimeoutJob?.cancel()
@@ -1047,9 +1504,35 @@ class BattleManager(private val context: Context) {
                 sendMessage("REVEAL_START")
                 scope.launch { startRevealSequence() }
             } else {
-                Log.d(TAG, "⏳ NON-HOST: Waiting for REVEAL_START from host")
+                Log.d(TAG, "⏳ NON-HOST: Waiting for REVEAL_START from host (isHost=$isHost)")
             }
         }
+    }
+
+    /**
+     * Set battle state with comprehensive logging
+     * Logs all state transitions with context for debugging
+     */
+    private fun setBattleState(newState: BattleState, reason: String) {
+        val oldState = _battleState.value
+        Log.d(TAG, "🔄 STATE TRANSITION: $oldState → $newState (reason: $reason)")
+        Log.d(TAG, "   Connection: endpoint=$currentEndpointId, lifecycle=${_connectionLifecycle.value}")
+        Log.d(TAG, "   Ready: local=$localReadyLegacy, opponent=$opponentReadyLegacy")
+        Log.d(TAG, "   Data: local=${_localDataComplete.value}, opponent=${_opponentDataComplete.value}")
+        _battleState.value = newState
+    }
+
+    /**
+     * Check if connection is actually healthy
+     * Considers both endpoint existence and lifecycle state
+     */
+    private fun isConnectionHealthy(): Boolean {
+        val hasEndpoint = currentEndpointId != null
+        val isLifecycleConnected = _connectionLifecycle.value is ConnectionLifecycle.Connected
+
+        Log.d(TAG, "Connection health check: endpoint=$hasEndpoint, lifecycle=$isLifecycleConnected")
+
+        return hasEndpoint && isLifecycleConnected
     }
 
     /**
@@ -1057,17 +1540,39 @@ class BattleManager(private val context: Context) {
      * Prevents infinite waiting if opponent disconnects or encounters error
      *
      * CRITICAL FIX: Increased timeout from 30s to 45s to account for image transfer time
+     * PHASE 2: Distinguish between connection timeout (READY_TIMEOUT) and disconnection (DISCONNECTED)
      */
     private fun startReadyTimeout() {
         readyTimeoutJob?.cancel()
         readyTimeoutJob = scope.launch {
-            kotlinx.coroutines.delay(45000)  // 45 seconds (increased from 30s)
+            delay(45000)  // 45 seconds
 
-            // Only timeout if still waiting (not if battle has started)
             if (_waitingForOpponentReady.value) {
                 Log.w(TAG, "⏱️ TIMEOUT: Battle didn't start in time (45s)")
-                addMessage("⏱️ Connection timeout. Please retry.")
-                _battleState.value = BattleState.DISCONNECTED
+
+                // Check if connection is still alive
+                val isConnected = isConnectionHealthy()
+
+                if (isConnected) {
+                    // Send timeout notification to opponent
+                    val timeoutMsg = ReliableMessage(
+                        messageId = java.util.UUID.randomUUID().toString(),
+                        type = MessageType.READY_TIMEOUT,
+                        payload = "local_player_timeout",
+                        requiresAck = true
+                    )
+                    messageReliability.sendReliableMessage(timeoutMsg)
+                    Log.d(TAG, "📤 Sent READY_TIMEOUT notification to opponent")
+
+                    // Connection alive - just a timeout
+                    setBattleState(BattleState.READY_TIMEOUT, "ready_timeout_connection_healthy")
+                    addMessage("⏱️ Waiting for opponent timed out.")
+                } else {
+                    // Connection actually lost
+                    setBattleState(BattleState.DISCONNECTED, "ready_timeout_connection_lost")
+                    addMessage("⏱️ Connection lost.")
+                }
+
                 _waitingForOpponentReady.value = false
             }
         }
@@ -1113,6 +1618,31 @@ class BattleManager(private val context: Context) {
     }
 
     /**
+     * Request missing image from opponent
+     *
+     * PHASE 5: Sends IMAGE_REQUEST to ask opponent to resend their card image.
+     * Called when state sync reveals opponent has completed transfer but we're missing the file.
+     */
+    private fun requestMissingImage() {
+        val opponentCard = _opponentCard.value?.card
+        if (opponentCard == null) {
+            Log.w(TAG, "⚠️ Cannot request missing image - no opponent card data")
+            return
+        }
+
+        Log.d(TAG, "📤 Sending IMAGE_REQUEST for card ${opponentCard.id}")
+
+        val imageRequest = ReliableMessage(
+            messageId = java.util.UUID.randomUUID().toString(),
+            type = MessageType.IMAGE_REQUEST,
+            payload = opponentCard.id.toString(),
+            requiresAck = true
+        )
+
+        messageReliability.sendReliableMessage(imageRequest)
+    }
+
+    /**
      * Update opponent card with received image path
      * Forces UI refresh by updating StateFlow
      */
@@ -1125,8 +1655,18 @@ class BattleManager(private val context: Context) {
                 // Add timestamp to bust Coil's cache and force reload
                 val cacheBustedPath = "$imagePath?t=${System.currentTimeMillis()}"
                 val updatedCard = battleCard.card.copy(imageUrl = cacheBustedPath)
-                _opponentCard.value = battleCard.copy(card = updatedCard)
+                val updatedBattleCard = battleCard.copy(card = updatedCard)
+                _opponentCard.value = updatedBattleCard
                 Log.d(TAG, "✅ Updated opponent card $cardId with image: $cacheBustedPath")
+
+                // FIX: Sync image path to unified state so syncLegacyState() won't overwrite
+                _battleSessionState.value = _battleSessionState.value.copy(
+                    opponentPlayer = _battleSessionState.value.opponentPlayer.copy(
+                        card = updatedBattleCard,
+                        imageFilePath = imagePath
+                    )
+                ).nextVersion()
+                Log.d(TAG, "📊 Synced opponent image to unified state (v${_battleSessionState.value.version})")
             } else {
                 Log.w(TAG, "❌ Card ID mismatch: opponent card is ${battleCard.card.id}, but image is for $cardId")
             }
@@ -1169,7 +1709,14 @@ class BattleManager(private val context: Context) {
 
         // All opponent data received!
         _localDataComplete.value = true
-        Log.d(TAG, "✅ All opponent data complete (stats received)")
+
+        // FIX: Sync to unified state so syncLegacyState() won't reset to false
+        _battleSessionState.value = _battleSessionState.value.copy(
+            localPlayer = _battleSessionState.value.localPlayer.copy(
+                dataReceivedFromOpponent = true
+            )
+        ).nextVersion()
+        Log.d(TAG, "✅ All opponent data complete (stats received, synced to unified state v${_battleSessionState.value.version})")
 
         // If we already clicked ready, now send acknowledgment since opponent data is complete
         if (localReadyLegacy) {
@@ -1180,22 +1727,17 @@ class BattleManager(private val context: Context) {
     }
 
     private fun resetBattleState() {
-        _localCard.value = null
-        _opponentCard.value = null
-        _battleStory.value = emptyList()
-        _battleResult.value = null
+        // PHASE 2: Reset unified state (creates new state with version 0)
+        _battleSessionState.value = BattleSessionState()
+        syncLegacyState()  // Sync reset to legacy StateFlows
+
+        // LEGACY: Keep these for network operations
         _messages.value = emptyList()
         localReadyLegacy = false
         opponentReadyLegacy = false
-        _localReady.value = false
-        _opponentReady.value = false
-        _canClickReady.value = false  // CRITICAL FIX: Reset to false, enabled when opponent data complete
-        _opponentIsThinking.value = false
-        _opponentHasSelectedCard.value = false  // Reset play state
         localFullCard = null
         opponentFullCard = null
-        _statsRevealed.value = false
-        _shouldRevealCards.value = false
+        _opponentName.value = "Opponent"
         expectedImageTransfers.clear()
         receivedImagePaths.clear()
         pendingFileTransfers.clear()
@@ -1236,6 +1778,13 @@ class BattleManager(private val context: Context) {
         connectionsClient.stopAdvertising()
         connectionsClient.stopDiscovery()
         connectionsClient.stopAllEndpoints()
+
+        // PHASE 3: Reset connection lifecycle
+        _connectionLifecycle.value = ConnectionLifecycle.Idle
+
+        // PHASE 4: Clear pending messages from reliability layer
+        messageReliability.clearPendingMessages()
+
         _connectionState.value = ConnectionState.Idle
         _battleState.value = BattleState.WAITING_FOR_OPPONENT
         _discoveredDevices.value = emptyList()
@@ -1247,6 +1796,103 @@ class BattleManager(private val context: Context) {
         val messages = _messages.value.toMutableList()
         messages.add(0, message)
         _messages.value = messages.take(20)
+    }
+
+    // ============================================================
+    // PHASE 3: Connection Lifecycle Helper Methods
+    // ============================================================
+
+    /**
+     * Callback invoked when reconnection is detected (endpoint ID changed)
+     * Phase 4 will implement state resynchronization here
+     *
+     * For now, this just logs the event and invokes the callback (if set).
+     */
+    private fun onReconnectionDetected(oldEndpoint: String, newEndpoint: String) {
+        Log.d(TAG, "🔄 RECONNECTION DETECTED: $oldEndpoint → $newEndpoint")
+        Log.d(TAG, "   Initiating state resynchronization...")
+
+        // Invoke callback if set (used by tests)
+        reconnectionCallback?.invoke(oldEndpoint, newEndpoint)
+
+        // PHASE 4: State Resynchronization
+        // Send STATE_SYNC_REQUEST with our current state
+        val currentState = _battleSessionState.value
+        val syncRequest = ReliableMessage(
+            messageId = java.util.UUID.randomUUID().toString(),
+            type = MessageType.STATE_SYNC_REQUEST,
+            payload = currentState.toJson(),
+            version = currentState.version
+        )
+
+        messageReliability.sendReliableMessage(syncRequest)
+        Log.d(TAG, "📤 Sent STATE_SYNC_REQUEST (version=${currentState.version})")
+    }
+
+    /**
+     * Set callback for reconnection events (used by tests and future features)
+     */
+    fun setReconnectionCallback(callback: (oldEndpoint: String, newEndpoint: String) -> Unit) {
+        reconnectionCallback = callback
+    }
+
+    /**
+     * Get connection event history (for debugging and testing)
+     */
+    fun getConnectionEvents(): List<ConnectionEvent> = connectionEvents.toList()
+
+    /**
+     * Get connection history (for debugging and testing)
+     */
+    fun getConnectionHistory(): List<ConnectionLifecycle.Connected> = connectionHistory.toList()
+
+    // ============================================================
+    // Keep-Alive Mechanism
+    // ============================================================
+
+    /**
+     * Start heartbeat to keep connection alive
+     * Sends PING message every 10 seconds to prevent Nearby Connections timeout
+     */
+    private fun startHeartbeat() {
+        stopHeartbeat() // Cancel any existing heartbeat
+
+        heartbeatJob = scope.launch {
+            while (true) {
+                delay(10_000) // 10 seconds
+                currentEndpointId?.let { endpointId ->
+                    sendMessage("PING")
+                    Log.d(TAG, "💓 Sent heartbeat PING to $endpointId")
+                }
+            }
+        }
+
+        Log.d(TAG, "💓 Heartbeat started (10s interval)")
+    }
+
+    /**
+     * Stop heartbeat when connection ends
+     */
+    private fun stopHeartbeat() {
+        heartbeatJob?.cancel()
+        heartbeatJob = null
+        Log.d(TAG, "💔 Heartbeat stopped")
+    }
+
+    /**
+     * Test helper: Simulate connection result (for unit testing)
+     * This is internal and should only be used by tests
+     */
+    internal fun simulateConnectionResult(endpointId: String, result: ConnectionResolution) {
+        connectionLifecycleCallback.onConnectionResult(endpointId, result)
+    }
+
+    /**
+     * Test helper: Simulate disconnection (for unit testing)
+     * This is internal and should only be used by tests
+     */
+    internal fun simulateDisconnection(endpointId: String) {
+        connectionLifecycleCallback.onDisconnected(endpointId)
     }
 
     companion object {

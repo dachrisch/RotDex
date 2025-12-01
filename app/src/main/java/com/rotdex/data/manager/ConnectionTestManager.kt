@@ -160,7 +160,10 @@ class ConnectionTestManager(private val context: Context) {
      */
     fun connectToEndpoint(endpointId: String, playerName: String) {
         Log.d(TAG, "Requesting connection to: $endpointId")
-        _connectionState.value = ConnectionState.Connecting
+        // Look up device name from discovered devices (format: "name (endpointId)")
+        val deviceEntry = _discoveredDevices.value.find { it.contains(endpointId) }
+        val targetName = deviceEntry?.substringBefore(" (") ?: "Opponent"
+        _connectionState.value = ConnectionState.Connecting(targetName)
         addMessage("🤝 Connecting...")
 
         connectionsClient.requestConnection(
@@ -223,7 +226,7 @@ sealed class ConnectionState {
     object Advertising : ConnectionState()
     object Discovering : ConnectionState()
     data class AutoDiscovering(val playerName: String) : ConnectionState()
-    object Connecting : ConnectionState()
+    data class Connecting(val targetName: String) : ConnectionState()
     data class ConnectionInitiated(val opponentName: String) : ConnectionState()
     data class Connected(val endpointId: String) : ConnectionState()
     object Disconnected : ConnectionState()

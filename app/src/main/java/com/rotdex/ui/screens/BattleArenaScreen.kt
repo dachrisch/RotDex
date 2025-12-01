@@ -65,6 +65,7 @@ fun BattleArenaScreen(
     val discoveredDevices by viewModel.discoveredDevices.collectAsState()
     val playerCards by viewModel.playerCards.collectAsState()
     val playerName by viewModel.playerName.collectAsState()
+    val opponentName by viewModel.opponentName.collectAsState()
 
     // Log UI state for debugging
     LaunchedEffect(discoveredDevices) {
@@ -265,6 +266,7 @@ fun BattleArenaScreen(
                         localDataComplete = localDataComplete,
                         opponentDataComplete = opponentDataComplete,
                         opponentImageTransferComplete = opponentImageTransferComplete,
+                        opponentName = opponentName,
                         onCardSelect = { viewModel.selectCard(it) },
                         onReady = { viewModel.setReady() }
                     )
@@ -280,6 +282,7 @@ fun BattleArenaScreen(
                         opponentCard = opponentCard!!,
                         battleStory = battleStory,
                         currentStoryIndex = currentStoryIndex,
+                        opponentName = opponentName,
                         onSkip = { viewModel.skipBattleAnimation() }
                     )
                 }
@@ -295,8 +298,14 @@ fun BattleArenaScreen(
                         currentStoryIndex = currentStoryIndex,
                         battleResult = battleResult,
                         cardTransferred = cardTransferred,
+                        opponentName = opponentName,
                         onPlayAgain = { viewModel.stopAll() }
                     )
+                }
+
+                // Ready timeout
+                battleState == BattleState.READY_TIMEOUT -> {
+                    ReadyTimeoutSection(onRetry = { viewModel.stopAll() })
                 }
 
                 // Disconnected
@@ -366,13 +375,15 @@ internal fun WaitingSection(
     ) { isConnecting ->
         if (isConnecting) {
             // Show connecting animation for Connecting state (no background)
+            // Use target name from ConnectionState if available, otherwise fallback to local player name
+            val targetName = (connectionState as? ConnectionState.Connecting)?.targetName ?: playerName
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight(),  // Fill available height
                 contentAlignment = Alignment.Center
             ) {
-                ConnectingAnimation(playerName = playerName)
+                ConnectingAnimation(playerName = targetName)
             }
         } else {
         // Show waiting UI with background for Advertising/Discovering states
@@ -581,6 +592,7 @@ private fun CardSelectionSection(
     localDataComplete: Boolean,
     opponentDataComplete: Boolean,
     opponentImageTransferComplete: Boolean,
+    opponentName: String,
     onCardSelect: (Card) -> Unit,
     onReady: () -> Unit
 ) {
@@ -613,7 +625,8 @@ private fun CardSelectionSection(
             opponentReady = opponentReady,
             opponentHasSelectedCard = opponentHasSelectedCard,
             localDataComplete = localDataComplete,
-            opponentDataComplete = opponentDataComplete
+            opponentDataComplete = opponentDataComplete,
+            opponentName = opponentName
         )
 
         // Selected card preview
@@ -817,6 +830,7 @@ internal fun BattleSection(
     currentStoryIndex: Int,
     battleResult: BattleResult?,
     cardTransferred: Boolean,
+    opponentName: String,
     onPlayAgain: () -> Unit
 ) {
     // Track which card is currently attacking for animation
@@ -844,7 +858,8 @@ internal fun BattleSection(
                     isTakingDamage = isOpponentAttacking && isBattleActive,
                     isWinner = battleResult?.winnerIsLocal == true,
                     isLoser = battleResult?.winnerIsLocal == false,
-                    isDraw = battleResult?.isDraw == true
+                    isDraw = battleResult?.isDraw == true,
+                    isBattleActive = isBattleActive
                 )
             }
 
@@ -855,12 +870,13 @@ internal fun BattleSection(
             opponentCard?.let {
                 AnimatedBattleCard(
                     battleCard = it,
-                    label = "FOE",
+                    label = opponentName.uppercase(),
                     isAttacking = isOpponentAttacking && isBattleActive,
                     isTakingDamage = isLocalAttacking && isBattleActive,
                     isWinner = battleResult?.winnerIsLocal == false,
                     isLoser = battleResult?.winnerIsLocal == true,
-                    isDraw = battleResult?.isDraw == true
+                    isDraw = battleResult?.isDraw == true,
+                    isBattleActive = isBattleActive
                 )
             }
         }
@@ -870,6 +886,7 @@ internal fun BattleSection(
             AnimatedResultCard(
                 result = result,
                 cardTransferred = cardTransferred,
+                opponentName = opponentName,
                 onPlayAgain = onPlayAgain
             )
         }
@@ -921,9 +938,21 @@ internal fun AnimatedBattleCard(
     isTakingDamage: Boolean,
     isWinner: Boolean,
     isLoser: Boolean,
-    isDraw: Boolean
+    isDraw: Boolean,
+    isBattleActive: Boolean = false
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "battle")
+
+    // Battle active - pulsing glow effect
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow"
+    )
 
     // Attack animation - lunge forward
     val attackOffset by animateFloatAsState(
@@ -945,11 +974,16 @@ internal fun AnimatedBattleCard(
 
     // Damage flash
     var showDamageFlash by remember { mutableStateOf(false) }
+    // Impact emoji effect
+    var showImpact by remember { mutableStateOf(false) }
     LaunchedEffect(isTakingDamage) {
         if (isTakingDamage) {
             showDamageFlash = true
+            showImpact = true
             delay(300)
             showDamageFlash = false
+            delay(200)
+            showImpact = false
         }
     }
 
@@ -1007,9 +1041,19 @@ internal fun AnimatedBattleCard(
         }
 
         // Card with effects
-        Box {
+        Box(contentAlignment = Alignment.Center) {
             Card(
-                modifier = Modifier.size(110.dp),
+                modifier = Modifier
+                    .size(110.dp)
+                    .then(
+                        if (isBattleActive && !isWinner && !isLoser && !isDraw) {
+                            Modifier.border(
+                                width = 3.dp,
+                                color = Color(0xFFFF9800).copy(alpha = glowAlpha),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                        } else Modifier
+                    ),
                 colors = CardDefaults.cardColors(
                     containerColor = when {
                         isWinner -> Color(0xFF4CAF50).copy(alpha = 0.4f)
@@ -1057,6 +1101,22 @@ internal fun AnimatedBattleCard(
                     .align(Alignment.BottomCenter)
                     .padding(4.dp)
             )
+
+            // Impact emoji overlay
+            if (showImpact) {
+                val impactScale by animateFloatAsState(
+                    targetValue = 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                    label = "impactScale"
+                )
+                Text(
+                    text = "💥",
+                    fontSize = 48.sp,
+                    modifier = Modifier
+                        .scale(impactScale)
+                        .graphicsLayer { alpha = 0.9f }
+                )
+            }
         }
 
         Text(
@@ -1113,6 +1173,7 @@ private fun HealthBar(
 private fun AnimatedResultCard(
     result: BattleResult,
     cardTransferred: Boolean,
+    opponentName: String,
     onPlayAgain: () -> Unit
 ) {
     var visible by remember { mutableStateOf(false) }
@@ -1170,6 +1231,8 @@ private fun AnimatedResultCard(
                     )
                 }
                 result.winnerIsLocal == true && result.cardWon != null -> {
+                    var showCardPreview by remember { mutableStateOf(false) }
+
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "🎉 You claimed: ${result.cardWon.name}! 🎉",
@@ -1185,11 +1248,28 @@ private fun AnimatedResultCard(
                                 textAlign = TextAlign.Center
                             )
                         }
+
+                        Spacer(Modifier.height(8.dp))
+
+                        // View Card button
+                        OutlinedButton(
+                            onClick = { showCardPreview = true }
+                        ) {
+                            Text("👁️ View Card")
+                        }
+                    }
+
+                    // Card Preview Dialog
+                    if (showCardPreview) {
+                        CardPreviewDialog(
+                            card = result.cardWon,
+                            onDismiss = { showCardPreview = false }
+                        )
                     }
                 }
                 result.winnerIsLocal == false -> {
                     Text(
-                        text = "😢 Your card was claimed by the victor!",
+                        text = "😢 Your card was claimed by $opponentName!",
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFFF44336),
                         textAlign = TextAlign.Center
@@ -1204,6 +1284,39 @@ private fun AnimatedResultCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("🔄 PLAY AGAIN", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReadyTimeoutSection(onRetry: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "⏱️ Ready Timeout",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.error
+            )
+
+            Text(
+                text = "Connection still active",
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center
+            )
+
+            Button(onClick = onRetry) {
+                Text("Return to Lobby")
             }
         }
     }
@@ -1298,6 +1411,7 @@ fun BattlePrimaryAnimationScreen(
     opponentCard: BattleCard,
     battleStory: List<BattleStorySegment>,
     currentStoryIndex: Int,
+    opponentName: String,
     onSkip: () -> Unit
 ) {
     val currentSegment = battleStory.getOrNull(currentStoryIndex)
@@ -1354,7 +1468,8 @@ fun BattlePrimaryAnimationScreen(
                 isTakingDamage = isOpponentAttacking,
                 isWinner = false,
                 isLoser = false,
-                isDraw = false
+                isDraw = false,
+                isBattleActive = true
             )
 
             // VS text
@@ -1368,12 +1483,13 @@ fun BattlePrimaryAnimationScreen(
             // Opponent card
             AnimatedBattleCard(
                 battleCard = opponentCard,
-                label = "FOE",
+                label = opponentName.uppercase(),
                 isAttacking = isOpponentAttacking,
                 isTakingDamage = isLocalAttacking,
                 isWinner = false,
                 isLoser = false,
-                isDraw = false
+                isDraw = false,
+                isBattleActive = true
             )
         }
 
@@ -1445,4 +1561,107 @@ private fun getRarityColor(rarity: CardRarity): Color {
         CardRarity.EPIC -> Color(0xFF9C27B0)
         CardRarity.LEGENDARY -> Color(0xFFFF9800)
     }
+}
+
+/**
+ * Dialog to preview a won card with full details
+ */
+@Composable
+private fun CardPreviewDialog(
+    card: Card,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val rarityColor = getRarityColor(card.rarity)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Close")
+            }
+        },
+        title = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = card.name,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = card.rarity.name,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = rarityColor,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Card image
+                Card(
+                    modifier = Modifier
+                        .size(200.dp)
+                        .border(3.dp, rarityColor, RoundedCornerShape(12.dp)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(card.imageUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = card.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                // Stats row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "⚔️ ATK",
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                        Text(
+                            text = "${card.attack}",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFF44336)
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "❤️ HP",
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                        Text(
+                            text = "${card.health}",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4CAF50)
+                        )
+                    }
+                }
+
+                // Biography
+                if (card.biography.isNotBlank()) {
+                    Text(
+                        text = card.biography,
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    )
 }
