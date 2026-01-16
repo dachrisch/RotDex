@@ -120,7 +120,7 @@ dependencies {
     androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 
     // Hilt testing
-    androidTestImplementation("com.google.dagger:hilt-android-testing:2.57.2")
+    androidTestImplementation("com.google.dagger:hilt-android-testing:2.58")
     kspAndroidTest("com.google.dagger:hilt-compiler:2.57.2")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
