@@ -16,7 +16,7 @@ dependencies {
     implementation("io.modelcontextprotocol:kotlin-sdk:0.8.3")
 
     // Ktor for HTTP client (needed by MCP SDK)
-    implementation("io.ktor:ktor-client-cio:3.3.3")
+    implementation("io.ktor:ktor-client-cio:3.4.0")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
