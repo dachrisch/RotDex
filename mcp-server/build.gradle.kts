@@ -13,7 +13,7 @@ application {
 
 dependencies {
     // MCP Kotlin SDK
-    implementation("io.modelcontextprotocol:kotlin-sdk:0.8.3")
+    implementation("io.modelcontextprotocol:kotlin-sdk:0.8.4")
 
     // Ktor for HTTP client (needed by MCP SDK)
     implementation("io.ktor:ktor-client-cio:3.4.0")
