@@ -8,7 +8,7 @@ plugins {
     id("com.google.devtools.ksp") version "2.3.11" apply false
     id("io.gitlab.arturbosch.detekt") version "1.23.8"
     id("com.google.dagger.hilt.android") version "2.58" apply false
-    id("com.github.ben-manes.versions") version "0.53.0"
+    id("com.github.ben-manes.versions") version "0.61.0"
 }
 
 detekt {
