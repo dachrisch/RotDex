@@ -36,7 +36,7 @@ jobs:
     - name: Set up JDK 17
       uses: actions/setup-java@v5
       with:
-        java-version: '17'
+        java-version: '17.0.20+101'
         distribution: 'temurin'
 
     - name: Setup Gradle
@@ -61,7 +61,7 @@ jobs:
     - name: Set up JDK 17
       uses: actions/setup-java@v5
       with:
-        java-version: '17'
+        java-version: '17.0.20+101'
         distribution: 'temurin'
 
     - name: Setup Gradle
@@ -103,7 +103,7 @@ jobs:
     - name: Set up JDK 17
       uses: actions/setup-java@v5
       with:
-        java-version: '17'
+        java-version: '17.0.20+101'
         distribution: 'temurin'
 
     - name: Setup Gradle
@@ -147,7 +147,7 @@ jobs:
     - name: Set up JDK 17
       uses: actions/setup-java@v5
       with:
-        java-version: '17'
+        java-version: '17.0.20+101'
         distribution: 'temurin'
 
     - name: Setup Gradle
