@@ -73,7 +73,7 @@ dependencies {
     implementation("androidx.compose.animation:animation-core")
 
     // Navigation
-    implementation("androidx.navigation:navigation-compose:2.9.7")
+    implementation("androidx.navigation:navigation-compose:2.10.2")
 
     // Room Database for card collection
     implementation("androidx.room:room-runtime:2.8.4")
