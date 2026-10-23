@@ -103,7 +103,7 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.11.2")
 
     // Nearby Connections for Bluetooth multiplayer
-    implementation("com.google.android.gms:play-services-nearby:19.3.0")
+    implementation("com.google.android.gms:play-services-nearby:19.5.1")
 
     // Testing
     testImplementation("junit:junit:4.13.2")
