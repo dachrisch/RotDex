@@ -100,7 +100,7 @@ dependencies {
     ksp("androidx.hilt:hilt-compiler:1.3.0")
 
     // WorkManager for background tasks
-    implementation("androidx.work:work-runtime-ktx:2.11.2")
+    implementation("androidx.work:work-runtime-ktx:2.12.0")
 
     // Nearby Connections for Bluetooth multiplayer
     implementation("com.google.android.gms:play-services-nearby:19.3.0")
