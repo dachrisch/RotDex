@@ -83,7 +83,7 @@ dependencies {
     // Retrofit for AI API calls
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
     implementation("com.squareup.retrofit2:converter-gson:3.0.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:5.3.2")
+    implementation("com.squareup.okhttp3:logging-interceptor:5.5.1")
 
     // Coil for image loading
     implementation("io.coil-kt.coil3:coil-compose:3.4.0")
